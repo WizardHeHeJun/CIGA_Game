@@ -1,13 +1,26 @@
-# ===== Unity =====
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-[Uu]ser[Ss]ettings/
-[Mm]emoryCaptures/
-[Rr]ecordings/
+# ===== Unity（锚定到仓库根，避免误伤 Assets 下同名业务文件夹）=====
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]in/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+ExportedObj/
+crashlytics-build.properties
+.gradle/
+
+# Asset Store / JetBrains 生成物
+/[Aa]ssets/[Aa]ssetStoreTools*
+/[Aa]ssets/[Pp]lugins/[Ee]ditor/JetBrains*
+
+# Addressables 构建产物（用到时取消注释）
+# /[Aa]ssets/[Ss]treamingAssets/aa.meta
+# /[Aa]ssets/[Ss]treamingAssets/aa/*
+# /[Ss]erverData/
 
 # Asset meta data should only be ignored when the corresponding asset is also ignored
 !/[Aa]ssets/**/*.meta
