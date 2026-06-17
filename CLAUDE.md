@@ -33,5 +33,12 @@
 - Unity 验证桥：`.claude/skills/unity-bridge`（编译 / 读 Console / PlayMode / 截图 / 跑测试，端口 17900）
 - 代码生成：`.claude/skills/create-mono`、`create-so`、`author-signature`
 
+## 版本控制
+- 仓库 `CIGA_Game`（GitHub 私有，origin/main）；日常 `git add -A && git commit && git push`。
+- **二进制资产（图片/音频/字体等）走 Git LFS**：`.gitattributes` 已配，`git add` 自动入 LFS；前提是装了 git-lfs 且 `git lfs install` 过。
+- **只用 `git push`，禁止 GitHub 网页拖拽上传**（会无视 .gitignore 把 2GB `Library/` 一起传）。
+- Unity 生成物（`Library/Temp/Logs/obj`）已被 .gitignore 排除，勿提交。
+- 细节（LFS 安装、协作者配置、`.unity`/`.prefab` 智能合并、排障）见 `ai-shared/docs/version-control-guide.md`。
+
 ## 踩坑记忆
 跨会话踩坑沉淀在 `ai-shared/pitfalls.md`；提交前若发现同类问题，先查它。
