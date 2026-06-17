@@ -1,5 +1,5 @@
-// AI 验证桥（stagehand-lite）：Editor 内嵌本地 HTTP 服务，供 AI 通过 CLI 驱动 Unity。
-// 端口 127.0.0.1:17900（避开团队 UnitySkills 的 8090/18091）。仅 Editor 编译。
+// AI 验证桥：Editor 内嵌本地 HTTP 服务，供 AI 通过 CLI 驱动 Unity。
+// 端口 127.0.0.1:17900（避开其他工具常用端口，如 8090/18091）。仅 Editor 编译。
 using System;
 using System.Collections.Generic;
 using System.Globalization;

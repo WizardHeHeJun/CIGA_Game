@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""C# lint hook（数据驱动，仿团队 lua-lint）。
+"""C# lint hook（数据驱动）。
 
 PostToolUse(Edit|Write) 触发。规则定义在 rules.json，本引擎只读取执行。
 设计原则：成功静默（无违规无输出，exit 0）；失败冗余（输出 行号+代码+修复+引用，exit 2 让模型修）。

@@ -7,7 +7,7 @@ generated_at: 2026-06-17
 
 # 版本控制指南
 
-本工程用 git，远程仓库 GitHub 私有库 **`CIGA_Game`**（`https://github.com/WizardHeHeJun/CIGA_Game`，默认分支 main）。
+本工程用 git，远程仓库为 GitHub 私有库 **`CIGA_Game`**（默认分支 main）。
 
 ## 日常提交
 
