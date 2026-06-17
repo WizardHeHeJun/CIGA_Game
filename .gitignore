@@ -47,6 +47,10 @@ sysinfo.txt
 .DS_Store
 Thumbs.db
 
+# ===== Python =====
+__pycache__/
+*.pyc
+
 # ===== AI Harness（本地运行态产物，不入库） =====
 .knowledge-tracking-logs/
 .claude/hooks/cache/
