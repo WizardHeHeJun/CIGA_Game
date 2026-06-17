@@ -1,0 +1,89 @@
+# ============================================================
+# .gitattributes — Unity 2022.3 URP 2D 工程
+# 1) 文本统一规范化  2) Unity YAML 资产智能合并  3) 二进制走 Git LFS
+# 注意：LFS 行需先安装 Git LFS 并执行 `git lfs install` 才会生效。
+# ============================================================
+
+# 默认自动规范行尾（仓库内统一存 LF）
+* text=auto
+
+# ---------- 文本类（强制按文本 diff/merge）----------
+*.cs            text diff=csharp
+*.shader        text
+*.hlsl          text
+*.cginc         text
+*.compute       text
+*.uss           text
+*.uxml          text
+*.json          text
+*.xml           text
+*.md            text
+*.txt           text
+*.csv           text
+*.yml           text
+*.yaml          text
+*.asmdef        text
+*.asmref        text
+*.py            text
+
+# ---------- Unity YAML 资产：文本 + UnityYAMLMerge 智能合并 ----------
+*.unity             text merge=unityyamlmerge
+*.prefab            text merge=unityyamlmerge
+*.asset             text merge=unityyamlmerge
+*.meta              text merge=unityyamlmerge
+*.mat               text merge=unityyamlmerge
+*.anim              text merge=unityyamlmerge
+*.controller        text merge=unityyamlmerge
+*.overrideController text merge=unityyamlmerge
+*.physicsMaterial2D text merge=unityyamlmerge
+*.spriteatlas       text merge=unityyamlmerge
+*.spriteatlasv2     text merge=unityyamlmerge
+*.mask              text merge=unityyamlmerge
+*.preset            text merge=unityyamlmerge
+*.playable          text merge=unityyamlmerge
+*.signal            text merge=unityyamlmerge
+*.guiskin           text merge=unityyamlmerge
+*.scenetemplate     text merge=unityyamlmerge
+*.lighting          text merge=unityyamlmerge
+*.renderTexture     text merge=unityyamlmerge
+
+# ---------- 二进制 → Git LFS（2D 重点：图片 / 音频 / 字体）----------
+# 图片
+*.png    filter=lfs diff=lfs merge=lfs -text
+*.jpg    filter=lfs diff=lfs merge=lfs -text
+*.jpeg   filter=lfs diff=lfs merge=lfs -text
+*.gif    filter=lfs diff=lfs merge=lfs -text
+*.bmp    filter=lfs diff=lfs merge=lfs -text
+*.tga    filter=lfs diff=lfs merge=lfs -text
+*.tif    filter=lfs diff=lfs merge=lfs -text
+*.tiff   filter=lfs diff=lfs merge=lfs -text
+*.psd    filter=lfs diff=lfs merge=lfs -text
+*.psb    filter=lfs diff=lfs merge=lfs -text
+*.ase    filter=lfs diff=lfs merge=lfs -text
+*.aseprite filter=lfs diff=lfs merge=lfs -text
+*.exr    filter=lfs diff=lfs merge=lfs -text
+*.hdr    filter=lfs diff=lfs merge=lfs -text
+# 音频
+*.wav    filter=lfs diff=lfs merge=lfs -text
+*.mp3    filter=lfs diff=lfs merge=lfs -text
+*.ogg    filter=lfs diff=lfs merge=lfs -text
+*.aif    filter=lfs diff=lfs merge=lfs -text
+*.aiff   filter=lfs diff=lfs merge=lfs -text
+# 视频
+*.mp4    filter=lfs diff=lfs merge=lfs -text
+*.mov    filter=lfs diff=lfs merge=lfs -text
+*.webm   filter=lfs diff=lfs merge=lfs -text
+# 字体
+*.ttf    filter=lfs diff=lfs merge=lfs -text
+*.otf    filter=lfs diff=lfs merge=lfs -text
+# 3D / 骨骼（2D 工程少见，保险）
+*.fbx    filter=lfs diff=lfs merge=lfs -text
+*.blend  filter=lfs diff=lfs merge=lfs -text
+# 插件 / 压缩包
+*.dll    filter=lfs diff=lfs merge=lfs -text
+*.so     filter=lfs diff=lfs merge=lfs -text
+*.bundle filter=lfs diff=lfs merge=lfs -text
+*.a      filter=lfs diff=lfs merge=lfs -text
+*.zip    filter=lfs diff=lfs merge=lfs -text
+*.7z     filter=lfs diff=lfs merge=lfs -text
+*.rar    filter=lfs diff=lfs merge=lfs -text
