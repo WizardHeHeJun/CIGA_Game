@@ -24,12 +24,19 @@ namespace Ciga.AnchorHorror
         [Header("音频（AudioSource 可空；无 clip 时自动生成程序化心跳）")]
         [SerializeField] private AudioSource _heartbeat;
 
+        [Header("尖锐噪音（Distorted/Critical 随机触发，可空）")]
+        [SerializeField] private AudioSource _noiseSource;
+        [SerializeField] private float _noiseIntervalMin = 1.2f;
+        [SerializeField] private float _noiseIntervalMax = 3.5f;
+
         [Header("移速惩罚")]
         [SerializeField] private PlayerController2D _player;
         [SerializeField] private GlobalConfig _config;
 
         private SanityState _state = SanityState.Normal;
         private float _baseAlpha;
+        private AudioClip _noiseClip;
+        private float _noiseTimer;
 
         private void Awake()
         {
@@ -38,6 +45,8 @@ namespace Ciga.AnchorHorror
                 _heartbeat.clip = GenerateHeartbeat();
                 _heartbeat.loop = true;
             }
+
+            _noiseClip = GenerateNoise();
         }
 
         private void OnEnable()
@@ -61,6 +70,12 @@ namespace Ciga.AnchorHorror
 
         private void Update()
         {
+            UpdateFlicker();
+            UpdateNoise();
+        }
+
+        private void UpdateFlicker()
+        {
             // 仅 Edge/Distorted 需要每帧闪烁；其余档位的 alpha 已在切档时写好，避免每帧无效写入。
             if (_darkOverlay == null || (_state != SanityState.Edge && _state != SanityState.Distorted))
             {
@@ -69,6 +84,22 @@ namespace Ciga.AnchorHorror
 
             float flicker = (Mathf.PerlinNoise(Time.unscaledTime * _flickerSpeed, 0f) - 0.5f) * 2f * _flickerAmount;
             SetOverlayAlpha(_baseAlpha + flicker);
+        }
+
+        private void UpdateNoise()
+        {
+            if (_noiseSource == null || _noiseClip == null
+                || (_state != SanityState.Distorted && _state != SanityState.Critical))
+            {
+                return;
+            }
+
+            _noiseTimer -= Time.deltaTime;
+            if (_noiseTimer <= 0f)
+            {
+                _noiseSource.PlayOneShot(_noiseClip, Random.Range(0.15f, 0.4f));
+                _noiseTimer = Random.Range(_noiseIntervalMin, _noiseIntervalMax);
+            }
         }
 
         private void SetOverlayAlpha(float alpha)
@@ -150,6 +181,24 @@ namespace Ciga.AnchorHorror
                 float env = Mathf.Exp(-t * 18f);
                 data[s0 + i] += Mathf.Sin(2f * Mathf.PI * freq * t) * env * 0.6f;
             }
+        }
+
+        /// <summary>程序化生成一段短促的白噪爆发（快速衰减），作尖锐噪音。</summary>
+        private static AudioClip GenerateNoise()
+        {
+            const int rate = 44100;
+            int length = (int)(rate * 0.15f);
+            var data = new float[length];
+            for (int i = 0; i < length; i++)
+            {
+                float t = i / (float)rate;
+                float env = Mathf.Exp(-t * 22f);
+                data[i] = (Random.value * 2f - 1f) * env * 0.8f;
+            }
+
+            var clip = AudioClip.Create("Noise", length, 1, rate, false);
+            clip.SetData(data, 0);
+            return clip;
         }
     }
 }

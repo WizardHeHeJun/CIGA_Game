@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Ciga.AnchorHorror;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,6 +27,9 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string BootstrapScene = SoDir + "/Bootstrap.unity";
         private const string HorrorScene = SoDir + "/HorrorLevel.unity";
         private const string SquareSpritePath = SoDir + "/WhiteSquare.png";
+        private const string CjkTtfPath = SoDir + "/AnchorCJK.ttf";
+        private const string CjkFontPath = SoDir + "/AnchorCJK SDF.asset";
+        private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
 
         private static Sprite _squareSprite;
 
@@ -37,8 +41,10 @@ namespace Ciga.AnchorHorror.EditorTools
             var cfg = CreateOrLoad<GlobalConfig>(SoDir + "/GlobalConfig.asset");
             var db = CreateOrLoad<FeatureDatabase>(SoDir + "/FeatureDatabase.asset");
             var level = CreateOrLoad<LevelConfig>(SoDir + "/LevelConfig.asset");
+            PopulateFeatureDatabase(db);               // 填中文特征名/关键词颜色（空库时）
             _squareSprite = GetOrCreateSquareSprite(); // 玩家/物品可见所需的方块 sprite
             EnsureTmpEssentials();                     // 保证 TMP 通用字体(LiberationSans)+着色器可用（浮字/面板文本）
+            EnsureCjkFallback();                       // 中文字形回退（黑体动态字体加入 TMP 全局 fallback）
 
             // 使当前场景"干净有路径"，后续 Single 建场景才不会弹保存框（自动化/测试环境活动场景常是未命名的）
             var active = SceneManager.GetActiveScene();
@@ -100,6 +106,8 @@ namespace Ciga.AnchorHorror.EditorTools
             audio.playOnAwake = false;
             var whisper = root.AddComponent<AudioSource>();
             whisper.playOnAwake = false;
+            var noise = root.AddComponent<AudioSource>();
+            noise.playOnAwake = false;
 
             // --- 玩家 ---
             var player = new GameObject("Player");
@@ -113,6 +121,7 @@ namespace Ciga.AnchorHorror.EditorTools
             sr.color = Color.cyan;
             sr.sortingOrder = 10; // 玩家压在物品之上
             var pc = player.AddComponent<PlayerController2D>();
+            player.AddComponent<PlayerJitter2D>(); // 低 San 手抖（缩放微颤，_target 缺省用自身）
 
             // --- InitRoom 候选物品（散布，供收集）---
             SpawnItem("Item_A", new Vector2(-2, 1), FeatureColor.Red, FeatureShape.Round, FeatureMaterial.Wood, FeatureTexture.Smooth);
@@ -148,6 +157,21 @@ namespace Ciga.AnchorHorror.EditorTools
             tsr.color = new Color(0f, 0f, 0f, 0f);
             tsr.sortingOrder = 2000;
 
+            // --- 世界空间操作提示（TMP，借 CJK fallback 显中文，兼作可见性验证）---
+            var hint = new GameObject("HintText");
+            hint.transform.position = new Vector3(0f, -4.3f, 0f);
+            var htmp = hint.AddComponent<TextMeshPro>();
+            htmp.text = "WASD 移动    E 交互物品    Tab 记忆面板";
+            htmp.fontSize = 2.2f;
+            htmp.alignment = TextAlignmentOptions.Center;
+            htmp.color = new Color(1f, 1f, 1f, 0.72f);
+            var hmr = hint.GetComponent<MeshRenderer>();
+            if (hmr != null)
+            {
+                hmr.sortingLayerName = "Default";
+                hmr.sortingOrder = 1500;
+            }
+
             // --- 接线（私有 [SerializeField] 用 SerializedObject）---
             WireObj(gm, "_config", cfg);
             WireObj(gm, "_database", db);
@@ -163,6 +187,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(feedback, "_config", cfg);
             WireObj(feedback, "_darkOverlay", osr);
             WireObj(feedback, "_heartbeat", audio);
+            WireObj(feedback, "_noiseSource", noise);
             WireObj(gm, "_transitionOverlay", tsr);
             WireObj(gm, "_whisperSource", whisper);
             WireObj(shake, "_camera", camGo.transform);
@@ -272,6 +297,148 @@ namespace Ciga.AnchorHorror.EditorTools
             }
 
             return null;
+        }
+
+        // 用中文特征名 + 关键词颜色填 FeatureDatabase（仅在空库时，避免覆盖手动编辑）。
+        private static void PopulateFeatureDatabase(FeatureDatabase db)
+        {
+            var so = new SerializedObject(db);
+            var list = so.FindProperty("_entries");
+            if (list == null || list.arraySize > 0)
+            {
+                return;
+            }
+
+            var gold = new Color(1f, 0.9f, 0.62f);
+            var entries = new (FeatureDimension dim, int val, string name, Color color)[]
+            {
+                (FeatureDimension.Color, (int)FeatureColor.Red, "红色", new Color(1f, 0.42f, 0.42f)),
+                (FeatureDimension.Color, (int)FeatureColor.Blue, "蓝色", new Color(0.45f, 0.6f, 1f)),
+                (FeatureDimension.Color, (int)FeatureColor.Green, "绿色", new Color(0.5f, 0.9f, 0.55f)),
+                (FeatureDimension.Color, (int)FeatureColor.Yellow, "黄色", new Color(1f, 0.9f, 0.4f)),
+                (FeatureDimension.Color, (int)FeatureColor.White, "白色", Color.white),
+                (FeatureDimension.Color, (int)FeatureColor.Black, "黑色", new Color(0.7f, 0.7f, 0.75f)),
+                (FeatureDimension.Color, (int)FeatureColor.Brown, "棕色", new Color(0.8f, 0.55f, 0.35f)),
+                (FeatureDimension.Shape, (int)FeatureShape.Round, "圆形", gold),
+                (FeatureDimension.Shape, (int)FeatureShape.Square, "方形", gold),
+                (FeatureDimension.Shape, (int)FeatureShape.Long, "长条", gold),
+                (FeatureDimension.Shape, (int)FeatureShape.Flat, "扁平", gold),
+                (FeatureDimension.Shape, (int)FeatureShape.Irregular, "不规则", gold),
+                (FeatureDimension.Material, (int)FeatureMaterial.Wood, "木质", gold),
+                (FeatureDimension.Material, (int)FeatureMaterial.Metal, "金属", gold),
+                (FeatureDimension.Material, (int)FeatureMaterial.Glass, "玻璃", gold),
+                (FeatureDimension.Material, (int)FeatureMaterial.Fabric, "布料", gold),
+                (FeatureDimension.Material, (int)FeatureMaterial.Paper, "纸质", gold),
+                (FeatureDimension.Material, (int)FeatureMaterial.Ceramic, "陶瓷", gold),
+                (FeatureDimension.Texture, (int)FeatureTexture.Smooth, "光滑", gold),
+                (FeatureDimension.Texture, (int)FeatureTexture.Rough, "粗糙", gold),
+                (FeatureDimension.Texture, (int)FeatureTexture.Glossy, "有光泽", gold),
+                (FeatureDimension.Texture, (int)FeatureTexture.Matte, "哑光", gold),
+                (FeatureDimension.Texture, (int)FeatureTexture.Patterned, "有纹路", gold),
+            };
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                list.InsertArrayElementAtIndex(i);
+                var e = list.GetArrayElementAtIndex(i);
+                e.FindPropertyRelative("_dimension").enumValueIndex = (int)entries[i].dim;
+                e.FindPropertyRelative("_value").intValue = entries[i].val;
+                e.FindPropertyRelative("_displayName").stringValue = entries[i].name;
+                e.FindPropertyRelative("_keywordColor").colorValue = entries[i].color;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(db);
+        }
+
+        // 造一个中文黑体的动态 TMP 字体并加入 TMP 全局 fallback，使所有 TMP 文本缺中文字形时自动回退。
+        private static void EnsureCjkFallback()
+        {
+            var cjk = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(CjkFontPath);
+            if (cjk == null)
+            {
+                if (!System.IO.File.Exists(CjkTtfPath))
+                {
+                    string[] candidates =
+                    {
+                        "C:/Windows/Fonts/simhei.ttf",
+                        "C:/Windows/Fonts/Deng.ttf",
+                        "C:/Windows/Fonts/STXIHEI.TTF",
+                    };
+                    string sys = candidates.FirstOrDefault(System.IO.File.Exists);
+                    if (sys == null)
+                    {
+                        Debug.LogWarning("[AnchorHorror] 找不到系统中文字体，中文字符将缺字。");
+                        return;
+                    }
+
+                    System.IO.File.Copy(sys, CjkTtfPath);
+                    AssetDatabase.ImportAsset(CjkTtfPath);
+                }
+
+                var src = AssetDatabase.LoadAssetAtPath<Font>(CjkTtfPath);
+                if (src == null)
+                {
+                    Debug.LogWarning("[AnchorHorror] 中文字体 .ttf 导入失败。");
+                    return;
+                }
+
+                cjk = TMP_FontAsset.CreateFontAsset(src); // 默认 Dynamic 模式，运行时按需生成中文字形
+                if (cjk == null)
+                {
+                    Debug.LogWarning("[AnchorHorror] CJK TMP 字体创建失败。");
+                    return;
+                }
+
+                cjk.name = "AnchorCJK SDF";
+                AssetDatabase.CreateAsset(cjk, CjkFontPath);
+                if (cjk.material != null)
+                {
+                    cjk.material.name = "AnchorCJK SDF Material";
+                    AssetDatabase.AddObjectToAsset(cjk.material, cjk);
+                }
+
+                if (cjk.atlasTexture != null)
+                {
+                    cjk.atlasTexture.name = "AnchorCJK SDF Atlas";
+                    AssetDatabase.AddObjectToAsset(cjk.atlasTexture, cjk);
+                }
+
+                AssetDatabase.SaveAssets();
+            }
+
+            AddToTmpGlobalFallback(cjk);
+        }
+
+        private static void AddToTmpGlobalFallback(TMP_FontAsset cjk)
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<TMP_Settings>(TmpSettingsPath);
+            if (settings == null)
+            {
+                Debug.LogWarning("[AnchorHorror] 找不到 TMP Settings，无法配置中文 fallback。");
+                return;
+            }
+
+            var so = new SerializedObject(settings);
+            var list = so.FindProperty("m_fallbackFontAssets");
+            if (list == null)
+            {
+                Debug.LogWarning("[AnchorHorror] TMP Settings 无 m_fallbackFontAssets 字段。");
+                return;
+            }
+
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                if (list.GetArrayElementAtIndex(i).objectReferenceValue == cjk)
+                {
+                    return; // 已在 fallback 列表
+                }
+            }
+
+            list.InsertArrayElementAtIndex(list.arraySize);
+            list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = cjk;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(settings);
         }
 
         private static Sprite GetOrCreateSquareSprite()

@@ -12,4 +12,96 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3a7183fef4d41468d6faa39cb800706, type: 3}
   m_Name: FeatureDatabase
   m_EditorClassIdentifier: 
-  _entries: []
+  _entries:
+  - _dimension: 0
+    _value: 1
+    _displayName: "\u7EA2\u8272"
+    _keywordColor: {r: 1, g: 0.42, b: 0.42, a: 1}
+  - _dimension: 0
+    _value: 2
+    _displayName: "\u84DD\u8272"
+    _keywordColor: {r: 0.45, g: 0.6, b: 1, a: 1}
+  - _dimension: 0
+    _value: 3
+    _displayName: "\u7EFF\u8272"
+    _keywordColor: {r: 0.5, g: 0.9, b: 0.55, a: 1}
+  - _dimension: 0
+    _value: 4
+    _displayName: "\u9EC4\u8272"
+    _keywordColor: {r: 1, g: 0.9, b: 0.4, a: 1}
+  - _dimension: 0
+    _value: 5
+    _displayName: "\u767D\u8272"
+    _keywordColor: {r: 1, g: 1, b: 1, a: 1}
+  - _dimension: 0
+    _value: 6
+    _displayName: "\u9ED1\u8272"
+    _keywordColor: {r: 0.7, g: 0.7, b: 0.75, a: 1}
+  - _dimension: 0
+    _value: 7
+    _displayName: "\u68D5\u8272"
+    _keywordColor: {r: 0.8, g: 0.55, b: 0.35, a: 1}
+  - _dimension: 1
+    _value: 1
+    _displayName: "\u5706\u5F62"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 1
+    _value: 2
+    _displayName: "\u65B9\u5F62"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 1
+    _value: 3
+    _displayName: "\u957F\u6761"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 1
+    _value: 4
+    _displayName: "\u6241\u5E73"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 1
+    _value: 5
+    _displayName: "\u4E0D\u89C4\u5219"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 2
+    _value: 1
+    _displayName: "\u6728\u8D28"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 2
+    _value: 2
+    _displayName: "\u91D1\u5C5E"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 2
+    _value: 3
+    _displayName: "\u73BB\u7483"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 2
+    _value: 4
+    _displayName: "\u5E03\u6599"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 2
+    _value: 5
+    _displayName: "\u7EB8\u8D28"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 2
+    _value: 6
+    _displayName: "\u9676\u74F7"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 3
+    _value: 1
+    _displayName: "\u5149\u6ED1"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 3
+    _value: 2
+    _displayName: "\u7C97\u7CD9"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 3
+    _value: 3
+    _displayName: "\u6709\u5149\u6CFD"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 3
+    _value: 4
+    _displayName: "\u54D1\u5149"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  - _dimension: 3
+    _value: 5
+    _displayName: "\u6709\u7EB9\u8DEF"
+    _keywordColor: {r: 1, g: 0.9, b: 0.62, a: 1}
