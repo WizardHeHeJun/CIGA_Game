@@ -68,6 +68,7 @@ __pycache__/
 /ai-docs/
 /ai-shared/
 /.claude/
+/CLAUDE.md
 
 # AI Harness 其它本地运行态产物
 .knowledge-tracking-logs/
