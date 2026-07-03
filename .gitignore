@@ -64,8 +64,14 @@ Thumbs.db
 __pycache__/
 *.pyc
 
-# ===== AI Harness（本地运行态产物，不入库） =====
+# ===== 本地 AI 知识库 / Harness 框架（仅本地保留，不上传 GitHub）=====
+/ai-docs/
+/ai-shared/
+/.claude/
+
+# AI Harness 其它本地运行态产物
 .knowledge-tracking-logs/
-.claude/hooks/cache/
-.claude/.state/
 .harness-tmp/
+
+# ===== 对话记录导出（仅本地参考，不上传 GitHub）=====
+/chat-export-*.json
