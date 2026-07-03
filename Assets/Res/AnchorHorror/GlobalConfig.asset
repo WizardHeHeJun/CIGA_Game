@@ -21,7 +21,7 @@ MonoBehaviour:
   _thDistorted: 50
   _thCritical: 30
   _hysteresis: 2
-  _candidateThreshold: 8
+  _candidateThreshold: 4
   _timeThreshold: 180
   _targetCount: 5
   _requiredCountMin: 1
