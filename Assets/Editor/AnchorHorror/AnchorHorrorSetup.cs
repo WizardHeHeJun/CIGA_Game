@@ -1,0 +1,361 @@
+// ------------------------------------------------------------
+// AnchorHorrorSetup.cs
+// Author : WizardHeHeJun
+// Created: 2026-07-04
+// ------------------------------------------------------------
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Ciga.AnchorHorror;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace Ciga.AnchorHorror.EditorTools
+{
+    /// <summary>
+    /// 一键生成锚点解谜的可运行装配：3 个 SO + Bootstrap/HorrorLevel 场景（已接线）+ 加入 Build Settings。
+    /// 幂等：已存在则复用。菜单 Ciga/AnchorHorror/生成可运行装配。
+    /// 表现走 DebugHUD 的 IMGUI，不依赖 uGUI Canvas；黑屏/音频等可选引用留空（运行时判空）。
+    /// 场景以"附加模式"离线构建，绝不替换/干扰用户当前打开的场景（避免自动化下弹保存框）。
+    /// </summary>
+    public static class AnchorHorrorSetup
+    {
+        private const string SoDir = "Assets/Res/AnchorHorror";
+        private const string BootstrapScene = SoDir + "/Bootstrap.unity";
+        private const string HorrorScene = SoDir + "/HorrorLevel.unity";
+        private const string SquareSpritePath = SoDir + "/WhiteSquare.png";
+
+        private static Sprite _squareSprite;
+
+        [MenuItem("Ciga/AnchorHorror/生成可运行装配")]
+        public static void BuildAll()
+        {
+            EnsureFolder(SoDir);
+
+            var cfg = CreateOrLoad<GlobalConfig>(SoDir + "/GlobalConfig.asset");
+            var db = CreateOrLoad<FeatureDatabase>(SoDir + "/FeatureDatabase.asset");
+            var level = CreateOrLoad<LevelConfig>(SoDir + "/LevelConfig.asset");
+            _squareSprite = GetOrCreateSquareSprite(); // 玩家/物品可见所需的方块 sprite
+            EnsureTmpEssentials();                     // 保证 TMP 通用字体(LiberationSans)+着色器可用（浮字/面板文本）
+
+            // 使当前场景"干净有路径"，后续 Single 建场景才不会弹保存框（自动化/测试环境活动场景常是未命名的）
+            var active = SceneManager.GetActiveScene();
+            string tempActive = null;
+            if (string.IsNullOrEmpty(active.path))
+            {
+                tempActive = SoDir + "/__temp_active.unity";
+                EditorSceneManager.SaveScene(active, tempActive);
+            }
+
+            BuildScene(HorrorScene, PopulateHorrorLevel);
+            BuildScene(BootstrapScene, () => PopulateBootstrap(cfg, db, level));
+            AddScenesToBuildSettings();
+
+            if (tempActive != null)
+            {
+                AssetDatabase.DeleteAsset(tempActive); // 已被 Bootstrap(Single) 取代关闭，可删
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            // 此时 Bootstrap 已是打开的活动场景，按 Play 即可联调
+            Debug.Log("[AnchorHorror] 可运行装配已生成并打开 " + BootstrapScene + "，按 Play 即可联调。");
+        }
+
+        // Single 模式建/覆盖场景：打开已存在的或新建空场景 → 清空 → 重建 → 保存。天然避免同路径冲突。
+        // 前置：当前场景须"干净有路径"（BuildAll 已用临时场景处理未命名情形），否则 Single 会弹保存框。
+        private static void BuildScene(string path, Action populate)
+        {
+            var scene = System.IO.File.Exists(path)
+                ? EditorSceneManager.OpenScene(path, OpenSceneMode.Single)
+                : EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                UnityEngine.Object.DestroyImmediate(roots[i]);
+            }
+
+            populate();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, path);
+        }
+
+        private static void PopulateBootstrap(GlobalConfig cfg, FeatureDatabase db, LevelConfig level)
+        {
+            // --- 系统根（常驻）---
+            var root = new GameObject("AnchorHorror");
+            var sanity = root.AddComponent<SanitySystem>();
+            var interaction = root.AddComponent<InteractionSystem>();
+            var gm = root.AddComponent<GameManager>();
+            var feedback = root.AddComponent<SanityFeedback>();
+            var shake = root.AddComponent<CameraShake2D>();
+            root.AddComponent<MatchFeedback>();
+            root.AddComponent<MemoryPanel>();
+            root.AddComponent<ResultScreen>();
+            var hud = root.AddComponent<DebugHUD>();
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            var whisper = root.AddComponent<AudioSource>();
+            whisper.playOnAwake = false;
+
+            // --- 玩家 ---
+            var player = new GameObject("Player");
+            player.transform.position = Vector3.zero;
+            var rb = player.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            player.AddComponent<BoxCollider2D>();
+            var sr = player.AddComponent<SpriteRenderer>();
+            sr.sprite = _squareSprite;
+            sr.color = Color.cyan;
+            sr.sortingOrder = 10; // 玩家压在物品之上
+            var pc = player.AddComponent<PlayerController2D>();
+
+            // --- InitRoom 候选物品（散布，供收集）---
+            SpawnItem("Item_A", new Vector2(-2, 1), FeatureColor.Red, FeatureShape.Round, FeatureMaterial.Wood, FeatureTexture.Smooth);
+            SpawnItem("Item_B", new Vector2(2, 1), FeatureColor.Blue, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.Rough);
+            SpawnItem("Item_C", new Vector2(-2, -1), FeatureColor.Green, FeatureShape.Long, FeatureMaterial.Glass, FeatureTexture.Glossy);
+            SpawnItem("Item_D", new Vector2(2, -1), FeatureColor.Yellow, FeatureShape.Flat, FeatureMaterial.Fabric, FeatureTexture.Matte);
+
+            // --- 相机 ---
+            var camGo = new GameObject("Main Camera");
+            var cam = camGo.AddComponent<Camera>();
+            cam.orthographic = true;
+            cam.orthographicSize = 5f;
+            cam.transform.position = new Vector3(0, 0, -10);
+            camGo.tag = "MainCamera";
+
+            // --- 全屏黑遮罩（San 压暗）；层级由 sortingOrder=1000 决定，z 偏移仅为落在相机近裁剪面内可见 ---
+            var overlay = new GameObject("DarkOverlay");
+            overlay.transform.SetParent(camGo.transform, false);
+            overlay.transform.localPosition = new Vector3(0f, 0f, 1f);
+            overlay.transform.localScale = new Vector3(40f, 30f, 1f);
+            var osr = overlay.AddComponent<SpriteRenderer>();
+            osr.sprite = _squareSprite;
+            osr.color = new Color(0f, 0f, 0f, 0f);
+            osr.sortingOrder = 1000;
+
+            // --- 过渡黑屏遮罩（sortingOrder 2000 > San 遮罩 1000，加载关卡时盖住一切；z 偏移仅为落在相机近裁剪面内可见，不影响层级排序）---
+            var trans = new GameObject("TransitionOverlay");
+            trans.transform.SetParent(camGo.transform, false);
+            trans.transform.localPosition = new Vector3(0f, 0f, 0.5f);
+            trans.transform.localScale = new Vector3(40f, 30f, 1f);
+            var tsr = trans.AddComponent<SpriteRenderer>();
+            tsr.sprite = _squareSprite;
+            tsr.color = new Color(0f, 0f, 0f, 0f);
+            tsr.sortingOrder = 2000;
+
+            // --- 接线（私有 [SerializeField] 用 SerializedObject）---
+            WireObj(gm, "_config", cfg);
+            WireObj(gm, "_database", db);
+            WireObj(gm, "_levelConfig", level);
+            WireObj(gm, "_sanity", sanity);
+            WireObj(gm, "_interaction", interaction);
+            WireObj(gm, "_player", pc);
+            WireStr(gm, "_horrorLevelScene", "HorrorLevel");
+
+            WireObj(interaction, "_player", player.transform);
+            WireObj(hud, "_sanity", sanity);
+            WireObj(feedback, "_player", pc);
+            WireObj(feedback, "_config", cfg);
+            WireObj(feedback, "_darkOverlay", osr);
+            WireObj(feedback, "_heartbeat", audio);
+            WireObj(gm, "_transitionOverlay", tsr);
+            WireObj(gm, "_whisperSource", whisper);
+            WireObj(shake, "_camera", camGo.transform);
+            // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
+        }
+
+        private static void PopulateHorrorLevel()
+        {
+            var spawn = new GameObject("PlayerSpawn");
+            spawn.transform.position = new Vector3(0, -3, 0);
+
+            // 恐怖关卡散布物品（含能匹配上文候选特征的物品，供联调通关）
+            SpawnItem("H_Red1", new Vector2(-3, 2), FeatureColor.Red, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None);
+            SpawnItem("H_Red2", new Vector2(-1, 2), FeatureColor.Red, FeatureShape.Round, FeatureMaterial.None, FeatureTexture.None);
+            SpawnItem("H_Blue", new Vector2(1, 2), FeatureColor.Blue, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.None);
+            SpawnItem("H_Wood", new Vector2(3, 2), FeatureColor.Brown, FeatureShape.None, FeatureMaterial.Wood, FeatureTexture.None);
+            SpawnItem("H_Glass", new Vector2(-3, 0), FeatureColor.White, FeatureShape.Long, FeatureMaterial.Glass, FeatureTexture.Glossy);
+            SpawnItem("H_Fabric", new Vector2(-1, 0), FeatureColor.Yellow, FeatureShape.Flat, FeatureMaterial.Fabric, FeatureTexture.Matte);
+            SpawnItem("H_Smooth", new Vector2(1, 0), FeatureColor.Green, FeatureShape.Round, FeatureMaterial.Ceramic, FeatureTexture.Smooth);
+            SpawnItem("H_Rough", new Vector2(3, 0), FeatureColor.Black, FeatureShape.Irregular, FeatureMaterial.Metal, FeatureTexture.Rough);
+        }
+
+        private static void SpawnItem(string name, Vector2 pos, FeatureColor c, FeatureShape s, FeatureMaterial m, FeatureTexture t)
+        {
+            var go = new GameObject(name);
+            go.transform.position = pos;
+            go.AddComponent<BoxCollider2D>();
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = _squareSprite;
+            sr.color = Color.white;
+            var tag = go.AddComponent<FeatureTag>();
+            WireEnum(tag, "_color", (int)c);
+            WireEnum(tag, "_shape", (int)s);
+            WireEnum(tag, "_material", (int)m);
+            WireEnum(tag, "_texture", (int)t);
+        }
+
+        private static void AddScenesToBuildSettings()
+        {
+            // 剔除文件已不存在的失效条目（如早被删除的 SampleScene 残留引用），再补上本玩法场景。
+            var list = EditorBuildSettings.scenes
+                .Where(sc => !string.IsNullOrEmpty(sc.path) && System.IO.File.Exists(sc.path))
+                .ToList();
+            EnsureScene(list, BootstrapScene);
+            EnsureScene(list, HorrorScene);
+            EditorBuildSettings.scenes = list.ToArray();
+        }
+
+        private static void EnsureScene(List<EditorBuildSettingsScene> list, string path)
+        {
+            if (!list.Any(sc => sc.path == path))
+            {
+                list.Add(new EditorBuildSettingsScene(path, true));
+            }
+        }
+
+        private static T CreateOrLoad<T>(string path) where T : ScriptableObject
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset == null)
+            {
+                asset = ScriptableObject.CreateInstance<T>();
+                AssetDatabase.CreateAsset(asset, path);
+            }
+
+            return asset;
+        }
+
+        // 导入 TMP Essential Resources（自带 LiberationSans 通用字体 + TMP 着色器）。
+        // TMP 文本不指定字体时自动用它；MemoryPanel 的 TMP_Text 也依赖它才能渲染。
+        private static void EnsureTmpEssentials()
+        {
+            if (AssetDatabase.IsValidFolder("Assets/TextMesh Pro"))
+            {
+                return;
+            }
+
+            string pkg = FindEssentialsPackage();
+            if (pkg == null)
+            {
+                Debug.LogWarning("[AnchorHorror] 找不到 TMP Essential Resources 包，文本将不可见。可手动 Window/TextMeshPro/Import TMP Essential Resources。");
+                return;
+            }
+
+            AssetDatabase.ImportPackage(pkg, false);
+            AssetDatabase.Refresh();
+        }
+
+        private static string FindEssentialsPackage()
+        {
+            const string cache = "Library/PackageCache";
+            if (!System.IO.Directory.Exists(cache))
+            {
+                return null;
+            }
+
+            foreach (var dir in System.IO.Directory.GetDirectories(cache))
+            {
+                if (System.IO.Path.GetFileName(dir).StartsWith("com.unity.textmeshpro"))
+                {
+                    string p = dir + "/Package Resources/TMP Essential Resources.unitypackage";
+                    if (System.IO.File.Exists(p))
+                    {
+                        return p;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static Sprite GetOrCreateSquareSprite()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Sprite>(SquareSpritePath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            var tex = new Texture2D(32, 32, TextureFormat.RGBA32, false);
+            var pixels = new Color32[32 * 32];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = new Color32(255, 255, 255, 255);
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            System.IO.File.WriteAllBytes(SquareSpritePath, tex.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(tex);
+
+            AssetDatabase.ImportAsset(SquareSpritePath);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(SquareSpritePath);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spritePixelsPerUnit = 32f;   // 32px = 1 世界单位
+            importer.filterMode = FilterMode.Point;
+            importer.SaveAndReimport();
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(SquareSpritePath);
+        }
+
+        private static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path))
+            {
+                return;
+            }
+
+            var parent = System.IO.Path.GetDirectoryName(path).Replace('\\', '/');
+            var leaf = System.IO.Path.GetFileName(path);
+            if (!AssetDatabase.IsValidFolder(parent))
+            {
+                EnsureFolder(parent);
+            }
+
+            AssetDatabase.CreateFolder(parent, leaf);
+        }
+
+        private static void WireObj(Component c, string prop, UnityEngine.Object value)
+        {
+            var so = new SerializedObject(c);
+            var p = so.FindProperty(prop);
+            if (p != null)
+            {
+                p.objectReferenceValue = value;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            else
+            {
+                Debug.LogWarning($"[AnchorHorror] 接线失败：{c.GetType().Name} 无属性 {prop}");
+            }
+        }
+
+        private static void WireStr(Component c, string prop, string value)
+        {
+            var so = new SerializedObject(c);
+            var p = so.FindProperty(prop);
+            if (p != null)
+            {
+                p.stringValue = value;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        private static void WireEnum(Component c, string prop, int enumIndex)
+        {
+            var so = new SerializedObject(c);
+            var p = so.FindProperty(prop);
+            if (p != null)
+            {
+                p.enumValueIndex = enumIndex;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+    }
+}
