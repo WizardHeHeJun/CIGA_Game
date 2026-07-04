@@ -115,6 +115,7 @@ namespace Ciga.AnchorHorror
 
             var targets = gm.Anchor.Targets;
             var db = gm.Database;
+            var backpack = gm.Backpack;
 
             _sb.Clear();
             _sb.AppendLine("<b>记忆锚点</b>");
@@ -122,13 +123,15 @@ namespace Ciga.AnchorHorror
             {
                 var t = targets[i];
                 string name = db != null ? db.GetDisplayName(t.Feature) : t.Feature.ToString();
-                if (t.IsActivated)
+                // 新模型：靠背包覆盖判定（Inventory.Covers），不靠 AnchorTarget.IsActivated（SC-5，陷阱 10）
+                bool satisfied = backpack != null && backpack.Covers(t);
+                if (satisfied)
                 {
-                    _sb.AppendLine($"<color={GoldHex}>{name}　已锚定 ({t.CurrentCount}/{t.RequiredCount})</color>");
+                    _sb.AppendLine($"<color={GoldHex}>{name}　已满足</color>");
                 }
                 else
                 {
-                    _sb.AppendLine($"<color={DimHex}>{name}　{t.CurrentCount}/{t.RequiredCount}</color>");
+                    _sb.AppendLine($"<color={DimHex}>{name}　未满足</color>");
                 }
             }
 

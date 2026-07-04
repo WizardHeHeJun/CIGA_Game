@@ -104,6 +104,7 @@ namespace Ciga.AnchorHorror.EditorTools
             root.AddComponent<MatchFeedback>();
             var memoryPanel = root.AddComponent<MemoryPanel>();
             var resultScreen = root.AddComponent<ResultScreen>();
+            var countdown = root.AddComponent<CountdownPanel>();
             var hud = root.AddComponent<DebugHUD>();
             var audio = root.AddComponent<AudioSource>();
             audio.playOnAwake = false;
@@ -182,7 +183,6 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_sanity", sanity);
             WireObj(gm, "_interaction", interaction);
             WireObj(gm, "_player", pc);
-            WireStr(gm, "_horrorLevelScene", "HorrorLevel");
 
             WireObj(interaction, "_player", player.transform);
             WireObj(hud, "_sanity", sanity);
@@ -196,13 +196,13 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(shake, "_camera", camGo.transform);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
-            // --- uGUI 界面（记忆面板 + 结算界面），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
-            BuildAndWireUi(root.transform, memoryPanel, resultScreen);
+            // --- uGUI 界面（记忆面板 + 结算界面 + 倒计时面板），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
+            BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown);
         }
 
-        // 构建共享的 Screen Space Overlay Canvas，内含记忆面板与结算界面（两者初始隐藏），并接线到组件。
+        // 构建共享的 Screen Space Overlay Canvas，内含记忆面板、结算界面与倒计时面板（初始均隐藏），并接线到组件。
         // 无按钮交互（Tab / R / Esc 走键盘），故不加 GraphicRaycaster / EventSystem。
-        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result)
+        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown)
         {
             var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
             canvasGo.transform.SetParent(parent, false);
@@ -266,6 +266,28 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(result, "_root", resultRoot.gameObject);
             WireObj(result, "_title", title);
             WireObj(result, "_hint", hint);
+
+            // --- 倒计时面板：右上角固定，HorrorLevel 相位由 CountdownPanel 自动显/隐 ---
+            var countdownRoot = NewUiNode(canvas.transform, "CountdownRoot");
+            countdownRoot.anchorMin = new Vector2(1f, 1f);
+            countdownRoot.anchorMax = new Vector2(1f, 1f);
+            countdownRoot.pivot = new Vector2(1f, 1f);
+            countdownRoot.anchoredPosition = new Vector2(-40f, -40f);
+            countdownRoot.sizeDelta = new Vector2(260f, 80f);
+            var countdownBg = countdownRoot.gameObject.AddComponent<Image>();
+            countdownBg.color = new Color(0f, 0f, 0f, 0.55f);
+            countdownBg.raycastTarget = false;
+
+            var countdownText = CreateText(countdownRoot, "CountdownText", 52f, TextAlignmentOptions.Center);
+            var countdownTextRt = (RectTransform)countdownText.transform;
+            StretchFull(countdownTextRt);
+            countdownTextRt.offsetMin = new Vector2(12f, 8f);
+            countdownTextRt.offsetMax = new Vector2(-12f, -8f);
+            countdownText.text = "03:00";
+            countdownRoot.gameObject.SetActive(false); // 初始隐藏，HorrorLevel 相位才显示
+
+            WireObj(countdown, "_root", countdownRoot.gameObject);
+            WireObj(countdown, "_timeText", countdownText);
         }
 
         private static RectTransform NewUiNode(Transform parent, string name)

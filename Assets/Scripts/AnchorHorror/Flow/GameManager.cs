@@ -12,9 +12,10 @@ namespace Ciga.AnchorHorror
 {
     /// <summary>
     /// 游戏总控：轻量单例 + 组合根 + 阶段状态机。
-    /// 编排 InitRoom → Transition → HorrorLevel → SubClear/Victory/Fail，并注入各 System 的依赖。
-    /// 过渡严格按设计决策 C：先异步加载关卡 → registry 扫描 → 抽锚点 clamp → 放玩家进场。
-    /// 多关循环：_sequence 持关卡序列，_levelIndex 追踪当前关（ADR-1）。
+    /// 两关卡流程（ADR-1/2/3/4/5/6）：
+    ///   关卡1（InitRoom）：从 8 物品选 5 → LockSelection 抽 5 锚点 → 关卡1门可交互
+    ///   关卡2（HorrorLevel）：EnterLevel2 进入 → 180s 倒计时 + San 衰减双失败线 → 拾取满足 5 锚点 → Victory
+    ///   子场景切换（SwitchSubScene）：换物品摆放、背包/锚点/倒计时/相位全保留
     /// </summary>
     [DisallowMultipleComponent]
     public class GameManager : MonoBehaviour
@@ -35,26 +36,40 @@ namespace Ciga.AnchorHorror
         [SerializeField] private PlayerController2D _player;
 
         [Header("过渡")]
-        [SerializeField] private string _horrorLevelScene = "HorrorLevel";
         [SerializeField] private SpriteRenderer _transitionOverlay;
         [SerializeField] private AudioSource _whisperSource;
 
-        private LevelFeatureRegistry _registry;
-        private float _initRoomTimer;
         private bool _transitioning;
-        private bool _initialized; // Awake 完整跑完才为 true；失败者单例/缺依赖时保持 false，阻止 Start/Update
-        private string _startSceneName; // 起始（Bootstrap）场景名，供重开局重载
-        private GameObject _levelRoot; // data 分支关卡根；_sequence==null 时恒为 null
+        private bool _initialized;
+        private string _startSceneName;
+        private GameObject _levelRoot;
 
-        // 关卡序列推进（实例字段无 static，重开局场景重载后天然归零——陷阱 6）
+        // 关卡序列推进（实例字段，重开局场景重载后天然归零——陷阱 9）
         private int _levelIndex;
-        // 当前关卡数据（由 _sequence.GetLevel(_levelIndex) 取；_sequence==null 时兜底为 null→原 additive 路径）
         private LevelData _levelData;
+
+        // 背包（普通类实例，GameManager 持有，ADR-2）
+        private Inventory _backpack;
+
+        // 关卡2 倒计时（仅 HorrorLevel 递减，独立字段不与旧 InitRoom 兜底计时混用——陷阱 6）
+        private float _remainingTime;
+
+        // 关卡1 门引用（LockSelection 后开启可交互）
+        private LevelDoor _level1Door;
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.Boot;
         public AnchorSystem Anchor { get; private set; }
         public GlobalConfig Config => _config;
         public FeatureDatabase Database => _database;
+
+        /// <summary>关卡1 已选满 5 件且已抽锚点（关卡1门可交互条件之一，SC-1）。</summary>
+        public bool SelectionLocked { get; private set; }
+
+        /// <summary>关卡2 倒计时剩余秒数（供 CountdownPanel，SC-6）。</summary>
+        public float RemainingTime => _remainingTime;
+
+        /// <summary>背包只读引用（供 MemoryPanel / FeatureTag.CanInteract，ADR-2）。</summary>
+        public Inventory Backpack => _backpack;
 
         private void Awake()
         {
@@ -65,7 +80,7 @@ namespace Ciga.AnchorHorror
             }
 
             Instance = this;
-            _startSceneName = gameObject.scene.name; // DontDestroyOnLoad 前记录，否则会变成 "DontDestroyOnLoad"
+            _startSceneName = gameObject.scene.name;
             DontDestroyOnLoad(gameObject);
 
             if (_config == null)
@@ -94,19 +109,23 @@ namespace Ciga.AnchorHorror
 
             if (_sequence == null)
             {
-                Debug.LogWarning("[AnchorHorror] GameManager 未挂 LevelSequence，将走 additive 场景路径（legacy）。");
+                Debug.LogWarning("[AnchorHorror] GameManager 未挂 LevelSequence，两关卡流程无法运行。");
             }
 
-            _registry = new LevelFeatureRegistry();
-            _sanity.Init(_config);
+            // 背包实例（ADR-2，普通类，不进 SO）
+            _backpack = new Inventory();
 
-            // 从序列取第 0 关数据（_sequence 为 null 时走 additive 路径）
-            _levelData = _sequence != null ? _sequence.GetLevel(0) : null;
-            _levelIndex = 0;
-
-            // 用当前关的 LevelConfig 建 AnchorSystem（_levelData 非空则取其配置，否则用旧字段兜底）
-            var levelCfg = _levelData != null ? _levelData.LevelConfig : _levelConfig;
+            var levelCfg = _levelConfig;
+            if (_sequence != null && _sequence.Count > 0)
+            {
+                var firstLevel = _sequence.GetLevel(0);
+                if (firstLevel != null && firstLevel.LevelConfig != null)
+                {
+                    levelCfg = firstLevel.LevelConfig;
+                }
+            }
             Anchor = new AnchorSystem(_config, levelCfg, _sanity);
+            _sanity.Init(_config);
 
             if (_interaction != null)
             {
@@ -135,7 +154,6 @@ namespace Ciga.AnchorHorror
 
         private void Start()
         {
-            // 失败者单例（Awake 里 Destroy 自身）或缺依赖被禁用的实例不进入 InitRoom。
             if (_initialized)
             {
                 EnterInitRoom();
@@ -144,21 +162,31 @@ namespace Ciga.AnchorHorror
 
         private void Update()
         {
-            if (!_initialized || CurrentPhase != GamePhase.InitRoom)
+            if (!_initialized)
             {
                 return;
             }
 
-            _initRoomTimer += Time.deltaTime;
-            bool byCount = Anchor.CandidateItemCount >= _config.CandidateThreshold;
-            bool byTime = _initRoomTimer >= _config.TimeThreshold;
-            if (byCount || byTime)
+            // 关卡2 倒计时（仅 HorrorLevel，不复用 _initRoomTimer——陷阱 6）
+            if (CurrentPhase == GamePhase.HorrorLevel && !_transitioning)
             {
-                BeginTransition();
+                _remainingTime -= Time.deltaTime;
+                if (_remainingTime <= 0f)
+                {
+                    _remainingTime = 0f;
+                    Fail();
+                }
             }
         }
 
-        /// <summary>进入/重开初始房间。</summary>
+        // ──────────────────────────────────────────────────────
+        //  关卡1 相关
+        // ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 进入/重开初始房间（关卡1，复用 InitRoom 相位）。
+        /// 建关卡1根（entries[0]），生成 8 物品 + 关卡1门（initially locked）（SC-1，ADR-1/5，陷阱 8）。
+        /// </summary>
         public void EnterInitRoom()
         {
             if (!_initialized)
@@ -166,166 +194,260 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
-            _initRoomTimer = 0f;
             _transitioning = false;
+            SelectionLocked = false;
+            _level1Door = null;
             Anchor.Reset();
+
+            // 背包重置为关卡1容量
+            _backpack.Clear();
+            _backpack.Capacity = _config.Level1SelectCap;
+
+            _levelIndex = 0;
+            _levelData = _sequence != null ? _sequence.GetLevel(0) : null;
 
             SetInputActive(true);
             _sanity.DecayEnabled = false;
             SetPhase(GamePhase.InitRoom);
+
+            // 建关卡1根（data 驱动，entries[0]）
+            if (_levelData != null)
+            {
+                if (_levelRoot != null)
+                {
+                    Destroy(_levelRoot);
+                    _levelRoot = null;
+                }
+
+                _levelRoot = new GameObject("__LevelRoot");
+                LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+                SpawnLevelDoor(); // 建关卡1门（EnterLevel2，initially locked）
+            }
+            else
+            {
+                Debug.LogWarning("[AnchorHorror] EnterInitRoom：序列 entries[0] 数据为 null，无法生成关卡1。");
+            }
         }
 
-        /// <summary>手动/自动触发过渡（幂等）。</summary>
-        public void BeginTransition()
+        /// <summary>
+        /// 关卡1 拾取物品入背包（cap 5）。
+        /// 满 5 件自动调 LockSelection 抽锚点 + 开关卡1门（SC-1/2，陷阱 5）。
+        /// </summary>
+        public void SelectInLevel1(FeatureTag item)
         {
-            if (_transitioning || CurrentPhase != GamePhase.InitRoom)
+            if (item == null || SelectionLocked)
             {
                 return;
             }
 
-            // 幂等清理：防重进过渡时残留关卡根叠加
-            if (_levelRoot != null)
+            if (!_backpack.TryAdd(item))
             {
-                Destroy(_levelRoot);
-                _levelRoot = null;
+                return; // 满了（CanInteract 层已封，此处兜底）
             }
 
-            _transitioning = true;
-            StartCoroutine(TransitionRoutine());
+            item.Consumed = true;
+
+            if (_backpack.Count >= _config.Level1SelectCap)
+            {
+                LockSelection();
+            }
         }
 
         /// <summary>
-        /// 门触发换关（ADR-1/3/4，陷阱 1）。
-        /// 注意：不复用 BeginTransition——它有 CurrentPhase==InitRoom 守卫，SubClear 态会被拦截。
-        /// 此处自行销毁 _levelRoot、推进索引、重建 AnchorSystem，再直接起 TransitionRoutine。
+        /// 关卡1 选满：抽锚点 + 开启关卡1门（SC-1/2，ADR-4）。
+        /// ExtractTargetsFromSelection 从已选物品特征去重抽取，不碰 registry（陷阱 2）。
         /// </summary>
-        public void AdvanceLevel()
+        private void LockSelection()
+        {
+            if (SelectionLocked)
+            {
+                return;
+            }
+
+            Anchor.ExtractTargetsFromSelection(_backpack.Items);
+            SelectionLocked = true;
+
+            // 开启关卡1门可交互（门 CanInteract 判 SelectionLocked，此处无需额外调用——状态已更新）
+            // _level1Door 引用保留供将来需要显式刷新表现时用
+        }
+
+        // ──────────────────────────────────────────────────────
+        //  关卡2 拾取
+        // ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 关卡2 拾取物品入背包（cap 8）。
+        /// 成功入包 → Consumed + 隐藏物品 → 检查 Inventory.Satisfies → 满足则通关（SC-5，ADR-6）。
+        /// 拾取不改 San（San 仅随时间衰减——陷阱 7）。
+        /// </summary>
+        public void PickupInLevel2(FeatureTag item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            if (!_backpack.TryAdd(item))
+            {
+                return; // 背包满，CanInteract 层已封
+            }
+
+            item.Consumed = true;
+
+            // 隐藏/销毁场景 GO（物品已入包，场景对象不再需要）
+            item.gameObject.SetActive(false);
+
+            // 满足判定：每个锚点有 ≥1 背包物品命中
+            if (_backpack.Satisfies(Anchor.Targets))
+            {
+                EventBus.RaiseAllAnchorsActivated();
+            }
+        }
+
+        // ──────────────────────────────────────────────────────
+        //  关卡1→关卡2 过渡 / 子场景切换
+        // ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 关卡1门触发：Fade → 清背包 → 启 180s 倒计时 → 销毁关卡1根 → 建子场景1
+        /// → 放玩家 → DecayEnabled=true → SetPhase(HorrorLevel)（SC-3，ADR-5，陷阱 3/4）。
+        /// 各自销毁 _levelRoot，不复用 BeginTransition（陷阱 4）。
+        /// </summary>
+        public void EnterLevel2()
         {
             if (_transitioning)
             {
                 return;
             }
 
-            // 推进关卡索引
-            _levelIndex++;
-
-            // 取下一关数据
-            _levelData = _sequence != null ? _sequence.GetLevel(_levelIndex) : null;
-
-            // 手动销毁旧关卡根（旧门随之一并清除；绕开 BeginTransition 的 InitRoom 守卫——陷阱 1）
-            if (_levelRoot != null)
-            {
-                Destroy(_levelRoot);
-                _levelRoot = null;
-            }
-
-            // 不重建 AnchorSystem！候选池只在开局 InitRoom 收集一次、跨关保持；
-            // 本关锚点由 TransitionRoutine 的 ExtractTargets 从同一候选池重新随机抽取（用户确认的模型）。
-            // ExtractTargets 内部先 _targets.Clear() 再重抽，无残留、无需重置——重建会清空候选池导致后续关卡无锚点。
-
             _transitioning = true;
-            StartCoroutine(TransitionRoutine());
+            StartCoroutine(EnterLevel2Routine());
         }
 
-        private IEnumerator TransitionRoutine()
+        private IEnumerator EnterLevel2Routine()
         {
             SetPhase(GamePhase.Transition);
             SetInputActive(false);
 
-            // 1. 黑屏渐入 + 低语
             if (_whisperSource != null)
             {
                 _whisperSource.Play();
             }
             yield return Fade(1f);
 
+            // 清背包，设关卡2容量，启倒计时（SC-3，陷阱 6）
+            _backpack.Clear();
+            _backpack.Capacity = _config.Level2BackpackCap;
+            _remainingTime = _config.Level2TimeLimit;
+
+            // 销毁关卡1根（各自销毁，不复用 BeginTransition——陷阱 4）
+            if (_levelRoot != null)
+            {
+                Destroy(_levelRoot);
+                _levelRoot = null;
+            }
+
+            // 建关卡2 子场景1（entries[1]）
+            _levelIndex = 1;
+            _levelData = _sequence != null ? _sequence.GetLevel(_levelIndex) : null;
+
             if (_levelData != null)
             {
-                // ——— data 分支：不 LoadSceneAsync，不 SetActiveScene ———
-                // 2a. 建关卡根（挂在当前活动场景下）
                 _levelRoot = new GameObject("__LevelRoot");
-
-                // 3a. LevelSpawner 生成物品并返回 FeatureTag 列表；registry 只扫关卡根（隔离 InitRoom 候选，防死局）
-                var tags = LevelSpawner.Spawn(_levelData, _levelRoot.transform);
-                _registry.Scan(tags);
-
-                // 4. 抽锚点（从跨关保持的候选池重抽本关锚点，RequiredCount clamp 到场景实际数量，防死局）
-                Anchor.ExtractTargets(_registry);
-
-                // 5a. 放玩家进场：取 LevelData 出生点
+                LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+                SpawnLevelDoor(); // 子场景门（SwitchSubScene）
                 MovePlayerToSpawn(_levelData.PlayerSpawn);
-
-                // 6a. 门：进关即生成（一直可见），但 LevelDoor.CanInteract 仅 SubClear 返回 true，
-                //     故锚定后才可交互（而非才出现）；末关无门。随 _levelRoot 换关销毁。
-                SpawnLevelDoor();
             }
             else
             {
-                // ——— 原 additive 路径逐字节不变 ———
-                // 2. 异步加载关卡场景（Additive）；玩家仍冻结
-                var op = SceneManager.LoadSceneAsync(_horrorLevelScene, LoadSceneMode.Additive);
-                if (op != null)
-                {
-                    while (!op.isDone)
-                    {
-                        yield return null;
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"[AnchorHorror] 关卡场景 '{_horrorLevelScene}' 未加载（未加入 Build Settings？），沿用当前场景扫描。");
-                }
-
-                var levelScene = SceneManager.GetSceneByName(_horrorLevelScene);
-                if (levelScene.IsValid() && levelScene.isLoaded)
-                {
-                    SceneManager.SetActiveScene(levelScene);
-                }
-
-                // 3. registry 扫描关卡特征数量
-                if (levelScene.IsValid() && levelScene.isLoaded)
-                {
-                    _registry.Scan(levelScene);
-                }
-                else
-                {
-                    _registry.Scan(SceneManager.GetActiveScene());
-                }
-
-                // 4. 抽锚点（RequiredCount clamp 到场景实际数量，防死局）
-                Anchor.ExtractTargets(_registry);
-
-                // 5. 放玩家进场：定位出生点、开启衰减与交互
-                MovePlayerToSpawn(levelScene);
+                Debug.LogWarning("[AnchorHorror] EnterLevel2Routine：序列 entries[1] 数据为 null，无法生成关卡2子场景1。");
             }
 
             _sanity.DecayEnabled = true;
             SetInputActive(true);
             SetPhase(GamePhase.HorrorLevel);
 
-            // 6. 黑屏渐出
             yield return Fade(0f);
             _transitioning = false;
         }
 
-        private void OnAllAnchorsActivated()
+        /// <summary>
+        /// 子场景门触发：Fade → 销毁旧根 → 建环状 next 子场景 → 放玩家
+        /// → 保留背包/锚点/倒计时/相位（SC-4，ADR-5，陷阱 3/4）。
+        /// 绝不调 ExtractTargets（陷阱 3）；不清包、不重置计时（陷阱 6）。
+        /// 各自销毁 _levelRoot，不复用 BeginTransition（陷阱 4）。
+        /// </summary>
+        public void SwitchSubScene()
         {
-            // legacy additive 路径（未挂序列）不走多关推进——否则会进 SubClear 却无门可推进、
-            // R/Esc 又被结算配置锁死而永久卡死（code-review WARN）。
-            if (_sequence == null)
+            if (_transitioning)
             {
                 return;
             }
 
-            // 末关：胜利；否则：子关通关生成门（ADR-4）
-            if (_levelIndex + 1 >= _sequence.Count)
+            _transitioning = true;
+            StartCoroutine(SwitchSubSceneRoutine());
+        }
+
+        private IEnumerator SwitchSubSceneRoutine()
+        {
+            // 先校验子场景存在再动手：避免销毁旧根后无处可去、玩家沉默挂机（W-4）。
+            int subStart = 1;
+            int subCount = _sequence != null ? _sequence.Count - subStart : 0;
+            if (subCount <= 0)
             {
-                EnterVictory();
+                Debug.LogError(
+                    $"[AnchorHorror] SwitchSubScene：序列无关卡2子场景（共 {(_sequence != null ? _sequence.Count : 0)} 条 entry），配置错误，取消切换。");
+                _transitioning = false;
+                yield break;
+            }
+
+            SetInputActive(false);
+
+            if (_whisperSource != null)
+            {
+                _whisperSource.Play();
+            }
+            yield return Fade(1f);
+
+            // 销毁旧根
+            if (_levelRoot != null)
+            {
+                Destroy(_levelRoot);
+                _levelRoot = null;
+            }
+
+            // 环状 next：在 entries[1..Count-1] 内循环（SC-4）
+            int subIndex = (_levelIndex - subStart + 1) % subCount;
+            _levelIndex = subStart + subIndex;
+
+            _levelData = _sequence.GetLevel(_levelIndex);
+
+            if (_levelData != null)
+            {
+                _levelRoot = new GameObject("__LevelRoot");
+                LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+                SpawnLevelDoor();
+                MovePlayerToSpawn(_levelData.PlayerSpawn);
             }
             else
             {
-                EnterSubClear();
+                Debug.LogWarning($"[AnchorHorror] SwitchSubSceneRoutine：entries[{_levelIndex}] 数据为 null。");
             }
+
+            // 相位不变（保留 HorrorLevel），背包/锚点/倒计时全保留（SC-4，陷阱 3/6）
+            SetInputActive(true);
+
+            yield return Fade(0f);
+            _transitioning = false;
+        }
+
+        // ──────────────────────────────────────────────────────
+        //  胜负
+        // ──────────────────────────────────────────────────────
+
+        private void OnAllAnchorsActivated()
+        {
+            EnterVictory();
         }
 
         private void OnSanityStateChanged(SanityState oldState, SanityState newState)
@@ -336,70 +458,7 @@ namespace Ciga.AnchorHorror
             }
         }
 
-        /// <summary>
-        /// 子关通关：进入 SubClear 相位，在 _levelRoot 下代码建门（ADR-3）。
-        /// 门随 _levelRoot 销毁一并清除（换关天然清理），物理上杜绝 HorrorLevel 阶段被误触（陷阱 2）。
-        /// </summary>
-        private void EnterSubClear()
-        {
-            if (CurrentPhase == GamePhase.SubClear || CurrentPhase == GamePhase.Victory || CurrentPhase == GamePhase.Fail)
-            {
-                return;
-            }
-
-            _sanity.DecayEnabled = false;
-            SetInputActive(true); // 保持输入启用，玩家需走向门
-            SetPhase(GamePhase.SubClear);
-            // 门已在 TransitionRoutine 进关时生成、一直可见；此刻不再生成。
-            // 门的 CanInteract 仅 SubClear 返回 true，故此相位起门才可交互（陷阱 2 门控仍成立）。
-        }
-
-        /// <summary>
-        /// 进关时生成门（一直可见）。门的 CanInteract 仅 SubClear 返回 true，故锚定后才可交互（非"才出现"）。
-        /// 末关（无下一关）不生成门。门挂 _levelRoot 下，换关随之销毁。代码建，与 ItemFactory 风格一致、无 prefab 依赖（ADR-3）。
-        /// </summary>
-        private void SpawnLevelDoor()
-        {
-            if (_levelRoot == null || _sequence == null)
-            {
-                return;
-            }
-
-            // 末关无下一关，不生成门
-            if (_levelIndex + 1 >= _sequence.Count)
-            {
-                return;
-            }
-
-            var doorSetting = _sequence.GetDoor(_levelIndex);
-            if (doorSetting == null)
-            {
-                return;
-            }
-
-            var doorGo = new GameObject("__LevelDoor");
-            doorGo.transform.SetParent(_levelRoot.transform, false);
-            doorGo.transform.position = doorSetting.Spawn;
-
-            var sr = doorGo.AddComponent<SpriteRenderer>();
-            var col = doorGo.AddComponent<BoxCollider2D>();
-
-            // 根据 Sprite 尺寸自动设置碰撞体大小（无 Sprite 时给默认尺寸）
-            if (doorSetting.Sprite != null)
-            {
-                sr.sprite = doorSetting.Sprite;
-                col.size = doorSetting.Sprite.bounds.size;
-            }
-            else
-            {
-                col.size = new Vector2(1f, 2f);
-            }
-
-            var door = doorGo.AddComponent<LevelDoor>();
-            door.Configure(doorSetting.Sprite, doorSetting.Prompt);
-        }
-
-        /// <summary>最终胜利（末关锚点全激活）。</summary>
+        /// <summary>最终胜利（背包满足全部锚点或 AllAnchorsActivated 事件）。</summary>
         private void EnterVictory()
         {
             if (CurrentPhase == GamePhase.Victory || CurrentPhase == GamePhase.Fail)
@@ -412,7 +471,7 @@ namespace Ciga.AnchorHorror
             SetPhase(GamePhase.Victory);
         }
 
-        /// <summary>失败（San 归 0）。</summary>
+        /// <summary>失败（San 归 0 或倒计时到 0——双失败线，SC-6，陷阱 7）。</summary>
         public void Fail()
         {
             if (CurrentPhase == GamePhase.Fail || CurrentPhase == GamePhase.Victory)
@@ -423,6 +482,57 @@ namespace Ciga.AnchorHorror
             _sanity.DecayEnabled = false;
             SetInputActive(false);
             SetPhase(GamePhase.Fail);
+        }
+
+        // ──────────────────────────────────────────────────────
+        //  辅助方法
+        // ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 在 _levelRoot 下代码建门。
+        /// 关卡1（entries[0]）建 EnterLevel2 门；关卡2 子场景建 SwitchSubScene 门。
+        /// 末关（序列最后一条 entry）不建门。
+        /// </summary>
+        private void SpawnLevelDoor()
+        {
+            if (_levelRoot == null || _sequence == null)
+            {
+                return;
+            }
+
+            var doorSetting = _sequence.GetDoor(_levelIndex);
+            if (doorSetting == null)
+            {
+                return;
+            }
+
+            var doorKind = _sequence.GetDoorKind(_levelIndex);
+
+            var doorGo = new GameObject("__LevelDoor");
+            doorGo.transform.SetParent(_levelRoot.transform, false);
+            doorGo.transform.position = doorSetting.Spawn;
+
+            var sr = doorGo.AddComponent<SpriteRenderer>();
+            var col = doorGo.AddComponent<BoxCollider2D>();
+
+            if (doorSetting.Sprite != null)
+            {
+                sr.sprite = doorSetting.Sprite;
+                col.size = doorSetting.Sprite.bounds.size;
+            }
+            else
+            {
+                col.size = new Vector2(1f, 2f);
+            }
+
+            var door = doorGo.AddComponent<LevelDoor>();
+            door.Configure(doorKind, doorSetting.Sprite, doorSetting.Prompt);
+
+            // 关卡1门引用（LockSelection 后门的 CanInteract 自动通过 SelectionLocked 判定）
+            if (doorKind == DoorKind.EnterLevel2)
+            {
+                _level1Door = door;
+            }
         }
 
         private void SetPhase(GamePhase phase)
@@ -450,7 +560,6 @@ namespace Ciga.AnchorHorror
             }
         }
 
-        /// <summary>data 分支：直接使用 LevelData 中序列化的出生点坐标。</summary>
         private void MovePlayerToSpawn(Vector2 spawnPosition)
         {
             if (_player == null)
@@ -459,31 +568,6 @@ namespace Ciga.AnchorHorror
             }
 
             _player.transform.position = spawnPosition;
-        }
-
-        /// <summary>additive 路径：在关卡场景根下查找名为 PlayerSpawn 的对象。</summary>
-        private void MovePlayerToSpawn(Scene levelScene)
-        {
-            if (_player == null || !levelScene.IsValid() || !levelScene.isLoaded)
-            {
-                return;
-            }
-
-            var roots = levelScene.GetRootGameObjects();
-            for (int i = 0; i < roots.Length; i++)
-            {
-                var spawn = roots[i].transform.Find("PlayerSpawn");
-                if (spawn == null && roots[i].name == "PlayerSpawn")
-                {
-                    spawn = roots[i].transform;
-                }
-
-                if (spawn != null)
-                {
-                    _player.transform.position = spawn.position;
-                    return;
-                }
-            }
         }
 
         private IEnumerator Fade(float targetAlpha)
@@ -513,16 +597,13 @@ namespace Ciga.AnchorHorror
         public void RestartGame()
         {
             Time.timeScale = 1f;
-            // 不调 EventBus.ClearAll()：Destroy(gameObject) 会触发各订阅者 OnDisable 正常反订阅，
-            // 新场景实例在 OnEnable 重新订阅，流程自洽（ClearAll 仅供测试彻底重置）。
-            // _levelIndex 为实例字段，Destroy(gameObject) + 场景重载后新 Awake 从 0 开始——陷阱 6 自动满足。
-            Instance = null; // 让重载后的新实例接管，避免旧单例阻挡
+            Instance = null;
             var scene = string.IsNullOrEmpty(_startSceneName) ? SceneManager.GetActiveScene().name : _startSceneName;
             Destroy(gameObject);
             SceneManager.LoadScene(scene);
         }
 
-        /// <summary>返回主菜单（按场景名加载，Build Settings 顺序变动不影响逻辑）。</summary>
+        /// <summary>返回主菜单。</summary>
         public void ReturnToMainMenu()
         {
             Time.timeScale = 1f;
@@ -542,8 +623,8 @@ namespace Ciga.AnchorHorror
             {
                 float t = i / (float)rate;
                 float noise = (Mathf.PerlinNoise(i * 0.6f, t * 3f) - 0.5f) * 2f;
-                lp = Mathf.Lerp(lp, noise, 0.2f);              // 低通，柔化成"气声"
-                float env = Mathf.Sin(Mathf.PI * (t / 2f));    // 0→1→0 的缓入缓出
+                lp = Mathf.Lerp(lp, noise, 0.2f);
+                float env = Mathf.Sin(Mathf.PI * (t / 2f));
                 data[i] = lp * env * 0.25f;
             }
 

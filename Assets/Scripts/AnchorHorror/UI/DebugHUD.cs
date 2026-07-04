@@ -9,7 +9,7 @@ using UnityEngine;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 联调之眼：屏幕常驻显示 Phase / San / 候选数 / 5 锚点进度。用 IMGUI（仅调试，不进正式表现）。
+    /// 联调之眼：屏幕常驻显示 Phase / San / 背包 / 倒计时 / 锚点覆盖。用 IMGUI（仅调试，不进正式表现）。
     /// M1 就上，避免逻辑对不对全靠猜。可用 _visible 关闭。
     /// </summary>
     public class DebugHUD : MonoBehaviour
@@ -46,15 +46,27 @@ namespace Ciga.AnchorHorror
                 _sb.AppendLine($"San   : {_sanity.Current:0.0}/{_sanity.Max:0} [{_sanity.State}]");
             }
 
+            var bp = gm.Backpack;
+            if (bp != null)
+            {
+                string locked = gm.SelectionLocked ? " [锁定]" : string.Empty;
+                _sb.AppendLine($"背包  : {bp.Count}/{bp.Capacity}{locked}");
+            }
+
+            if (gm.CurrentPhase == GamePhase.HorrorLevel)
+            {
+                _sb.AppendLine($"倒计时: {gm.RemainingTime:0.0}s");
+            }
+
             if (gm.Anchor != null)
             {
-                _sb.AppendLine($"候选  : {gm.Anchor.CandidateItemCount}");
                 var targets = gm.Anchor.Targets;
                 for (int i = 0; i < targets.Count; i++)
                 {
                     var t = targets[i];
-                    string flag = t.IsActivated ? "√" : " ";
-                    _sb.AppendLine($"  [{flag}] {t.Feature}  {t.CurrentCount}/{t.RequiredCount}");
+                    bool covered = bp != null && bp.Covers(t); // 新模型：满足态看背包覆盖，非 AnchorTarget.Hit 累计
+                    string flag = covered ? "√" : " ";
+                    _sb.AppendLine($"  [{flag}] {t.Feature}");
                 }
             }
 
