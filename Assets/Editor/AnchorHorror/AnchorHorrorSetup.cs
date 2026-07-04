@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Ciga.AnchorHorror;
 using TMPro;
 using UnityEditor;
@@ -46,6 +47,7 @@ namespace Ciga.AnchorHorror.EditorTools
             _squareSprite = GetOrCreateSquareSprite(); // 玩家/物品可见所需的方块 sprite
             EnsureTmpEssentials();                     // 保证 TMP 通用字体(LiberationSans)+着色器可用（浮字/面板文本）
             EnsureCjkFallback();                       // 中文字形回退（黑体动态字体加入 TMP 全局 fallback）
+            BakeCjkGlyphs(db);                         // 预烤用到的中文字形进图集，避免编辑态动态生成时机导致品红闪现
 
             // 使当前场景"干净有路径"，后续 Single 建场景才不会弹保存框（自动化/测试环境活动场景常是未命名的）
             var active = SceneManager.GetActiveScene();
@@ -508,6 +510,49 @@ namespace Ciga.AnchorHorror.EditorTools
             }
 
             AddToTmpGlobalFallback(cjk);
+        }
+
+        // 把工程实际用到的中文（面板/结算/世界提示 + 特征名）预烤进 CJK 字体图集并落盘。
+        // CJK 原为 Dynamic + 空烤字形，靠运行时/编辑器动态生成，编辑态重导入时机偶尔闪品红；
+        // 预烤后编辑态与运行时都稳定显示，不再依赖动态生成时机。
+        private static void BakeCjkGlyphs(FeatureDatabase db)
+        {
+            var cjk = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(CjkFontPath);
+            if (cjk == null)
+            {
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("记忆锚点已锚定已通关理智崩溃按重新开始返回主菜单移动交互物品记忆面板"); // UI 固定文案
+            if (db != null) // 特征名从 DB 取，避免与 PopulateFeatureDatabase 硬编码漂移
+            {
+                var so = new SerializedObject(db);
+                var list = so.FindProperty("_entries");
+                if (list != null)
+                {
+                    for (int i = 0; i < list.arraySize; i++)
+                    {
+                        var name = list.GetArrayElementAtIndex(i).FindPropertyRelative("_displayName").stringValue;
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            sb.Append(name);
+                        }
+                    }
+                }
+            }
+
+            if (cjk.TryAddCharacters(sb.ToString(), out string missing))
+            {
+                Debug.Log("[AnchorHorror] CJK 字形已预烤进图集。");
+            }
+            else
+            {
+                Debug.LogWarning($"[AnchorHorror] CJK 预烤部分缺字（图集可能已满，需增大 Atlas 尺寸）：{missing}");
+            }
+
+            EditorUtility.SetDirty(cjk);
+            AssetDatabase.SaveAssets();
         }
 
         private static void AddToTmpGlobalFallback(TMP_FontAsset cjk)
