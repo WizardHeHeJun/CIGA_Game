@@ -35,6 +35,11 @@ namespace Ciga.AiBridge
         private static readonly object _logLock = new object();
         private const int MaxLogs = 2000;
 
+        // /health 缓存快照：主线程每帧刷新，监听线程直接读——即便主线程卡在编译/域重载/模态框，health 仍即时应答
+        private static volatile bool _cachedCompiling;
+        private static volatile bool _cachedPlaying;
+        private static volatile string _cachedVersion = "";
+
         private static string LibDir => Path.Combine(Directory.GetCurrentDirectory(), "Library", "AiBridge");
         private static string CompileResultPath => Path.Combine(LibDir, "compile.json");
         private static string TestResultPath => Path.Combine(LibDir, "tests.json");
@@ -90,11 +95,15 @@ namespace Ciga.AiBridge
                 HttpListenerContext ctx;
                 try { ctx = _listener.GetContext(); }
                 catch { break; }
-                try { Handle(ctx); }
-                catch (Exception e)
+                // 每个请求丢线程池独立处理：单个请求最长等主线程 15s，不会阻塞监听器继续接收其他请求
+                ThreadPool.QueueUserWorkItem(_ =>
                 {
-                    TryWrite(ctx, 500, "{\"error\":\"" + Escape(e.Message) + "\"}");
-                }
+                    try { Handle(ctx); }
+                    catch (Exception e)
+                    {
+                        TryWrite(ctx, 500, "{\"error\":\"" + Escape(e.Message) + "\"}");
+                    }
+                });
             }
         }
 
@@ -106,11 +115,12 @@ namespace Ciga.AiBridge
             switch (path)
             {
                 case "/health":
-                    RunOnMain(() => Json(ctx, "{" +
+                    // 直接用缓存快照应答，不排队等主线程——即便主线程在编译/域重载/模态框中卡住，health 仍即时返回
+                    Json(ctx, "{" +
                         $"\"ok\":true,\"port\":{Port}," +
-                        $"\"unity\":\"{Application.unityVersion}\"," +
-                        $"\"isCompiling\":{Lower(EditorApplication.isCompiling)}," +
-                        $"\"isPlaying\":{Lower(EditorApplication.isPlaying)}" + "}"));
+                        $"\"unity\":\"{Escape(_cachedVersion)}\"," +
+                        $"\"isCompiling\":{Lower(_cachedCompiling)}," +
+                        $"\"isPlaying\":{Lower(_cachedPlaying)}" + "}");
                     break;
 
                 case "/console":
@@ -118,27 +128,27 @@ namespace Ciga.AiBridge
                     break;
 
                 case "/compile":
-                    RunOnMain(() =>
+                    RunOnMain(ctx, () =>
                     {
                         AssetDatabase.Refresh();
                         CompilationPipeline.RequestScriptCompilation();
-                        Json(ctx, "{\"requested\":true,\"isCompiling\":" + Lower(EditorApplication.isCompiling) + "}");
+                        return "{\"requested\":true,\"isCompiling\":" + Lower(EditorApplication.isCompiling) + "}";
                     });
                     break;
 
                 case "/status":
-                    RunOnMain(() => Json(ctx, "{" +
+                    RunOnMain(ctx, () => "{" +
                         $"\"isCompiling\":{Lower(EditorApplication.isCompiling)}," +
                         $"\"isPlaying\":{Lower(EditorApplication.isPlaying)}," +
-                        "\"compile\":" + ReadFileOr(CompileResultPath, "null") + "}"));
+                        "\"compile\":" + ReadFileOr(CompileResultPath, "null") + "}");
                     break;
 
                 case "/play":
-                    RunOnMain(() => { EditorApplication.isPlaying = true; Json(ctx, "{\"playing\":true}"); });
+                    RunOnMain(ctx, () => { EditorApplication.isPlaying = true; return "{\"playing\":true}"; });
                     break;
 
                 case "/stop":
-                    RunOnMain(() => { EditorApplication.isPlaying = false; Json(ctx, "{\"playing\":false}"); });
+                    RunOnMain(ctx, () => { EditorApplication.isPlaying = false; return "{\"playing\":false}"; });
                     break;
 
                 case "/screenshot":
@@ -146,12 +156,17 @@ namespace Ciga.AiBridge
                     break;
 
                 case "/hierarchy":
-                    RunOnMain(() => Json(ctx, DumpHierarchy()));
+                    RunOnMain(ctx, () => DumpHierarchy());
                     break;
 
                 case "/tests":
-                    RunOnMain(() => AiBridgeTests.Run(q.Get("mode") ?? "edit", TestResultPath,
-                        ok => Json(ctx, "{\"started\":" + Lower(ok) + "}")));
+                    // AiBridgeTests.Run 的 ack 是同步回调：捕获 started 后交由 RunOnMain 统一写响应（异常→500 / 超时→503）
+                    RunOnMain(ctx, () =>
+                    {
+                        bool started = false;
+                        AiBridgeTests.Run(q.Get("mode") ?? "edit", TestResultPath, ok => started = ok);
+                        return "{\"started\":" + Lower(started) + "}";
+                    });
                     break;
 
                 case "/tests/result":
@@ -200,14 +215,10 @@ namespace Ciga.AiBridge
             string path = q.Get("path");
             if (string.IsNullOrEmpty(path))
                 path = Path.Combine(LibDir, "shot_" + DateTime.Now.ToString("HHmmss") + ".png");
-            RunOnMain(() =>
+            RunOnMain(ctx, () =>
             {
-                try
-                {
-                    ScreenCapture.CaptureScreenshot(path);
-                    Json(ctx, "{\"path\":\"" + Escape(path) + "\",\"note\":\"PlayMode 下截 GameView，文件下一帧写盘\"}");
-                }
-                catch (Exception e) { Json(ctx, "{\"error\":\"" + Escape(e.Message) + "\"}"); }
+                ScreenCapture.CaptureScreenshot(path);
+                return "{\"path\":\"" + Escape(path) + "\",\"note\":\"PlayMode 下截 GameView，文件下一帧写盘\"}";
             });
         }
 
@@ -295,16 +306,38 @@ namespace Ciga.AiBridge
         }
 
         // ---------- 主线程调度 ----------
-        private static void RunOnMain(Action work)
+        // 请求-响应型：主线程执行 work 产出 JSON，由本方法统一写回。
+        // 超时（主线程被编译/域重载/模态框卡住）回 503，异常回 500——保证客户端永远拿到响应体，不空等。
+        private static void RunOnMain(HttpListenerContext ctx, Func<string> work)
         {
+            string result = null;
+            Exception error = null;
             var done = new ManualResetEventSlim(false);
-            lock (_queueLock) _mainQueue.Enqueue(() => { try { work(); } finally { done.Set(); } });
-            // 等主线程执行完（带超时，避免编译/重载卡死请求）
-            done.Wait(15000);
+            lock (_queueLock) _mainQueue.Enqueue(() =>
+            {
+                try { result = work(); }
+                catch (Exception e) { error = e; }
+                finally { done.Set(); }
+            });
+            if (!done.Wait(15000))
+            {
+                // 超时：那条 action 仍排在队列里、稍后会 done.Set()，此处不能 Dispose(done)（否则 use-after-dispose）
+                TryWrite(ctx, 503, "{\"error\":\"main thread busy (compiling / domain reload / modal dialog); retry later\"}");
+                return;
+            }
+            // 成功：action 已执行完、不会再触碰 done，可安全释放（TryWrite 内部吞异常，不会中断到此）
+            if (error != null) TryWrite(ctx, 500, "{\"error\":\"" + Escape(error.Message) + "\"}");
+            else TryWrite(ctx, 200, result ?? "null");
+            done.Dispose();
         }
 
         private static void PumpMainThread()
         {
+            // 刷新 /health 缓存快照（监听线程据此免排队即时应答，即使主线程随后卡住）
+            _cachedCompiling = EditorApplication.isCompiling;
+            _cachedPlaying = EditorApplication.isPlaying;
+            if (_cachedVersion.Length == 0) _cachedVersion = Application.unityVersion;
+
             for (int i = 0; i < 16; i++)
             {
                 Action a = null;

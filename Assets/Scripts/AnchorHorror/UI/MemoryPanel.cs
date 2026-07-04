@@ -47,6 +47,12 @@ namespace Ciga.AnchorHorror
 
         private void Start()
         {
+            if (_root == null)
+            {
+                Debug.LogWarning("[AnchorHorror] MemoryPanel 未接线（_root 为空）：记忆面板不可见，Tab 将不暂停游戏。" +
+                                 "请运行菜单 Ciga/AnchorHorror/生成可运行装配 重建场景以接上面板。");
+            }
+
             SetOpen(false);
         }
 
@@ -60,12 +66,16 @@ namespace Ciga.AnchorHorror
 
         private void SetOpen(bool open)
         {
-            _open = open;
-            if (_root != null)
+            // 生成器未接线（_root 为空）时绝不接管 timeScale：否则会"看不见面板还把游戏冻住"，
+            // 表现为按一次 Tab 像死机、再按一次才恢复。对齐 ResultScreen 的判空降级。
+            if (_root == null)
             {
-                _root.SetActive(open);
+                _open = false;
+                return;
             }
 
+            _open = open;
+            _root.SetActive(open);
             Time.timeScale = open ? 0f : 1f;
             if (open)
             {

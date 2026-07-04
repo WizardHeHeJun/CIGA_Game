@@ -244,7 +244,6 @@ namespace Ciga.AnchorHorror
             _sanity.DecayEnabled = false;
             SetInputActive(false);
             SetPhase(GamePhase.Clear);
-            Debug.Log("[DEBUG][AnchorHorror] 通关（5 锚点全激活）。");
         }
 
         /// <summary>失败（San 归 0）。</summary>
@@ -258,7 +257,6 @@ namespace Ciga.AnchorHorror
             _sanity.DecayEnabled = false;
             SetInputActive(false);
             SetPhase(GamePhase.Fail);
-            Debug.Log("[DEBUG][AnchorHorror] 失败（San 归 0）。");
         }
 
         private void SetPhase(GamePhase phase)

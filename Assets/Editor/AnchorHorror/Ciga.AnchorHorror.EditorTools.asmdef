@@ -3,7 +3,8 @@
     "rootNamespace": "Ciga.AnchorHorror.EditorTools",
     "references": [
         "Ciga.Game",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [
         "Editor"

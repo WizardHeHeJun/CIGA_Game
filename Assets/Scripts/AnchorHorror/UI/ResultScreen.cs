@@ -3,22 +3,30 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using TMPro;
 using UnityEngine;
 
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 通关 / 失败结算界面（IMGUI 占位）：订阅 PhaseChanged，Clear/Fail 时半透明盖屏显示结果与操作提示。
-    /// R 重开、Esc 返回主菜单。只订阅 EventBus，不被逻辑依赖。
+    /// 通关 / 失败结算界面（uGUI + TMP）：订阅 PhaseChanged，Clear/Fail 时激活盖屏面板，显示结果标题与操作提示。
+    /// R 重开、Esc 返回主菜单。面板结构由 AnchorHorrorSetup 生成并接线；只订阅 EventBus，不被逻辑依赖。
     /// </summary>
     public class ResultScreen : MonoBehaviour
     {
+        private static readonly Color ClearColor = new Color(1f, 0.85f, 0.3f);
+        private static readonly Color FailColor = new Color(1f, 0.4f, 0.4f);
+
+        [Header("UI 引用（生成器接线）")]
+        [SerializeField] private GameObject _root;
+        [SerializeField] private TMP_Text _title;
+        [SerializeField] private TMP_Text _hint;
+
+        [Header("按键")]
         [SerializeField] private KeyCode _restartKey = KeyCode.R;
         [SerializeField] private KeyCode _menuKey = KeyCode.Escape;
 
         private GamePhase _phase = GamePhase.Boot;
-        private GUIStyle _titleStyle;
-        private GUIStyle _hintStyle;
 
         private void OnEnable()
         {
@@ -30,9 +38,16 @@ namespace Ciga.AnchorHorror
             EventBus.PhaseChanged -= OnPhaseChanged;
         }
 
+        private void Start()
+        {
+            // 初始隐藏；即便生成器未接线（_root 为空）也安全。
+            ApplyVisual();
+        }
+
         private void OnPhaseChanged(GamePhase oldPhase, GamePhase newPhase)
         {
             _phase = newPhase;
+            ApplyVisual();
         }
 
         private void Update()
@@ -58,52 +73,35 @@ namespace Ciga.AnchorHorror
             }
         }
 
-        private void OnGUI()
+        private void ApplyVisual()
         {
-            if (!IsResult())
+            bool show = IsResult();
+            if (_root != null)
+            {
+                _root.SetActive(show);
+            }
+
+            if (!show)
             {
                 return;
             }
 
-            EnsureStyles();
-
-            var prevColor = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.6f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = prevColor;
-
             bool clear = _phase == GamePhase.Clear;
-            _titleStyle.normal.textColor = clear ? new Color(1f, 0.85f, 0.3f) : new Color(1f, 0.4f, 0.4f);
-            GUI.Label(new Rect(0, Screen.height * 0.34f, Screen.width, 90), clear ? "已 通 关" : "理 智 崩 溃", _titleStyle);
-            GUI.Label(new Rect(0, Screen.height * 0.5f, Screen.width, 40), "按 R 重新开始      按 Esc 返回主菜单", _hintStyle);
+            if (_title != null)
+            {
+                _title.text = clear ? "已 通 关" : "理 智 崩 溃";
+                _title.color = clear ? ClearColor : FailColor;
+            }
+
+            if (_hint != null)
+            {
+                _hint.text = $"按 {_restartKey} 重新开始      按 {_menuKey} 返回主菜单";
+            }
         }
 
         private bool IsResult()
         {
             return _phase == GamePhase.Clear || _phase == GamePhase.Fail;
-        }
-
-        private void EnsureStyles()
-        {
-            if (_titleStyle == null)
-            {
-                _titleStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 48,
-                    alignment = TextAnchor.MiddleCenter,
-                    fontStyle = FontStyle.Bold,
-                };
-            }
-
-            if (_hintStyle == null)
-            {
-                _hintStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 20,
-                    alignment = TextAnchor.MiddleCenter,
-                };
-                _hintStyle.normal.textColor = Color.white;
-            }
         }
     }
 }
