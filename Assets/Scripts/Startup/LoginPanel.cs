@@ -65,6 +65,9 @@ namespace Ciga.Startup
                 }
                 else
                 {
+                    // 无背景图 → 置透明，露出面板深色占位底（否则默认白底会盖住深色、令白色文字隐形）
+                    _backgroundImage.sprite = null;
+                    _backgroundImage.color = new Color(1f, 1f, 1f, 0f);
                     PlaceholderWarnOnce("Background");
                 }
             }
