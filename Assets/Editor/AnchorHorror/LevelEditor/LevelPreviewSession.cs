@@ -112,7 +112,7 @@ namespace Ciga.AnchorHorror.EditorTools
 
         /// <summary>
         /// 把预览根下所有子物体回写进 <paramref name="level"/> 的 _items 列表。
-        /// 读取顺序：transform → FeatureTag 四枚举属性 → SpriteRenderer.sprite。
+        /// 读取顺序：transform → FeatureTag 五维枚举属性（含声音）→ SpriteRenderer.sprite。
         /// 与 def 默认值比较决定 override 开关。
         /// 操作全部走 Undo + SetDirty + SaveAssets。
         /// </summary>
@@ -159,12 +159,13 @@ namespace Ciga.AnchorHorror.EditorTools
                 float rotZ = child.eulerAngles.z;
                 var scale = new Vector2(child.localScale.x, child.localScale.y);
 
-                // 读 FeatureTag 四枚举属性
+                // 读 FeatureTag 五维枚举属性（含声音；随 AnchorFeatures.csv 维度变化需同步）
                 var tag = child.GetComponent<FeatureTag>();
                 FeatureColor color = tag != null ? tag.Color : default;
                 FeatureShape shape = tag != null ? tag.Shape : default;
                 FeatureMaterial material = tag != null ? tag.Material : default;
                 FeatureTexture texture = tag != null ? tag.Texture : default;
+                FeatureSound sound = tag != null ? tag.Sound : default;
 
                 // 读 SpriteRenderer.sprite
                 var sr = child.GetComponent<SpriteRenderer>();
@@ -177,7 +178,8 @@ namespace Ciga.AnchorHorror.EditorTools
                 if (db != null && db.TryGetById(itemRef.ItemId, out var def))
                 {
                     overrideFeatures = color != def.Color || shape != def.Shape ||
-                                       material != def.Material || texture != def.Texture;
+                                       material != def.Material || texture != def.Texture ||
+                                       sound != def.Sound;
                     overrideSprite = sprite != def.Sprite;
                 }
                 else
@@ -201,6 +203,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 elem.FindPropertyRelative("_shape").enumValueIndex = (int)shape;
                 elem.FindPropertyRelative("_material").enumValueIndex = (int)material;
                 elem.FindPropertyRelative("_texture").enumValueIndex = (int)texture;
+                elem.FindPropertyRelative("_sound").enumValueIndex = (int)sound;
                 elem.FindPropertyRelative("_overrideSprite").boolValue = overrideSprite;
                 elem.FindPropertyRelative("_sprite").objectReferenceValue = sprite;
             }
