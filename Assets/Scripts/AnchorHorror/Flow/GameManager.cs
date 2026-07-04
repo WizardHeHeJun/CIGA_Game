@@ -4,6 +4,7 @@
 // Created: 2026-07-04
 // ------------------------------------------------------------
 using System.Collections;
+using Ciga.Startup;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -343,13 +344,13 @@ namespace Ciga.AnchorHorror
             SceneManager.LoadScene(scene);
         }
 
-        /// <summary>返回主菜单（构建列表第 0 个场景，通常是 GameMain）。</summary>
+        /// <summary>返回主菜单（按场景名加载，Build Settings 顺序变动不影响逻辑）。</summary>
         public void ReturnToMainMenu()
         {
             Time.timeScale = 1f;
             Instance = null;
             Destroy(gameObject);
-            SceneManager.LoadScene(0);
+            SceneManager.LoadScene(SceneNames.GameMain);
         }
 
         /// <summary>程序化生成 2 秒缓入缓出的低语噪声，避免依赖音频资产。</summary>
