@@ -104,6 +104,8 @@ namespace Ciga.AnchorHorror.EditorTools
             root.AddComponent<MatchFeedback>();
             var memoryPanel = root.AddComponent<MemoryPanel>();
             var resultScreen = root.AddComponent<ResultScreen>();
+            var countdown = root.AddComponent<CountdownPanel>();
+            var tutorial = root.AddComponent<TutorialPanel>();
             var hud = root.AddComponent<DebugHUD>();
             var audio = root.AddComponent<AudioSource>();
             audio.playOnAwake = false;
@@ -111,6 +113,9 @@ namespace Ciga.AnchorHorror.EditorTools
             whisper.playOnAwake = false;
             var noise = root.AddComponent<AudioSource>();
             noise.playOnAwake = false;
+
+            // 三态结算配置（修 bug：之前没建 ResultConfig，导致 ResultScreen 文案不更新、失败也显"已通关"）
+            var resultCfg = BuildResultConfig();
 
             // --- 玩家 ---
             var player = new GameObject("Player");
@@ -132,13 +137,17 @@ namespace Ciga.AnchorHorror.EditorTools
             SpawnItem("Item_C", new Vector2(-2, -1), FeatureColor.Green, FeatureShape.Long, FeatureMaterial.Glass, FeatureTexture.Glossy);
             SpawnItem("Item_D", new Vector2(2, -1), FeatureColor.Yellow, FeatureShape.Flat, FeatureMaterial.Fabric, FeatureTexture.Matte);
 
-            // --- 相机 ---
+            // --- 相机（挂在 CameraRig 下：Rig 跟随玩家、相机本身受 Shake 局部抖动，两者互不抢 transform）---
+            var cameraRig = new GameObject("CameraRig");
             var camGo = new GameObject("Main Camera");
+            camGo.transform.SetParent(cameraRig.transform, false);
             var cam = camGo.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = 5f;
-            cam.transform.position = new Vector3(0, 0, -10);
+            camGo.transform.localPosition = new Vector3(0, 0, -10);
             camGo.tag = "MainCamera";
+
+            var camFollow = cameraRig.AddComponent<CameraFollow2D>();
 
             // --- 全屏黑遮罩（San 压暗）；层级由 sortingOrder=1000 决定，z 偏移仅为落在相机近裁剪面内可见 ---
             var overlay = new GameObject("DarkOverlay");
@@ -164,7 +173,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var hint = new GameObject("HintText");
             hint.transform.position = new Vector3(0f, -4.3f, 0f);
             var htmp = hint.AddComponent<TextMeshPro>();
-            htmp.text = "WASD 移动    E 交互物品    Tab 记忆面板";
+            htmp.text = "WASD 移动    E 拾取/选择    R 检视(听声音/看信息)    Tab 记忆面板";
             htmp.fontSize = 2.2f;
             htmp.alignment = TextAlignmentOptions.Center;
             htmp.color = new Color(1f, 1f, 1f, 0.72f);
@@ -182,7 +191,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_sanity", sanity);
             WireObj(gm, "_interaction", interaction);
             WireObj(gm, "_player", pc);
-            WireStr(gm, "_horrorLevelScene", "HorrorLevel");
+            WireObj(gm, "_tutorial", tutorial);
 
             WireObj(interaction, "_player", player.transform);
             WireObj(hud, "_sanity", sanity);
@@ -194,15 +203,18 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_transitionOverlay", tsr);
             WireObj(gm, "_whisperSource", whisper);
             WireObj(shake, "_camera", camGo.transform);
+            WireObj(camFollow, "_target", player.transform);
+            WireObj(camFollow, "_cam", cam);
+            WireObj(resultScreen, "_resultConfig", resultCfg);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
-            // --- uGUI 界面（记忆面板 + 结算界面），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
-            BuildAndWireUi(root.transform, memoryPanel, resultScreen);
+            // --- uGUI 界面（记忆面板 + 结算界面 + 倒计时面板），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
+            BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown, tutorial);
         }
 
-        // 构建共享的 Screen Space Overlay Canvas，内含记忆面板与结算界面（两者初始隐藏），并接线到组件。
+        // 构建共享的 Screen Space Overlay Canvas，内含记忆面板、结算界面与倒计时面板（初始均隐藏），并接线到组件。
         // 无按钮交互（Tab / R / Esc 走键盘），故不加 GraphicRaycaster / EventSystem。
-        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result)
+        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown, TutorialPanel tutorial)
         {
             var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
             canvasGo.transform.SetParent(parent, false);
@@ -266,6 +278,62 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(result, "_root", resultRoot.gameObject);
             WireObj(result, "_title", title);
             WireObj(result, "_hint", hint);
+
+            // --- 倒计时面板：右上角固定，HorrorLevel 相位由 CountdownPanel 自动显/隐 ---
+            var countdownRoot = NewUiNode(canvas.transform, "CountdownRoot");
+            countdownRoot.anchorMin = new Vector2(1f, 1f);
+            countdownRoot.anchorMax = new Vector2(1f, 1f);
+            countdownRoot.pivot = new Vector2(1f, 1f);
+            countdownRoot.anchoredPosition = new Vector2(-40f, -40f);
+            countdownRoot.sizeDelta = new Vector2(260f, 80f);
+            var countdownBg = countdownRoot.gameObject.AddComponent<Image>();
+            countdownBg.color = new Color(0f, 0f, 0f, 0.55f);
+            countdownBg.raycastTarget = false;
+
+            var countdownText = CreateText(countdownRoot, "CountdownText", 52f, TextAlignmentOptions.Center);
+            var countdownTextRt = (RectTransform)countdownText.transform;
+            StretchFull(countdownTextRt);
+            countdownTextRt.offsetMin = new Vector2(12f, 8f);
+            countdownTextRt.offsetMax = new Vector2(-12f, -8f);
+            countdownText.text = "03:00";
+            countdownRoot.gameObject.SetActive(false); // 初始隐藏，HorrorLevel 相位才显示
+
+            WireObj(countdown, "_root", countdownRoot.gameObject);
+            WireObj(countdown, "_timeText", countdownText);
+
+            // --- 教程图盖屏（迭代B，占位）：全屏灰底 + 占位图框 + 提示，任意键继续 ---
+            var tutorialRoot = NewUiNode(canvas.transform, "TutorialRoot");
+            StretchFull(tutorialRoot);
+            var tutorialDim = tutorialRoot.gameObject.AddComponent<Image>();
+            tutorialDim.color = new Color(0.03f, 0.03f, 0.05f, 1f);
+            tutorialDim.raycastTarget = false;
+
+            var tutorialImageRt = NewUiNode(tutorialRoot, "TutorialImage");
+            tutorialImageRt.anchorMin = new Vector2(0.5f, 0.5f);
+            tutorialImageRt.anchorMax = new Vector2(0.5f, 0.5f);
+            tutorialImageRt.pivot = new Vector2(0.5f, 0.5f);
+            tutorialImageRt.anchoredPosition = new Vector2(0f, 60f);
+            tutorialImageRt.sizeDelta = new Vector2(900f, 520f);
+            var tutorialImg = tutorialImageRt.gameObject.AddComponent<Image>();
+            tutorialImg.color = new Color(0.5f, 0.5f, 0.5f, 1f); // 占位灰图（缺美术资源，可替换真教程图）
+            tutorialImg.raycastTarget = false;
+
+            var tutorialLabel = CreateText(tutorialImageRt, "TutorialLabel", 44f, TextAlignmentOptions.Center);
+            tutorialLabel.text = "教程（占位）";
+
+            var tutorialPrompt = CreateText(tutorialRoot, "TutorialPrompt", 40f, TextAlignmentOptions.Center);
+            tutorialPrompt.text = "按任意键继续";
+            var tutorialPromptRt = (RectTransform)tutorialPrompt.transform;
+            tutorialPromptRt.anchorMin = new Vector2(0f, 0f);
+            tutorialPromptRt.anchorMax = new Vector2(1f, 0f);
+            tutorialPromptRt.pivot = new Vector2(0.5f, 0f);
+            tutorialPromptRt.sizeDelta = new Vector2(0f, 80f);
+            tutorialPromptRt.anchoredPosition = new Vector2(0f, 120f);
+            tutorialRoot.gameObject.SetActive(false); // Show() 时激活
+
+            WireObj(tutorial, "_root", tutorialRoot.gameObject);
+            WireObj(tutorial, "_image", tutorialImg);
+            WireObj(tutorial, "_prompt", tutorialPrompt);
         }
 
         private static RectTransform NewUiNode(Transform parent, string name)
@@ -294,6 +362,34 @@ namespace Ciga.AnchorHorror.EditorTools
             tmp.richText = true;
             tmp.raycastTarget = false;
             return tmp;
+        }
+
+        /// <summary>建/更新三态结算配置 ResultConfig（Victory/Fail/SubClear 区分文案，修：之前没建导致失败也显"已通关"）。</summary>
+        private static ResultConfig BuildResultConfig()
+        {
+            var rc = CreateOrLoad<ResultConfig>("Assets/Res/AnchorHorror/ResultConfig.asset");
+            var so = new SerializedObject(rc);
+
+            SetResultEntry(so.FindProperty("_subClear"),
+                "过 关", new Color(1f, 0.84f, 0.2f), "走到门按 E 前往下一层", false, false);
+            SetResultEntry(so.FindProperty("_victory"),
+                "已 通 关", new Color(1f, 0.84f, 0.2f), "按 R 重新开始      按 Esc 返回主菜单", true, true);
+            SetResultEntry(so.FindProperty("_fail"),
+                "失 败", new Color(1f, 0.3f, 0.3f), "按 R 重新开始      按 Esc 返回主菜单", true, true);
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(rc);
+            return rc;
+        }
+
+        private static void SetResultEntry(
+            SerializedProperty entry, string title, Color color, string hint, bool restart, bool menu)
+        {
+            entry.FindPropertyRelative("_title").stringValue = title;
+            entry.FindPropertyRelative("_color").colorValue = color;
+            entry.FindPropertyRelative("_hint").stringValue = hint;
+            entry.FindPropertyRelative("_respondsRestart").boolValue = restart;
+            entry.FindPropertyRelative("_respondsMenu").boolValue = menu;
         }
 
         private static void PopulateHorrorLevel()

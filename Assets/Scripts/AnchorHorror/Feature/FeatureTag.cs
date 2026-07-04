@@ -10,8 +10,9 @@ namespace Ciga.AnchorHorror
 {
     /// <summary>
     /// 挂在每个可交互物品上的特征标签：N 维枚举 + 是否已消耗。
-    /// 实现 IInteractable：InitRoom/HorrorLevel 阶段且未消耗时可交互；
-    /// Interact 内联原 InteractionSystem 的 Collect/TryMatch 分派（ADR-2）。需 Collider2D 以供 2D 交互检测。
+    /// 实现 IInteractable：InitRoom/HorrorLevel 阶段且未消耗且背包未满时可交互（ADR-2/3，陷阱 5）；
+    /// Interact 按相位分派：InitRoom→gm.SelectInLevel1(this)、HorrorLevel→gm.PickupInLevel2(this)。
+    /// 需 Collider2D 以供 2D 交互检测。
     /// 维度字段（_color/.../_sound）、只读属性、BuildFeaturesGenerated 实现在 FeatureTag.Generated.cs
     /// （由 AnchorFeatures.csv 生成，与本文件同提交；加维度只改 CSV 重生成，本文件不动）。
     /// </summary>
@@ -110,7 +111,11 @@ namespace Ciga.AnchorHorror
 
         // -------- IInteractable 实现 --------
 
-        /// <summary>InitRoom 或 HorrorLevel 阶段且未消耗时可交互（ADR-2/6）。</summary>
+        /// <summary>
+        /// InitRoom：未消耗且背包未满（Inventory.Count &lt; Capacity）时可交互（陷阱 5，SC-1）。
+        /// HorrorLevel：未消耗且背包未满时可交互（cap 8，满则封锁）。
+        /// 其余相位不可交互。
+        /// </summary>
         public bool CanInteract(GamePhase phase)
         {
             if (Consumed)
@@ -118,17 +123,40 @@ namespace Ciga.AnchorHorror
                 return false;
             }
 
-            return phase == GamePhase.InitRoom || phase == GamePhase.HorrorLevel;
+            var gm = GameManager.Instance;
+            if (phase == GamePhase.InitRoom)
+            {
+                // 关卡1：背包满（已选 5 件）则不可再交互（SC-1，陷阱 5）
+                if (gm != null && gm.Backpack != null &&
+                    gm.Backpack.Count >= gm.Config.Level1SelectCap)
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            if (phase == GamePhase.HorrorLevel)
+            {
+                // 关卡2：背包满（8 件）则不可再交互（SC-4）
+                if (gm != null && gm.Backpack != null &&
+                    gm.Backpack.Count >= gm.Config.Level2BackpackCap)
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
-        /// 按当前阶段分派：InitRoom → CollectCandidate；HorrorLevel → TryMatch。
-        /// 原 InteractionSystem 的相位 switch 搬入此处（ADR-2）。
+        /// 按当前阶段分派：InitRoom → gm.SelectInLevel1(this)；HorrorLevel → gm.PickupInLevel2(this)。
+        /// ADR-3/6：相位 switch 搬入此处，GameManager 封装背包逻辑。
         /// </summary>
         public void Interact()
         {
             var gm = GameManager.Instance;
-            if (gm == null || gm.Anchor == null)
+            if (gm == null)
             {
                 return;
             }
@@ -136,14 +164,19 @@ namespace Ciga.AnchorHorror
             switch (gm.CurrentPhase)
             {
                 case GamePhase.InitRoom:
-                    gm.Anchor.CollectCandidate(this);
-                    Consumed = true; // 初始房间：交互过的物品不再重复计入
+                    gm.SelectInLevel1(this);
                     break;
 
                 case GamePhase.HorrorLevel:
-                    gm.Anchor.TryMatch(this);
+                    gm.PickupInLevel2(this);
                     break;
             }
+        }
+
+        /// <summary>检视物品（R 键）：广播 ItemInspected，由 MatchFeedback 播声音 + 浮出特征信息。不入包、无业务后果。</summary>
+        public void Inspect()
+        {
+            EventBus.RaiseItemInspected(this);
         }
 
         /// <summary>切换高亮（占位实现：改 SpriteRenderer 颜色）。</summary>

@@ -35,11 +35,16 @@ namespace Ciga.Startup
         [Tooltip("加载条从 0 到满的最短时长（秒），防止瞬间切换 / 玩法残留 timeScale 影响感知")]
         [SerializeField] private float _minDuration = 1.5f;
 
+        [Header("过渡")]
+        [Tooltip("加载遮罩淡入 / 淡出时长（秒），把瞬间显/隐改为渐隐渐显")]
+        [SerializeField] private float _fadeDuration = 0.3f;
+
         public Sprite Background => _background;
         public Sprite BarBackground => _barBackground;
         public Sprite BarFill => _barFill;
         public Color BarFillColor => _barFillColor;
         public string HintText => _hintText;
         public float MinDuration => _minDuration;
+        public float FadeDuration => _fadeDuration;
     }
 }

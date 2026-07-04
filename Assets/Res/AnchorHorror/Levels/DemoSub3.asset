@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7b8e3d1badb918498e4984666ae8be7, type: 3}
+  m_Name: DemoSub3
+  m_EditorClassIdentifier: 
+  _levelName: "\u5173\u53612-\u5B50\u573A\u666F3"
+  _items:
+  - _itemId: clock_metal
+    _position: {x: -1.1, y: 1.5}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 0
+    _shape: 2
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 0
+    _sprite: {fileID: 0}
+  - _itemId: cloth_red
+    _position: {x: 1.1, y: 1.5}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 0
+    _shape: 0
+    _material: 1
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 0
+    _sprite: {fileID: 0}
+  _itemDatabase: {fileID: 11400000, guid: 80bc23451957f8a4097bab598ecb7d1c, type: 2}
+  _levelConfig: {fileID: 11400000, guid: 2dd6847d9e164e0438400537b6edd76a, type: 2}
+  _playerSpawn: {x: 0, y: -3.5}

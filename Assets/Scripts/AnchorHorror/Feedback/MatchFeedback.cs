@@ -56,12 +56,14 @@ namespace Ciga.AnchorHorror
         {
             EventBus.ItemMatched += OnMatched;
             EventBus.ItemMismatched += OnMismatched;
+            EventBus.ItemInspected += OnInspected;
         }
 
         private void OnDisable()
         {
             EventBus.ItemMatched -= OnMatched;
             EventBus.ItemMismatched -= OnMismatched;
+            EventBus.ItemInspected -= OnInspected;
             StopAllCoroutines();
         }
 
@@ -114,6 +116,48 @@ namespace Ciga.AnchorHorror
             if (sr != null)
             {
                 StartCoroutine(Glow(sr, _mismatchColor));
+            }
+        }
+
+        /// <summary>检视（R 键）：浮出物品各维特征信息 + 播放 Sound 维度音效（"听声音锚点信息"），不入包。</summary>
+        private void OnInspected(FeatureTag item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            var db = GameManager.Instance != null ? GameManager.Instance.Database : null;
+            var features = item.GetFeatures();
+            var origin = item.transform.position;
+            float offset = 0.6f;
+            for (int i = 0; i < features.Count; i++)
+            {
+                if (features[i].IsNone)
+                {
+                    continue;
+                }
+
+                string label = db != null ? db.GetDisplayName(features[i]) : features[i].ToString();
+                Color color = db != null ? db.GetKeywordColor(features[i]) : Color.white;
+                SpawnText(label, color, origin + Vector3.up * offset);
+                offset += 0.5f;
+
+                // Sound 维度：播放该特征音效（听声音）
+                if (features[i].Dimension == FeatureDimension.Sound && db != null && _featureSoundSource != null)
+                {
+                    var clip = db.GetAudioClip(features[i]);
+                    if (clip != null)
+                    {
+                        _featureSoundSource.PlayOneShot(clip, _featureSoundVolume);
+                    }
+                }
+            }
+
+            var sr = item.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                StartCoroutine(Glow(sr, _glowColor));
             }
         }
 

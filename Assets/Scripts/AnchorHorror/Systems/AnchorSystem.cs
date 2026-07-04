@@ -9,8 +9,9 @@ using UnityEngine;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 锚点系统（模块最核心）：候选收集 → 目标抽取（含防死局 clamp）→ 匹配判定。
-    /// 纯逻辑类，由 GameManager 注入依赖；数值改动通过注入的 SanitySystem 直接调用，不走 EventBus。
+    /// 锚点系统（模块最核心）：候选收集 → 目标抽取（含防死局 clamp）→ 满足判定。
+    /// 纯逻辑类，由 GameManager 注入依赖。
+    /// 关卡2 匹配改由 Inventory.Satisfies 判定，TryMatch 已删除（ADR-6）。
     /// </summary>
     public class AnchorSystem
     {
@@ -23,9 +24,8 @@ namespace Ciga.AnchorHorror
 
         private readonly List<AnchorTarget> _targets = new List<AnchorTarget>();
 
-        // 复用缓冲，减少 TryMatch 的分配
+        // 复用缓冲，减少 ExtractTargets 路径的分配
         private readonly HashSet<FeatureUnit> _itemFeatureBuffer = new HashSet<FeatureUnit>();
-        private readonly List<FeatureUnit> _hitBuffer = new List<FeatureUnit>();
 
         public AnchorSystem(GlobalConfig config, LevelConfig levelConfig, SanitySystem sanity)
         {
@@ -63,8 +63,9 @@ namespace Ciga.AnchorHorror
         }
 
         /// <summary>
-        /// 过渡阶段：在关卡场景已加载并被 registry 扫描后调用。
+        /// 过渡阶段（旧 additive/registry 路径）：在关卡场景已加载并被 registry 扫描后调用。
         /// 从候选（+ 必要时 fallback）中抽 targetCount 个目标锚点，RequiredCount 随机并 clamp 到场景实际数量。
+        /// 注：新两关卡流程改用 ExtractTargetsFromSelection，此方法仅保留供旧代码路径兼容。
         /// </summary>
         public void ExtractTargets(LevelFeatureRegistry registry)
         {
@@ -102,7 +103,7 @@ namespace Ciga.AnchorHorror
                 var feature = pool[i];
                 int available = registry.CountOf(feature);
                 int required = Random.Range(_config.RequiredCountMin, _config.RequiredCountMax + 1);
-                required = Mathf.Clamp(required, 1, available); // ★clamp 防死局
+                required = Mathf.Clamp(required, 1, available); // clamp 防死局
                 _targets.Add(new AnchorTarget(feature, required));
             }
 
@@ -116,66 +117,46 @@ namespace Ciga.AnchorHorror
         }
 
         /// <summary>
-        /// HorrorLevel 阶段：拿起一个物品做匹配。
-        /// 命中≥1 特征 → 每个命中锚点 +1 且 San +MatchGain（可叠加）；不命中 → San -MismatchLoss。
-        /// 决策 B：无论命中与否，触碰后物品即消耗，不能再交互 / 再扣分。
+        /// 关卡1 锁定时调用（ADR-4，陷阱 2）：从已选物品特征去重取 distinct，
+        /// 抽 TargetCount(5) 个目标锚点，RequiredCount 恒为 1，不依赖 registry。
+        /// 切子场景时绝不调用（SC-2，陷阱 3）。
         /// </summary>
-        public void TryMatch(FeatureTag item)
+        public void ExtractTargetsFromSelection(IReadOnlyList<BackpackItem> selected)
         {
-            if (item == null || item.Consumed)
+            _targets.Clear();
+
+            // 1. 从已选物品收集所有 distinct 非-None 特征
+            var pool = new List<FeatureUnit>();
+            for (int i = 0; i < selected.Count; i++)
             {
-                return;
-            }
-
-            _itemFeatureBuffer.Clear();
-            _hitBuffer.Clear();
-
-            var features = item.GetFeatures();
-            for (int i = 0; i < features.Count; i++)
-            {
-                var u = features[i];
-                if (!u.IsNone)
+                var features = selected[i].Features;
+                for (int f = 0; f < features.Count; f++)
                 {
-                    _itemFeatureBuffer.Add(u);
-                }
-            }
-
-            for (int i = 0; i < _targets.Count; i++)
-            {
-                var anchor = _targets[i];
-                if (anchor.IsActivated)
-                {
-                    continue;
-                }
-
-                if (_itemFeatureBuffer.Contains(anchor.Feature))
-                {
-                    bool justActivated = anchor.Hit();
-                    _hitBuffer.Add(anchor.Feature);
-                    _sanity.Modify(_config.MatchGain);
-                    if (justActivated)
+                    var unit = features[f];
+                    if (!unit.IsNone && !pool.Contains(unit))
                     {
-                        EventBus.RaiseAnchorActivated(anchor);
+                        pool.Add(unit);
                     }
                 }
             }
 
-            // 决策 B：触碰即消耗（命中/不命中都锁定，杜绝重复扣分）
-            item.Consumed = true;
+            // 2. 洗牌后取前 TargetCount 个
+            Shuffle(pool);
+            int take = Mathf.Min(_config.TargetCount, pool.Count);
+            for (int i = 0; i < take; i++)
+            {
+                // RequiredCount 恒 1（ADR-4，新模型靠 Inventory.Satisfies 覆盖判定）
+                _targets.Add(new AnchorTarget(pool[i], 1));
+            }
 
-            if (_hitBuffer.Count > 0)
+            if (_targets.Count < _config.TargetCount)
             {
-                EventBus.RaiseItemMatched(item, _hitBuffer);
-                if (AllActivated())
-                {
-                    EventBus.RaiseAllAnchorsActivated();
-                }
+                Debug.LogWarning(
+                    $"[AnchorHorror] ExtractTargetsFromSelection：仅抽到 {_targets.Count}/{_config.TargetCount} 个锚点" +
+                    $"（已选物品 distinct 特征不足）。请确保关卡1 物品特征种类 ≥ {_config.TargetCount}。");
             }
-            else
-            {
-                _sanity.Modify(-_config.MismatchLoss);
-                EventBus.RaiseItemMismatched(item);
-            }
+
+            EventBus.RaiseTargetsExtracted(_targets);
         }
 
         /// <summary>重开局清状态。</summary>
@@ -184,24 +165,6 @@ namespace Ciga.AnchorHorror
             _candidateFeatures.Clear();
             _candidateItemCount = 0;
             _targets.Clear();
-        }
-
-        private bool AllActivated()
-        {
-            if (_targets.Count == 0)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < _targets.Count; i++)
-            {
-                if (!_targets[i].IsActivated)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         private bool IsAllowed(FeatureUnit unit)

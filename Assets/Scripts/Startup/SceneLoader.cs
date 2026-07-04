@@ -86,7 +86,9 @@ namespace Ciga.Startup
 
             EnsureOverlay();
             _overlay.SetProgress(0f);
-            _overlay.SetVisible(true);
+
+            float fadeDuration = _loadingConfig != null ? _loadingConfig.FadeDuration : 0.3f;
+            yield return _overlay.FadeIn(fadeDuration); // 遮罩淡入盖住当前场景（#2）
 
             float minDuration = _loadingConfig != null ? _loadingConfig.MinDuration : 1.5f;
             float elapsed = 0f;
@@ -126,7 +128,7 @@ namespace Ciga.Startup
                 yield return null;
             }
 
-            _overlay.SetVisible(false);
+            yield return _overlay.FadeOut(fadeDuration); // 加载完成后遮罩淡出，露出新场景（#2）
             _isLoading = false;
             _loadCoroutine = null;
         }

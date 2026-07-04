@@ -42,8 +42,18 @@ namespace Ciga.AnchorHorror
         [Header("Critical 表现")]
         [SerializeField] private float _moveSpeedPenalty = 0.2f; // 30 以下移速 -20%
 
-        [Header("过渡（占位常量）")]
+        [Header("两关卡流程")]
+        [SerializeField] private int _level1SelectCap = 5;
+        [SerializeField] private int _level2BackpackCap = 8;
+        [SerializeField] private float _level2TimeLimit = 180f;
+
+        [Header("过渡")]
         [SerializeField] private float _fadeDuration = 0.8f;
+        [SerializeField] private float _fadeHold = 0.08f; // 切场景时全黑停顿时长（秒），让"切画面"读得清
+
+        public int Level1SelectCap => _level1SelectCap;
+        public int Level2BackpackCap => _level2BackpackCap;
+        public float Level2TimeLimit => _level2TimeLimit;
 
         public float SanityMax => _sanityMax;
         public float SanityInit => _sanityInit;
@@ -66,5 +76,6 @@ namespace Ciga.AnchorHorror
         public float InteractRadius => _interactRadius;
         public float MoveSpeedPenalty => _moveSpeedPenalty;
         public float FadeDuration => _fadeDuration;
+        public float FadeHold => _fadeHold;
     }
 }

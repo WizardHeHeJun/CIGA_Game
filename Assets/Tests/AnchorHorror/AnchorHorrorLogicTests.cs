@@ -113,79 +113,68 @@ namespace Ciga.AnchorHorror.Tests
             }
         }
 
-        // ---------------------------------------------------------------- 决策 A/匹配：命中回 San + 消耗 + 激活
+        // ---------------------------------------------------------------- 背包：容量上限（SC-4）
 
         [Test]
-        public void TryMatch_Hit_GainsSanity_Consumes_Activates()
+        public void Inventory_TryAdd_RespectsCapacity()
         {
-            var cfg = MakeConfig();
-            var s = MakeSanity(cfg);
-            s.Modify(-20f);             // 80，便于观察 +5
-            var anchor = new AnchorSystem(cfg, null, s);
-            InjectTarget(anchor, new FeatureUnit(FeatureDimension.Color, (int)FeatureColor.Red), 1);
+            var inv = new Inventory { Capacity = 2 };
 
-            bool activated = false;
-            bool allActivated = false;
-            EventBus.AnchorActivated += _ => activated = true;
-            EventBus.AllAnchorsActivated += () => allActivated = true;
-
-            var item = MakeItem(FeatureColor.Red, FeatureShape.Round, FeatureMaterial.Wood, FeatureTexture.Smooth);
-            anchor.TryMatch(item);
-
-            Assert.AreEqual(85f, s.Current, 1e-4);
-            Assert.IsTrue(item.Consumed);
-            Assert.IsTrue(activated);
-            Assert.IsTrue(allActivated, "唯一锚点激活即全激活");
+            Assert.IsTrue(inv.TryAdd(MakeItem(FeatureColor.Red, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None)));
+            Assert.IsTrue(inv.TryAdd(MakeItem(FeatureColor.Blue, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None)));
+            Assert.IsFalse(
+                inv.TryAdd(MakeItem(FeatureColor.None, FeatureShape.Round, FeatureMaterial.None, FeatureTexture.None)),
+                "满则拒，不加");
+            Assert.AreEqual(2, inv.Count);
         }
 
-        // ---------------------------------------------------------------- 决策 B：不匹配只扣一次
+        // ---------------------------------------------------------------- 背包：覆盖 / 满足判定（SC-5）
 
         [Test]
-        public void TryMatch_Mismatch_LosesSanityOnce_ThenConsumed()
+        public void Inventory_CoversAndSatisfies_ByFeature()
         {
-            var cfg = MakeConfig();
-            var s = MakeSanity(cfg);    // 100
-            var anchor = new AnchorSystem(cfg, null, s);
-            InjectTarget(anchor, new FeatureUnit(FeatureDimension.Color, (int)FeatureColor.Blue), 1);
+            var inv = new Inventory { Capacity = 8 };
+            inv.TryAdd(MakeItem(FeatureColor.Red, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None));
+            inv.TryAdd(MakeItem(FeatureColor.None, FeatureShape.None, FeatureMaterial.Wood, FeatureTexture.None));
 
-            int mismatchCount = 0;
-            EventBus.ItemMismatched += _ => mismatchCount++;
+            var red = new AnchorTarget(new FeatureUnit(FeatureDimension.Color, (int)FeatureColor.Red), 1);
+            var wood = new AnchorTarget(new FeatureUnit(FeatureDimension.Material, (int)FeatureMaterial.Wood), 1);
+            var blue = new AnchorTarget(new FeatureUnit(FeatureDimension.Color, (int)FeatureColor.Blue), 1);
 
-            var item = MakeItem(FeatureColor.Red, FeatureShape.Round, FeatureMaterial.Wood, FeatureTexture.Smooth);
+            Assert.IsTrue(inv.Covers(red));
+            Assert.IsTrue(inv.Covers(wood));
+            Assert.IsFalse(inv.Covers(blue));
 
-            anchor.TryMatch(item);      // 不匹配 → -15 → 85，消耗
-            Assert.AreEqual(85f, s.Current, 1e-4);
-            Assert.IsTrue(item.Consumed);
-            Assert.AreEqual(1, mismatchCount);
-
-            anchor.TryMatch(item);      // 已消耗 → 无操作，不再扣分
-            Assert.AreEqual(85f, s.Current, 1e-4);
-            Assert.AreEqual(1, mismatchCount);
+            Assert.IsTrue(inv.Satisfies(new List<AnchorTarget> { red, wood }), "全覆盖 → 满足");
+            Assert.IsFalse(inv.Satisfies(new List<AnchorTarget> { red, blue }), "缺一 → 不满足");
         }
 
-        // ---------------------------------------------------------------- 一物命中多锚点叠加回 San
+        // ---------------------------------------------------------------- 关卡1 抽锚点：去重 distinct + RequiredCount 恒 1（SC-2）
 
         [Test]
-        public void TryMatch_OneItemHitsMultipleAnchors_StacksGain()
+        public void ExtractTargetsFromSelection_DistinctFeatures_RequiredOne()
         {
-            var cfg = MakeConfig();
+            var cfg = MakeConfig(targetCount: 5);
             var s = MakeSanity(cfg);
-            s.Modify(-20f);             // 80
             var anchor = new AnchorSystem(cfg, null, s);
-            InjectTarget(anchor, new FeatureUnit(FeatureDimension.Color, (int)FeatureColor.Red), 1);
-            InjectTarget(anchor, new FeatureUnit(FeatureDimension.Material, (int)FeatureMaterial.Wood), 1);
 
-            List<FeatureUnit> hits = null;
-            bool allActivated = false;
-            EventBus.ItemMatched += (_, h) => hits = new List<FeatureUnit>(h);
-            EventBus.AllAnchorsActivated += () => allActivated = true;
+            // 3 件已选，含重复特征（Red 出现 2 次）→ distinct = Red/Round/Wood/Blue/Smooth = 5
+            var selected = new List<BackpackItem>
+            {
+                MakeBackpackItem(FeatureColor.Red, FeatureShape.Round, FeatureMaterial.None, FeatureTexture.None),
+                MakeBackpackItem(FeatureColor.Red, FeatureShape.None, FeatureMaterial.Wood, FeatureTexture.None),
+                MakeBackpackItem(FeatureColor.Blue, FeatureShape.None, FeatureMaterial.None, FeatureTexture.Smooth),
+            };
 
-            var item = MakeItem(FeatureColor.Red, FeatureShape.Round, FeatureMaterial.Wood, FeatureTexture.Smooth);
-            anchor.TryMatch(item);
+            anchor.ExtractTargetsFromSelection(selected);
 
-            Assert.AreEqual(90f, s.Current, 1e-4);   // 80 + 5 + 5
-            Assert.AreEqual(2, hits.Count);
-            Assert.IsTrue(allActivated);
+            Assert.AreEqual(5, anchor.Targets.Count, "distinct 特征恰好 5 个");
+            var seen = new HashSet<FeatureUnit>();
+            foreach (var t in anchor.Targets)
+            {
+                Assert.AreEqual(1, t.RequiredCount, "RequiredCount 恒为 1（新模型靠 Inventory 覆盖判定）");
+                Assert.IsTrue(seen.Add(t.Feature), "锚点互不相同");
+            }
         }
 
         // ---------------------------------------------------------------- 候选不足：fallback 补齐
@@ -216,51 +205,36 @@ namespace Ciga.AnchorHorror.Tests
             Object.DestroyImmediate(level);
         }
 
-        // ---------------------------------------------------------------- 端到端：收集→抽锚→逐一匹配→全激活
+        // ---------------------------------------------------------------- 端到端：选物→抽锚→拾取入包→满足通关（SC-2/5）
 
         [Test]
-        public void FullLoop_CollectExtractMatch_AllActivated()
+        public void FullLoop_SelectExtractPickupSatisfy_Wins()
         {
-            var cfg = MakeConfig(requiredMin: 1, requiredMax: 1, targetCount: 5);
+            var cfg = MakeConfig(targetCount: 5);
             var s = MakeSanity(cfg);
             var anchor = new AnchorSystem(cfg, null, s);
 
-            // 5 件候选，每件只有一个非 None 特征 → 恰好 5 个候选特征
-            var candidates = new List<FeatureTag>
+            // 关卡1：选 5 件，每件一个非 None 特征 → distinct 5
+            var selection = new List<BackpackItem>
             {
-                MakeItem(FeatureColor.Red, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None),
-                MakeItem(FeatureColor.Blue, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None),
-                MakeItem(FeatureColor.None, FeatureShape.Round, FeatureMaterial.None, FeatureTexture.None),
-                MakeItem(FeatureColor.None, FeatureShape.None, FeatureMaterial.Wood, FeatureTexture.None),
-                MakeItem(FeatureColor.None, FeatureShape.None, FeatureMaterial.None, FeatureTexture.Smooth),
+                MakeBackpackItem(FeatureColor.Red, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None),
+                MakeBackpackItem(FeatureColor.Blue, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None),
+                MakeBackpackItem(FeatureColor.None, FeatureShape.Round, FeatureMaterial.None, FeatureTexture.None),
+                MakeBackpackItem(FeatureColor.None, FeatureShape.None, FeatureMaterial.Wood, FeatureTexture.None),
+                MakeBackpackItem(FeatureColor.None, FeatureShape.None, FeatureMaterial.None, FeatureTexture.Smooth),
             };
-            foreach (var c in candidates)
-            {
-                anchor.CollectCandidate(c);
-            }
-
-            var registry = new LevelFeatureRegistry();
-            registry.Scan(candidates);
-
-            anchor.ExtractTargets(registry);
+            anchor.ExtractTargetsFromSelection(selection);
             Assert.AreEqual(5, anchor.Targets.Count);
 
-            bool allActivated = false;
-            EventBus.AllAnchorsActivated += () => allActivated = true;
-
-            // 为每个锚点造一个恰好匹配它的物品并匹配
+            // 关卡2：往背包放恰好覆盖每个锚点的物品（cap 8）
+            var backpack = new Inventory { Capacity = 8 };
             var snapshot = new List<AnchorTarget>(anchor.Targets);
             foreach (var target in snapshot)
             {
-                var item = MakeItemFromUnit(target.Feature);
-                anchor.TryMatch(item);
+                Assert.IsTrue(backpack.TryAdd(MakeItemFromUnit(target.Feature)));
             }
 
-            Assert.IsTrue(allActivated, "逐一匹配全部锚点后应触发通关");
-            foreach (var t in anchor.Targets)
-            {
-                Assert.IsTrue(t.IsActivated);
-            }
+            Assert.IsTrue(backpack.Satisfies(anchor.Targets), "背包覆盖全部 5 锚点 → 通关");
         }
 
         // ---------------------------------------------------------------- FeatureUnit 值语义
@@ -324,11 +298,10 @@ namespace Ciga.AnchorHorror.Tests
             return MakeItem(c, sh, m, t);
         }
 
-        private static void InjectTarget(AnchorSystem anchor, FeatureUnit feature, int required)
+        private BackpackItem MakeBackpackItem(FeatureColor c, FeatureShape sh, FeatureMaterial m, FeatureTexture t)
         {
-            var field = typeof(AnchorSystem).GetField("_targets", F);
-            var list = (System.Collections.IList)field.GetValue(anchor);
-            list.Add(new AnchorTarget(feature, required));
+            var tag = MakeItem(c, sh, m, t);
+            return new BackpackItem(tag.GetFeatures(), null, tag.name);
         }
 
         private static SerializableFeatureUnit MakeSfu(FeatureDimension dim, int value)

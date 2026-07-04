@@ -9,9 +9,12 @@ using UnityEngine;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 关卡门：子关通关（SubClear）后由 GameManager.EnterSubClear 代码生成于 _levelRoot 下。
-    /// 仅 SubClear 相位可交互（ADR-2/3/6）；Interact → GameManager.AdvanceLevel() 触发换关。
-    /// 随 _levelRoot 销毁一并清除，门控双保险：物理上不存在 + CanInteract 锁相位（陷阱 2）。
+    /// 关卡门：由 GameManager 代码建于 _levelRoot 下。
+    /// 三种类型（DoorKind）：
+    ///   EnterLevel2        —— 关卡1门，InitRoom && SelectionLocked 后可交互，触发 EnterLevel2()
+    ///   SwitchSubScenePrev —— 子场景左门，HorrorLevel 可交互，触发 SwitchSubScene(-1)
+    ///   SwitchSubSceneNext —— 子场景右门，HorrorLevel 可交互，触发 SwitchSubScene(+1)
+    /// 门上方世界空间显示提示文案（仅可交互时），引导玩家走向门（#2）。随 _levelRoot 销毁清除（ADR-1/5）。
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Collider2D))]
@@ -22,10 +25,10 @@ namespace Ciga.AnchorHorror
         [SerializeField] private Color _normalColor = new Color(0.6f, 0.8f, 1f, 1f);
         [SerializeField] private Color _highlightColor = new Color(1f, 1f, 0.6f, 1f);
 
+        private DoorKind _doorKind = DoorKind.SwitchSubSceneNext;
         private bool _highlighted;
-        // 提示文案：当前由子关结算界面统一展示（ResultConfig.SubClear.Hint「走到门按 E」）；
-        // 此字段为门自身未来的世界空间提示预留，暂不渲染。
         private string _prompt;
+        private TextMeshPro _promptText;
 
         private void Awake()
         {
@@ -35,11 +38,11 @@ namespace Ciga.AnchorHorror
             }
         }
 
-        /// <summary>
-        /// 由 GameManager.EnterSubClear 调用：设置门的精灵与提示文案。
-        /// </summary>
-        public void Configure(Sprite sprite, string prompt)
+        /// <summary>由 GameManager.SpawnDoor 调用：设置门类型、精灵与提示文案（ADR-1/5）。</summary>
+        public void Configure(DoorKind kind, Sprite sprite, string prompt)
         {
+            _doorKind = kind;
+
             if (_renderer == null)
             {
                 _renderer = GetComponent<SpriteRenderer>();
@@ -52,20 +55,79 @@ namespace Ciga.AnchorHorror
 
             _renderer.color = _normalColor;
             _prompt = prompt;
+            EnsurePromptText();
+        }
+
+        private void Update()
+        {
+            // 门可交互时在上方显示提示，引导玩家走向门（#2）。不可交互（如关卡1未选满）时隐藏。
+            if (_promptText == null)
+            {
+                return;
+            }
+
+            var gm = GameManager.Instance;
+            bool show = gm != null && CanInteract(gm.CurrentPhase);
+            if (_promptText.gameObject.activeSelf != show)
+            {
+                _promptText.gameObject.SetActive(show);
+            }
         }
 
         // -------- IInteractable 实现 --------
 
-        /// <summary>仅 SubClear 相位可交互（ADR-6，陷阱 2）。</summary>
+        /// <summary>
+        /// EnterLevel2：InitRoom 且 SelectionLocked（选满5并已抽锚点）时可交互（SC-1/3）。
+        /// SwitchSubScenePrev/Next：HorrorLevel 时可交互（SC-4，#3）。
+        /// </summary>
         public bool CanInteract(GamePhase phase)
         {
-            return phase == GamePhase.SubClear;
+            switch (_doorKind)
+            {
+                case DoorKind.EnterLevel2:
+                    return phase == GamePhase.InitRoom &&
+                           GameManager.Instance != null &&
+                           GameManager.Instance.SelectionLocked;
+
+                case DoorKind.SwitchSubScenePrev:
+                case DoorKind.SwitchSubSceneNext:
+                    return phase == GamePhase.HorrorLevel;
+
+                default:
+                    return false;
+            }
         }
 
-        /// <summary>触发换关（ADR-1/3）。</summary>
+        /// <summary>
+        /// EnterLevel2 → gm.EnterLevel2()；Prev → gm.SwitchSubScene(-1)；Next → gm.SwitchSubScene(+1)（ADR-5，#3）。
+        /// </summary>
         public void Interact()
         {
-            GameManager.Instance?.AdvanceLevel();
+            var gm = GameManager.Instance;
+            if (gm == null)
+            {
+                return;
+            }
+
+            switch (_doorKind)
+            {
+                case DoorKind.EnterLevel2:
+                    gm.EnterLevel2();
+                    break;
+
+                case DoorKind.SwitchSubScenePrev:
+                    gm.SwitchSubScene(-1);
+                    break;
+
+                case DoorKind.SwitchSubSceneNext:
+                    gm.SwitchSubScene(1);
+                    break;
+            }
+        }
+
+        /// <summary>门无可检视信息（IInteractable 接口要求的空实现）。</summary>
+        public void Inspect()
+        {
         }
 
         /// <summary>切换高亮：改 SpriteRenderer 颜色。</summary>
@@ -78,6 +140,28 @@ namespace Ciga.AnchorHorror
 
             _highlighted = on;
             _renderer.color = on ? _highlightColor : _normalColor;
+        }
+
+        /// <summary>在门上方建世界空间提示文本（初始隐藏，Update 在可交互时显示）。</summary>
+        private void EnsurePromptText()
+        {
+            if (_promptText != null)
+            {
+                _promptText.text = _prompt;
+                return;
+            }
+
+            var go = new GameObject("DoorPrompt");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 1.4f, 0f);
+            _promptText = go.AddComponent<TextMeshPro>();
+            _promptText.text = _prompt;
+            _promptText.fontSize = 4f;
+            _promptText.alignment = TextAlignmentOptions.Center;
+            _promptText.color = new Color(1f, 1f, 0.7f, 1f);
+            _promptText.sortingOrder = 2000;
+            _promptText.rectTransform.sizeDelta = new Vector2(8f, 1.5f);
+            go.SetActive(false);
         }
     }
 }

@@ -39,15 +39,19 @@ namespace Ciga.AnchorHorror
             go.transform.localScale = new Vector3(placed.Scale.x, placed.Scale.y, 1f);
 
             // --- 3. 挂 Collider2D（按 ColliderKind 选 Box/Circle；FeatureTag 依赖此组件）---
+            // 交互靠 InteractionSystem 的 OverlapCircle 检测，不需要物理阻挡；设 isTrigger 避免玩家撞在物品上卡住/旋转（用户反馈）。
+            Collider2D itemCol;
             switch (def.Collider)
             {
                 case ColliderKind.Circle:
-                    go.AddComponent<CircleCollider2D>();
+                    itemCol = go.AddComponent<CircleCollider2D>();
                     break;
                 default: // ColliderKind.Box
-                    go.AddComponent<BoxCollider2D>();
+                    itemCol = go.AddComponent<BoxCollider2D>();
                     break;
             }
+
+            itemCol.isTrigger = true;
 
             // --- 4. 挂 SpriteRenderer，选取 Sprite（优先级：PlacedItem 覆盖 → def 默认 → fallback）---
             var sr = go.AddComponent<SpriteRenderer>();
