@@ -37,6 +37,13 @@ namespace Ciga.Startup
         [Tooltip("退出按钮文字")]
         [SerializeField] private string _quitButtonText = "退出";
 
+        [Header("操作指引")]
+        [Tooltip("操作指引按钮图（全屏图层，留空则不显示该按钮）")]
+        [SerializeField] private Sprite _guideButtonSprite;
+
+        [Tooltip("操作指引页显示的全屏图（留空则用深色占位底 + 提示文字）")]
+        [SerializeField] private Sprite _guidePageImage;
+
         public Sprite Background => _background;
         public Sprite Logo => _logo;
         public string TitleText => _titleText;
@@ -44,5 +51,7 @@ namespace Ciga.Startup
         public string StartButtonText => _startButtonText;
         public Sprite QuitButtonSprite => _quitButtonSprite;
         public string QuitButtonText => _quitButtonText;
+        public Sprite GuideButtonSprite => _guideButtonSprite;
+        public Sprite GuidePageImage => _guidePageImage;
     }
 }

@@ -11,12 +11,18 @@ using UnityEngine.UI;
 namespace Ciga.Startup
 {
     /// <summary>
-    /// 主菜单面板：「开始」→ SceneLoader.LoadScene(Bootstrap)；「退出」→ Application.Quit。
-    /// Config 字段为空时调 PlaceholderWarnOnce 占位，不崩溃。
-    /// OnEnable/OnDisable 成对管理监听。
+    /// 主菜单面板（全屏图层版）：背景 + 开始/操作指引/结束三张 1920x1080 全屏图层堆叠，
+    /// 靠 Image.alphaHitTestMinimumThreshold 让毛笔笔触外的透明处穿透，只有笔触可点。
+    /// 「开始」→ LoadScene(Bootstrap)；「结束」→ Application.Quit；
+    /// 「操作指引」→ 场景内全屏引导页 overlay（打开后前 3 秒忽略点击，之后点屏幕任意处返回）。
+    /// 文字已烙进美术，故运行时隐藏旧的 Title/Logo/按钮文案标签。
+    /// 运行时自建操作指引图层与引导页，不改场景 YAML、不重跑生成器。
     /// </summary>
     public class MainMenuPanel : UIPanel
     {
+        private const float AlphaHitThreshold = 0.1f;   // alpha > 0.1 才可点，过滤羽化透明边
+        private const float GuideLockSeconds = 3f;       // 引导页打开后忽略点击的秒数
+
         [Header("配置（Inspector 拖入）")]
         [SerializeField] private MainMenuConfig _config;
 
@@ -28,6 +34,15 @@ namespace Ciga.Startup
         [SerializeField] private TMP_Text _startButtonLabel;
         [SerializeField] private Button _quitButton;
         [SerializeField] private TMP_Text _quitButtonLabel;
+
+        // 运行时自建，不序列化
+        private Button _guideButton;
+        private GameObject _guideRoot;
+        private CanvasGroup _guideCanvasGroup;
+        private TMP_Text _guideHint;
+        private bool _guideShowing;
+        private float _guideUnlockTime;
+        private bool _guideReturnHintShown;
 
         private void Start()
         {
@@ -60,6 +75,29 @@ namespace Ciga.Startup
             }
         }
 
+        private void Update()
+        {
+            if (!_guideShowing)
+            {
+                return;
+            }
+
+            bool unlocked = Time.unscaledTime >= _guideUnlockTime;
+            if (unlocked && !_guideReturnHintShown)
+            {
+                _guideReturnHintShown = true;
+                if (_guideHint != null)
+                {
+                    _guideHint.text = "点击屏幕任意处返回";
+                }
+            }
+
+            if (unlocked && Input.GetMouseButtonDown(0))
+            {
+                HideGuide();
+            }
+        }
+
         protected override void ApplyConfig()
         {
             if (_config == null)
@@ -68,70 +106,239 @@ namespace Ciga.Startup
                 return;
             }
 
-            if (_backgroundImage != null)
+            ApplyBackground();
+
+            // 文字已烙进美术 → 隐藏叠加的 Logo / 标题 / 按钮文案标签
+            HideIfPresent(_logoImage != null ? _logoImage.gameObject : null);
+            HideIfPresent(_titleLabel != null ? _titleLabel.gameObject : null);
+            HideIfPresent(_startButtonLabel != null ? _startButtonLabel.gameObject : null);
+            HideIfPresent(_quitButtonLabel != null ? _quitButtonLabel.gameObject : null);
+
+            // 开始 / 结束：把生成器建的小按钮就地改造成全屏 alpha 命中图层
+            RetrofitFullScreenButton(_startButton, _config.StartButtonSprite, "StartButtonSprite");
+            RetrofitFullScreenButton(_quitButton, _config.QuitButtonSprite, "QuitButtonSprite");
+
+            // 操作指引：运行时新建全屏图层 + 引导页
+            EnsureGuideButton();
+            EnsureGuidePanel();
+        }
+
+        private void ApplyBackground()
+        {
+            if (_backgroundImage == null)
             {
-                if (_config.Background != null)
-                {
-                    _backgroundImage.sprite = _config.Background;
-                    _backgroundImage.color = Color.white;
-                }
-                else
-                {
-                    // 无背景图 → 置透明，露出面板深色占位底（否则默认白底会盖住深色、令白色文字隐形）
-                    _backgroundImage.sprite = null;
-                    _backgroundImage.color = new Color(1f, 1f, 1f, 0f);
-                    PlaceholderWarnOnce("Background");
-                }
+                return;
             }
 
-            if (_logoImage != null)
+            if (_config.Background != null)
             {
-                if (_config.Logo != null)
-                {
-                    _logoImage.sprite = _config.Logo;
-                    _logoImage.color = Color.white;
-                    _logoImage.gameObject.SetActive(true);
-                }
-                else
-                {
-                    _logoImage.gameObject.SetActive(false);
-                }
-            }
-
-            if (_titleLabel != null)
-            {
-                _titleLabel.text = !string.IsNullOrEmpty(_config.TitleText) ? _config.TitleText : "锚点解谜";
+                _backgroundImage.sprite = _config.Background;
+                _backgroundImage.color = Color.white;
             }
             else
             {
-                PlaceholderWarnOnce("_titleLabel");
+                // 无背景图 → 置透明，露出面板深色占位底
+                _backgroundImage.sprite = null;
+                _backgroundImage.color = new Color(1f, 1f, 1f, 0f);
+                PlaceholderWarnOnce("Background");
             }
-
-            ApplyButtonConfig(_startButton, _startButtonLabel, _config.StartButtonSprite, _config.StartButtonText, "开始游戏", "_startButton");
-            ApplyButtonConfig(_quitButton, _quitButtonLabel, _config.QuitButtonSprite, _config.QuitButtonText, "退出", "_quitButton");
         }
 
-        private void ApplyButtonConfig(Button btn, TMP_Text label, Sprite sprite, string text, string fallback, string fieldKey)
+        /// <summary>把小按钮拉伸铺满、换全屏图层 sprite、开 alpha 命中、关按钮变色过渡。图为空则保留原样并告警。</summary>
+        private void RetrofitFullScreenButton(Button btn, Sprite sprite, string fieldKey)
         {
             if (btn == null)
             {
+                PlaceholderWarnOnce(fieldKey + ":button");
+                return;
+            }
+
+            if (sprite == null)
+            {
+                // 图未配 → 不改造（保留可点的旧按钮），仅告警
                 PlaceholderWarnOnce(fieldKey);
                 return;
             }
 
-            if (sprite != null)
+            StretchFull(btn.transform as RectTransform);
+
+            var img = (btn.targetGraphic as Image) ?? btn.GetComponent<Image>();
+            if (img != null)
             {
-                var targetGraphic = btn.targetGraphic as Image;
-                if (targetGraphic != null)
-                {
-                    targetGraphic.sprite = sprite;
-                }
+                img.sprite = sprite;
+                img.color = Color.white;
+                img.type = Image.Type.Simple;
+                img.raycastTarget = true;
+                TrySetAlphaHit(img, fieldKey);
+                btn.targetGraphic = img;
             }
 
-            if (label != null)
+            // 全屏图层若用默认 Color Tint 过渡，点击/悬停会给整张 1920x1080 染色闪烁
+            btn.transition = Selectable.Transition.None;
+        }
+
+        private void EnsureGuideButton()
+        {
+            if (_guideButton != null)
             {
-                label.text = !string.IsNullOrEmpty(text) ? text : fallback;
+                return;
             }
+
+            if (_config.GuideButtonSprite == null)
+            {
+                PlaceholderWarnOnce("GuideButtonSprite");
+                return;
+            }
+
+            var parent = Root != null ? Root.transform : transform;
+            var go = new GameObject("GuideButton(runtime)", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            StretchFull(go.transform as RectTransform);
+
+            var img = go.AddComponent<Image>();
+            img.sprite = _config.GuideButtonSprite;
+            img.color = Color.white;
+            img.type = Image.Type.Simple;
+            img.raycastTarget = true;
+            TrySetAlphaHit(img, "GuideButtonSprite");
+
+            _guideButton = go.AddComponent<Button>();
+            _guideButton.transition = Selectable.Transition.None;
+            _guideButton.targetGraphic = img;
+            _guideButton.onClick.AddListener(OnGuideClicked);
+        }
+
+        private void EnsureGuidePanel()
+        {
+            if (_guideRoot != null)
+            {
+                return;
+            }
+
+            var parent = Root != null ? Root.transform : transform;
+            _guideRoot = new GameObject("GuidePanel(runtime)", typeof(RectTransform));
+            _guideRoot.transform.SetParent(parent, false);
+            StretchFull(_guideRoot.transform as RectTransform);
+            _guideCanvasGroup = _guideRoot.AddComponent<CanvasGroup>();
+
+            // 图片层（全屏），同时充当点击捕获层
+            var imgGo = new GameObject("GuideImage", typeof(RectTransform));
+            imgGo.transform.SetParent(_guideRoot.transform, false);
+            StretchFull(imgGo.transform as RectTransform);
+            var img = imgGo.AddComponent<Image>();
+            img.type = Image.Type.Simple;
+            img.raycastTarget = true;
+            if (_config.GuidePageImage != null)
+            {
+                img.sprite = _config.GuidePageImage;
+                img.color = Color.white;
+            }
+            else
+            {
+                // 引导图待补 → 深色占位底
+                img.sprite = null;
+                img.color = new Color(0.05f, 0.05f, 0.08f, 0.96f);
+                PlaceholderWarnOnce("GuidePageImage");
+            }
+
+            // 提示文字（底部居中）
+            var hintGo = new GameObject("GuideHint", typeof(RectTransform));
+            hintGo.transform.SetParent(_guideRoot.transform, false);
+            var hrt = (RectTransform)hintGo.transform;
+            hrt.anchorMin = new Vector2(0.5f, 0.08f);
+            hrt.anchorMax = new Vector2(0.5f, 0.08f);
+            hrt.sizeDelta = new Vector2(1400f, 90f);
+            hrt.anchoredPosition = Vector2.zero;
+            _guideHint = hintGo.AddComponent<TextMeshProUGUI>();
+            _guideHint.alignment = TextAlignmentOptions.Center;
+            _guideHint.fontSize = 36f;
+            _guideHint.color = new Color(1f, 1f, 1f, 0.85f);
+            _guideHint.raycastTarget = false;
+
+            _guideRoot.SetActive(false);
+        }
+
+        private void OnGuideClicked()
+        {
+            EnsureGuidePanel();
+            if (_guideRoot == null)
+            {
+                return;
+            }
+
+            _guideRoot.transform.SetAsLastSibling(); // 置于最上层
+            _guideRoot.SetActive(true);
+            if (_guideCanvasGroup != null)
+            {
+                _guideCanvasGroup.alpha = 1f;
+                _guideCanvasGroup.blocksRaycasts = true; // 挡住下方菜单按钮，避免误触
+                _guideCanvasGroup.interactable = true;
+            }
+
+            _guideShowing = true;
+            _guideReturnHintShown = false;
+            _guideUnlockTime = Time.unscaledTime + GuideLockSeconds;
+            if (_guideHint != null)
+            {
+                bool placeholder = _config != null && _config.GuidePageImage == null;
+                _guideHint.text = placeholder ? "操作指引（引导图待补）" : string.Empty;
+            }
+        }
+
+        private void HideGuide()
+        {
+            _guideShowing = false;
+            if (_guideCanvasGroup != null)
+            {
+                _guideCanvasGroup.blocksRaycasts = false;
+                _guideCanvasGroup.interactable = false;
+            }
+
+            if (_guideRoot != null)
+            {
+                _guideRoot.SetActive(false);
+            }
+        }
+
+        /// <summary>开 alpha 命中前先判纹理可读，不可读则降级不设阈值（否则运行时抛异常）。</summary>
+        private void TrySetAlphaHit(Image img, string fieldKey)
+        {
+            if (img == null || img.sprite == null)
+            {
+                return;
+            }
+
+            var tex = img.sprite.texture;
+            if (tex != null && tex.isReadable)
+            {
+                img.alphaHitTestMinimumThreshold = AlphaHitThreshold;
+            }
+            else
+            {
+                // 纹理未开 Read/Write → 退化为整块可点，功能受损但不崩
+                PlaceholderWarnOnce("alphaHitReadable:" + fieldKey);
+            }
+        }
+
+        private static void HideIfPresent(GameObject go)
+        {
+            if (go != null)
+            {
+                go.SetActive(false);
+            }
+        }
+
+        private static void StretchFull(RectTransform rt)
+        {
+            if (rt == null)
+            {
+                return;
+            }
+
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
         private void OnStartClicked()
