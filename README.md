@@ -3,7 +3,7 @@
 > Unity 2022.3.62f2 · URP 2D · TextMeshPro · C#（命名空间 `Ciga.*`）
 > 当前为 **48H Jam 程序框架阶段**：用**色块**占位演示，把计划玩法完整跑通（不含美术/音效资源）。
 
-一款心理恐怖题材的「锚点解谜」小游戏。主角在停电的夜晚失去母亲，从此「家」成了不断被重构、却永远修不完整的心理模型。白天玩家触碰物品、把它们的**抽象特征**（颜色 / 形状 / 材质 / 纹理）选作「锚点」；夜晚房间异变为恐怖空间，玩家要在扭曲环境里找到匹配锚点特征的物品来维持**理智值（San）**，激活全部锚点即通关。
+一款心理恐怖题材的「锚点解谜」小游戏。主角在停电的夜晚失去母亲，从此「家」成了不断被重构、却永远修不完整的心理模型。白天玩家触碰物品、把它们的**抽象特征**（颜色 / 形状 / 材质 / 质感 / 声音，由配置表驱动）选作「锚点」；夜晚房间异变为恐怖空间，玩家要在扭曲环境里找到匹配锚点特征的物品来维持**理智值（San）**，激活全部锚点即通关。
 
 **锚定的是物品的抽象特征，不是物品本身。**
 
@@ -91,13 +91,13 @@ Assets/
 ├── Scripts/AnchorHorror/   业务代码（命名空间 Ciga.AnchorHorror，属 Ciga.Game 程序集）
 │   ├── Core/     枚举 / FeatureUnit / AnchorTarget / EventBus
 │   ├── Config/   GlobalConfig / FeatureDatabase / LevelConfig（ScriptableObject）
-│   ├── Feature/  FeatureTag（物品 4 维特征组件）
+│   ├── Feature/  FeatureTag（物品多维特征组件，维度字段由 CSV 生成，见「六」）
 │   ├── Systems/  Anchor / Sanity / Interaction / LevelFeatureRegistry
 │   ├── Flow/     GameManager（单例·状态机·过渡协程）
 │   ├── Player/   PlayerController2D（俯视 2D 移动）
 │   ├── UI/       MemoryPanel / DebugHUD
 │   └── Feedback/ SanityFeedback / CameraShake2D / MatchFeedback / FloatingText（表现，只订阅）
-├── Editor/AnchorHorror/    AnchorHorrorSetup（一键生成演示装配）
+├── Editor/AnchorHorror/    AnchorHorrorSetup（一键生成演示装配）+ Codegen（CSV→枚举/SO 生成器）+ LevelEditor
 ├── Tests/AnchorHorror/     EditMode 逻辑测试 + PlayMode 冒烟测试
 └── Res/AnchorHorror/       Bootstrap/HorrorLevel 场景 + 3 个 SO 配置 + WhiteSquare 方块
 ```
@@ -106,6 +106,70 @@ Assets/
 
 ---
 
-## 六、版本控制
+## 六、特征配置表（改表加维度 / 取值，零代码）
+
+物品特征（颜色 / 形状 / 材质 / 质感 / 声音）由**一张 CSV 配置表**驱动，策划改表即可增删维度和取值，无需程序写代码。
+
+### 表在哪
+
+`Assets/Res/AnchorHorror/AnchorFeatures.csv`（纯文本，Excel / VSCode / 记事本都能改）。
+
+### 表结构
+
+每行首列 `rowType` 区分：`@dim` = 维度声明，`@val` = 一个取值，`#` = 注释（忽略）。列依次为：
+
+| 列 | 说明 |
+|------|------|
+| `rowType` | `@dim` / `@val` / `#` |
+| `dimId` `dimKey` | 维度的稳定整数 ID + 英文名（PascalCase） |
+| `valueId` | 该维度内取值的稳定 ID：**≥1、每维唯一、连续无空洞**；`0` 保留给 None（别写） |
+| `enumMember` | 英文成员名（PascalCase，代码用） |
+| `displayNameZh` | 中文名（游戏内浮字 / 记忆面板显示） |
+| `colorHex` | **仅 Color 维**填 `#RRGGBB`，其他维留空（回退金色） |
+| `audioGuid` | **仅 Sound 维**填（音效 GUID 或 `Audio/xxx.wav` 相对路径），留空则匹配时回退程序化暖音 |
+| `note` | 备注，随便写 |
+
+### 加一个取值（最常见）
+
+在对应维度段末尾加一行，ID 接着往下续。例：给颜色加「青色」（Color 现到 18）：
+
+```
+@val,0,Color,19,Cyan,青色,#4FD8D8,,新增
+```
+
+### 加一个新维度
+
+```
+@dim,5,Smell,,,,,,气味维度
+@val,5,Smell,1,Floral,花香,,,
+```
+
+生成后自动多出 `FeatureSmell` 枚举、`FeatureTag` 上多一个下拉、匹配链路自动支持——**`FeatureTag.cs` 一行不用改**。
+
+### 改完必做：生成
+
+Unity 菜单 **`Ciga` → `AnchorHorror` → `从CSV生成特征`**。它会：校验表（有错弹框告知第几行、不落盘）→ 重新生成 `FeatureEnums.Generated.cs` 与 `FeatureTag.Generated.cs` → 回填 `FeatureDatabase.asset`（中文名 / 颜色 / 音效）→ 触发编译。（旁边 `校验生成往返一致` 可核对磁盘产物是否与表同步。）
+
+### 给物品配特征
+
+- **直接摆场景**：物品挂 `FeatureTag`，Inspector 里逐维下拉选值。
+- **数据驱动 / 关卡编辑器**：`ItemDatabase` 里配 `ItemDefinition` 默认特征，`LevelData` 的 `PlacedItem` 可勾 `OverrideFeatures` 覆盖（含声音）；关卡编辑器窗口选中物品也有这些下拉。
+
+### 声音接真实音效
+
+`.wav` 放 `Assets/Res/AnchorHorror/Audio/`（走 LFS）→ 把它的 GUID 或相对路径 `Audio/xxx.wav` 填进 CSV 该 Sound 行的 `audioGuid` 列 → 重跑生成。之后匹配到该声音锚点时 `MatchFeedback` 会播这个 clip（没填则回退暖音，不会崩）。
+
+### 几条硬规矩（校验器会拦）
+
+- `valueId ∈ [1,255]`、每维唯一、**不能写 0**。
+- **旧值的 ID 别改**（改了会让已摆好的物品 / 存档错位）——只往后加新值。
+- `enumMember` / `dimKey` 必须是合法英文标识符（不能中文、不能数字开头）。
+- 复合材质（木质玻璃等）是**独立单值**：配「木质玻璃」的物品命中「木质玻璃」锚点，但**不**命中「木质」或「玻璃」锚点——这是有意的解谜设计。
+
+> ⚠️ 生成物 `FeatureEnums.Generated.cs` / `FeatureTag.Generated.cs` 由表生成，**请勿手改**（下次生成会覆盖）。一句话流程：**改 `AnchorFeatures.csv` → 跑「从CSV生成特征」菜单 → 在物品 / 关卡编辑器里用新值**。
+
+---
+
+## 七、版本控制
 
 仓库 `CIGA_Game`（GitHub 私有，`origin/main`）。日常：`git add -A && git commit && git push`。**只用 `git push`，不要用 GitHub 网页拖拽上传**（会无视 `.gitignore`）。Unity 生成物（`Library/Temp/Logs/obj`）与本地 AI 文档已在 `.gitignore` 排除。
