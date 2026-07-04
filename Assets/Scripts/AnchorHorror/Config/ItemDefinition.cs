@@ -29,6 +29,7 @@ namespace Ciga.AnchorHorror
         [SerializeField] private FeatureShape _shape;
         [SerializeField] private FeatureMaterial _material;
         [SerializeField] private FeatureTexture _texture;
+        [SerializeField] private FeatureSound _sound;
         [SerializeField] private Vector2 _defaultScale = Vector2.one;
         [SerializeField] private ColliderKind _collider;
 
@@ -52,6 +53,9 @@ namespace Ciga.AnchorHorror
 
         /// <summary>默认纹理特征。</summary>
         public FeatureTexture Texture => _texture;
+
+        /// <summary>默认声音特征。</summary>
+        public FeatureSound Sound => _sound;
 
         /// <summary>默认缩放，默认值 (1,1)。</summary>
         public Vector2 DefaultScale => _defaultScale;

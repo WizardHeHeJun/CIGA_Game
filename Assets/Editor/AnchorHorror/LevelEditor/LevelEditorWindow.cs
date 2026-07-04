@@ -393,19 +393,21 @@ namespace Ciga.AnchorHorror.EditorTools
 
             EditorGUILayout.LabelField("选中实例属性", EditorStyles.boldLabel);
 
-            // 四枚举 Popup
+            // 五维枚举 Popup（含声音）
             var newColor = (FeatureColor)EditorGUILayout.EnumPopup("颜色", _inspectedTag.Color);
             var newShape = (FeatureShape)EditorGUILayout.EnumPopup("形状", _inspectedTag.Shape);
             var newMaterial = (FeatureMaterial)EditorGUILayout.EnumPopup("材质", _inspectedTag.Material);
             var newTexture = (FeatureTexture)EditorGUILayout.EnumPopup("纹理", _inspectedTag.Texture);
+            var newSound = (FeatureSound)EditorGUILayout.EnumPopup("声音", _inspectedTag.Sound);
 
             bool featureChanged = newColor != _inspectedTag.Color || newShape != _inspectedTag.Shape ||
-                                  newMaterial != _inspectedTag.Material || newTexture != _inspectedTag.Texture;
+                                  newMaterial != _inspectedTag.Material || newTexture != _inspectedTag.Texture ||
+                                  newSound != _inspectedTag.Sound;
 
             if (featureChanged)
             {
                 Undo.RecordObject(_inspectedTag, "修改物品特征");
-                _inspectedTag.Configure(newColor, newShape, newMaterial, newTexture);
+                _inspectedTag.Configure(newColor, newShape, newMaterial, newTexture, newSound);
                 MarkSessionDirty();
                 EditorUtility.SetDirty(_inspectedTag);
             }

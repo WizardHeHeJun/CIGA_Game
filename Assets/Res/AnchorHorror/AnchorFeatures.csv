@@ -1,0 +1,84 @@
+# AnchorFeatures.csv —— AnchorHorror 特征唯一真源（策划编辑此表 → 菜单 Ciga/AnchorHorror/从CSV生成特征 → 生成枚举+SO）
+# 列: rowType,dimId,dimKey,valueId,enumMember,displayNameZh,colorHex,audioGuid,note
+#   rowType: @dim=维度声明  @val=取值  #=注释
+#   valueId: 每维度显式整数 ID，>=1，连续无空洞；0 保留给 None（生成器自动注入，禁止在表里显式写 0）
+#   enumMember/dimKey: 英文 PascalCase（代码标识符，禁中文）；displayNameZh: 中文（仅游戏内展示）
+#   旧枚举成员一律沿用现有 (int) 值（ID 兼容，勿改）；colorHex 仅 Color 维度用；audioGuid 仅 Sound 维度用（GUID 或 Audio/xxx.wav 相对路径，空则回退暖音）
+#
+# ================= 维度声明 =================
+@dim,0,Color,,,,,,颜色（视觉）→ enum FeatureColor
+@dim,1,Shape,,,,,,形状（外形轮廓）→ enum FeatureShape
+@dim,2,Material,,,,,,材质（摸出来的感觉）→ enum FeatureMaterial
+@dim,3,Texture,,,,,,质感/纹理（看出来的表面）→ enum FeatureTexture
+@dim,4,Sound,,,,,,声音（听觉，新增维度）→ enum FeatureSound（值挂 AudioClip）
+#
+# ================= Color（旧 1-7 沿用现有枚举；新增 8-18 续号）=================
+@val,0,Color,1,Red,红色,#FF6B6B,,旧 Red=1
+@val,0,Color,2,Blue,蓝色,#7399FF,,旧 Blue=2
+@val,0,Color,3,Green,绿色,#80E68C,,旧 Green=3
+@val,0,Color,4,Yellow,黄色,#FFE666,,旧 Yellow=4
+@val,0,Color,5,White,白色,#FFFFFF,,旧 White=5
+@val,0,Color,6,Black,黑色,#B3B3BF,,旧 Black=6
+@val,0,Color,7,Brown,棕色,#CC8C59,,旧 Brown=7
+@val,0,Color,8,Beige,米黄,#F0E0B8,,新增
+@val,0,Color,9,Transparent,透明,#DDEEEE,,新增（无实色，取浅色代表）
+@val,0,Color,10,LightGray,浅灰,#C8C8CC,,新增
+@val,0,Color,11,DarkBrown,深棕,#8C5A33,,新增
+@val,0,Color,12,DarkRed,深红,#B03A3A,,新增
+@val,0,Color,13,WarmYellow,暖黄,#FFC94D,,新增
+@val,0,Color,14,Gold,金色,#E6C34D,,新增
+@val,0,Color,15,Gray,灰色,#9A9AA0,,新增
+@val,0,Color,16,DarkGray,深灰,#6E6E74,,新增
+@val,0,Color,17,Colorful,彩色,#FF6BAA,,新增（无单一色，取代表色，可改）
+@val,0,Color,18,Silver,银色,#C8CDD2,,新增
+#
+# ================= Shape（旧 1-5 沿用；新增 6-7）=================
+@val,1,Shape,1,Round,圆形,,,旧 Round=1
+@val,1,Shape,2,Square,方形,,,旧 Square=2
+@val,1,Shape,3,Long,长条,,,旧 Long=3
+@val,1,Shape,4,Flat,扁平,,,旧 Flat=4（demo 用，策划关卡未用）
+@val,1,Shape,5,Irregular,不规则,,,旧 Irregular=5
+@val,1,Shape,6,Curved,弯曲,,,新增
+@val,1,Shape,7,Cone,锥形,,,新增
+#
+# ================= Material（旧 1-6 沿用；新增 7-11，含 3 复合材质=各自独立单值）=================
+@val,2,Material,1,Wood,木质,,,旧 Wood=1
+@val,2,Material,2,Metal,金属,,,旧 Metal=2
+@val,2,Material,3,Glass,玻璃,,,旧 Glass=3
+@val,2,Material,4,Fabric,布料,,,旧 Fabric=4
+@val,2,Material,5,Paper,纸质,,,旧 Paper=5
+@val,2,Material,6,Ceramic,陶瓷,,,旧 Ceramic=6
+@val,2,Material,7,Plastic,塑料,,,新增
+@val,2,Material,8,Stone,石材,,,新增
+@val,2,Material,9,WoodGlass,木质玻璃,,,新增·复合材质独立单值（≠木质≠玻璃）
+@val,2,Material,10,GlassMetal,玻璃金属,,,新增·复合材质独立单值
+@val,2,Material,11,MetalPlastic,金属塑料,,,新增·复合材质独立单值
+#
+# ================= Texture（旧 1-5 沿用成员名，Glossy 中文改"亮面"复用策划词；新增 6-18）=================
+@val,3,Texture,1,Smooth,光滑,,,旧 Smooth=1（策划"光滑"）
+@val,3,Texture,2,Rough,粗糙,,,旧 Rough=2（策划"粗糙"）
+@val,3,Texture,3,Glossy,亮面,,,旧 Glossy=3 中文改"有光泽"→"亮面"复用策划词（成员名不动保测试）
+@val,3,Texture,4,Matte,哑光,,,旧 Matte=4（策划"哑光"）
+@val,3,Texture,5,Patterned,有纹路,,,旧 Patterned=5（demo 兼容保留，策划关卡未用）
+@val,3,Texture,6,Soft,柔软,,,新增
+@val,3,Texture,7,SoftLight,柔光,,,新增
+@val,3,Texture,8,Reflective,反光,,,新增
+@val,3,Texture,9,Peeling,剥落,,,新增
+@val,3,Texture,10,Fiber,纤维,,,新增
+@val,3,Texture,11,Worn,磨损,,,新增
+@val,3,Texture,12,Wet,湿润,,,新增
+@val,3,Texture,13,Scaled,刻度,,,新增（钟面刻度）
+@val,3,Texture,14,PaintPeeled,脱漆,,,新增
+@val,3,Texture,15,Cracked,裂纹,,,新增
+@val,3,Texture,16,Broken,破损,,,新增
+@val,3,Texture,17,Fissure,裂痕,,,新增
+@val,3,Texture,18,Scratched,划痕,,,新增
+#
+# ================= Sound（新维度，audioGuid 先空→回退暖音，真音效入库后回填）=================
+@val,4,Sound,1,ClothTouch,布料轻触声,,,音频待入库
+@val,4,Sound,2,WoodFriction,木质摩擦声,,,音频待入库
+@val,4,Sound,3,LightHum,灯光嗡鸣,,,音频待入库
+@val,4,Sound,4,GlassClink,玻璃轻响,,,音频待入库
+@val,4,Sound,5,Ticking,滴答声,,,音频待入库
+@val,4,Sound,6,MetalMechanical,金属机械声,,,音频待入库
+@val,4,Sound,7,PlasticClick,塑料轻响,,,音频待入库
