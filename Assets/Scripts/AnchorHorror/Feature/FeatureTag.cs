@@ -53,6 +53,34 @@ namespace Ciga.AnchorHorror
             RebuildFeatures();
         }
 
+        /// <summary>
+        /// 按 (维度,值) 列表通用写入特征：反射到生成的 _&lt;dim&gt; 字段，天然容纳 CSV 新增/移除维度。
+        /// 仅编辑器动态维度编辑路径调用（非运行时热路径）。写完 RebuildFeatures 重建缓存。
+        /// </summary>
+        public void SetFeatures(IReadOnlyList<FeatureUnit> features)
+        {
+            if (features == null)
+            {
+                return;
+            }
+
+            var type = typeof(FeatureTag); // 用具体类型而非 GetType()：字段在本类的 generated partial，防子类反射漏字段
+            for (int i = 0; i < features.Count; i++)
+            {
+                var unit = features[i];
+                string dimKey = unit.Dimension.ToString();
+                string fieldName = "_" + char.ToLowerInvariant(dimKey[0]) + dimKey.Substring(1);
+                var field = type.GetField(fieldName,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field != null && field.FieldType.IsEnum)
+                {
+                    field.SetValue(this, System.Enum.ToObject(field.FieldType, unit.Value));
+                }
+            }
+
+            RebuildFeatures();
+        }
+
         private void Awake()
         {
             if (_renderer == null)
