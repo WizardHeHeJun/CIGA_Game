@@ -12,13 +12,14 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Ciga.AnchorHorror.EditorTools
 {
     /// <summary>
     /// 一键生成锚点解谜的可运行装配：3 个 SO + Bootstrap/HorrorLevel 场景（已接线）+ 加入 Build Settings。
     /// 幂等：已存在则复用。菜单 Ciga/AnchorHorror/生成可运行装配。
-    /// 表现走 DebugHUD 的 IMGUI，不依赖 uGUI Canvas；黑屏/音频等可选引用留空（运行时判空）。
+    /// 界面走 uGUI Canvas（记忆面板 + 结算界面，均 TMP）；DebugHUD 仍用 IMGUI；黑屏/音频等可选引用留空（运行时判空）。
     /// 场景以"附加模式"离线构建，绝不替换/干扰用户当前打开的场景（避免自动化下弹保存框）。
     /// </summary>
     public static class AnchorHorrorSetup
@@ -99,8 +100,8 @@ namespace Ciga.AnchorHorror.EditorTools
             var feedback = root.AddComponent<SanityFeedback>();
             var shake = root.AddComponent<CameraShake2D>();
             root.AddComponent<MatchFeedback>();
-            root.AddComponent<MemoryPanel>();
-            root.AddComponent<ResultScreen>();
+            var memoryPanel = root.AddComponent<MemoryPanel>();
+            var resultScreen = root.AddComponent<ResultScreen>();
             var hud = root.AddComponent<DebugHUD>();
             var audio = root.AddComponent<AudioSource>();
             audio.playOnAwake = false;
@@ -192,6 +193,105 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_whisperSource", whisper);
             WireObj(shake, "_camera", camGo.transform);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
+
+            // --- uGUI 界面（记忆面板 + 结算界面），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
+            BuildAndWireUi(root.transform, memoryPanel, resultScreen);
+        }
+
+        // 构建共享的 Screen Space Overlay Canvas，内含记忆面板与结算界面（两者初始隐藏），并接线到组件。
+        // 无按钮交互（Tab / R / Esc 走键盘），故不加 GraphicRaycaster / EventSystem。
+        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result)
+        {
+            var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
+            canvasGo.transform.SetParent(parent, false);
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 100;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+
+            // --- 记忆面板：居中的半透明暗色盒，内含 richText 内容 ---
+            var memRoot = NewUiNode(canvas.transform, "MemoryPanelRoot");
+            memRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            memRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            memRoot.pivot = new Vector2(0.5f, 0.5f);
+            memRoot.anchoredPosition = Vector2.zero;
+            memRoot.sizeDelta = new Vector2(760f, 620f);
+            var memBg = memRoot.gameObject.AddComponent<Image>();
+            memBg.color = new Color(0.05f, 0.05f, 0.08f, 0.92f);
+            memBg.raycastTarget = false;
+
+            var memContent = CreateText(memRoot, "MemoryContent", 32f, TextAlignmentOptions.TopLeft);
+            var memContentRt = (RectTransform)memContent.transform;
+            StretchFull(memContentRt);
+            memContentRt.offsetMin = new Vector2(40f, 40f);
+            memContentRt.offsetMax = new Vector2(-40f, -40f);
+            memContent.enableWordWrapping = true;
+            memRoot.gameObject.SetActive(false);
+
+            // --- 结算界面：全屏压暗 + 大标题 + 操作提示 ---
+            var resultRoot = NewUiNode(canvas.transform, "ResultRoot");
+            StretchFull(resultRoot);
+            var dim = resultRoot.gameObject.AddComponent<Image>();
+            dim.color = new Color(0f, 0f, 0f, 0.62f);
+            dim.raycastTarget = false;
+
+            var title = CreateText(resultRoot, "ResultTitle", 96f, TextAlignmentOptions.Center);
+            title.fontStyle = FontStyles.Bold;
+            title.text = "已 通 关";
+            var titleRt = (RectTransform)title.transform;
+            titleRt.anchorMin = new Vector2(0f, 0.5f);
+            titleRt.anchorMax = new Vector2(1f, 0.5f);
+            titleRt.pivot = new Vector2(0.5f, 0.5f);
+            titleRt.sizeDelta = new Vector2(0f, 180f);
+            titleRt.anchoredPosition = new Vector2(0f, 80f);
+
+            var hint = CreateText(resultRoot, "ResultHint", 36f, TextAlignmentOptions.Center);
+            hint.text = "按 R 重新开始      按 Esc 返回主菜单";
+            var hintRt = (RectTransform)hint.transform;
+            hintRt.anchorMin = new Vector2(0f, 0.5f);
+            hintRt.anchorMax = new Vector2(1f, 0.5f);
+            hintRt.pivot = new Vector2(0.5f, 0.5f);
+            hintRt.sizeDelta = new Vector2(0f, 60f);
+            hintRt.anchoredPosition = new Vector2(0f, -60f);
+            resultRoot.gameObject.SetActive(false);
+
+            WireObj(memory, "_root", memRoot.gameObject);
+            WireObj(memory, "_content", memContent);
+            WireObj(result, "_root", resultRoot.gameObject);
+            WireObj(result, "_title", title);
+            WireObj(result, "_hint", hint);
+        }
+
+        private static RectTransform NewUiNode(Transform parent, string name)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            return (RectTransform)go.transform;
+        }
+
+        private static void StretchFull(RectTransform rt)
+        {
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
+        private static TextMeshProUGUI CreateText(RectTransform parent, string name, float fontSize, TextAlignmentOptions align)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = fontSize;
+            tmp.alignment = align;
+            tmp.color = Color.white;
+            tmp.richText = true;
+            tmp.raycastTarget = false;
+            return tmp;
         }
 
         private static void PopulateHorrorLevel()
