@@ -369,10 +369,14 @@ namespace Ciga.AnchorHorror
             // 隐藏/销毁场景 GO（物品已入包，场景对象不再需要）
             item.gameObject.SetActive(false);
 
-            // 满足判定：每个锚点有 ≥1 背包物品命中
+            // 满足判定：每个锚点有 ≥1 背包物品命中 → 通关；否则背包满(8)仍未满足 → 直接失败（用户要求）。
             if (_backpack.Satisfies(Anchor.Targets))
             {
                 EventBus.RaiseAllAnchorsActivated();
+            }
+            else if (_backpack.Count >= _backpack.Capacity)
+            {
+                Fail();
             }
         }
 

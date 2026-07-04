@@ -173,6 +173,12 @@ namespace Ciga.AnchorHorror
             }
         }
 
+        /// <summary>检视物品（R 键）：广播 ItemInspected，由 MatchFeedback 播声音 + 浮出特征信息。不入包、无业务后果。</summary>
+        public void Inspect()
+        {
+            EventBus.RaiseItemInspected(this);
+        }
+
         /// <summary>切换高亮（占位实现：改 SpriteRenderer 颜色）。</summary>
         public void SetHighlight(bool on)
         {

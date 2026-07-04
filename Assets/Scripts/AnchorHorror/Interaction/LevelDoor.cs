@@ -125,6 +125,11 @@ namespace Ciga.AnchorHorror
             }
         }
 
+        /// <summary>门无可检视信息（IInteractable 接口要求的空实现）。</summary>
+        public void Inspect()
+        {
+        }
+
         /// <summary>切换高亮：改 SpriteRenderer 颜色。</summary>
         public void SetHighlight(bool on)
         {

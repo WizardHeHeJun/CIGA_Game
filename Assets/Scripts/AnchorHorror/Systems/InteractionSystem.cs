@@ -16,7 +16,8 @@ namespace Ciga.AnchorHorror
     {
         [SerializeField] private Transform _player;
         [SerializeField] private LayerMask _interactMask = ~0;
-        [SerializeField] private KeyCode _interactKey = KeyCode.E;
+        [SerializeField] private KeyCode _interactKey = KeyCode.E;   // 拾取/选择
+        [SerializeField] private KeyCode _inspectKey = KeyCode.R;    // 检视（听声音/看信息）
         [SerializeField] private float _fallbackRadius = 1.5f;
 
         private readonly Collider2D[] _hits = new Collider2D[16];
@@ -58,6 +59,11 @@ namespace Ciga.AnchorHorror
             if (_current != null && Input.GetKeyDown(_interactKey))
             {
                 _current.Interact();
+            }
+
+            if (_current != null && Input.GetKeyDown(_inspectKey))
+            {
+                _current.Inspect();
             }
         }
 
