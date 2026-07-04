@@ -22,11 +22,14 @@ namespace Ciga.AnchorHorror
             [SerializeField] private int _value;
             [SerializeField] private string _displayName;
             [SerializeField] private Color _keywordColor = Color.white;
+            [Tooltip("可选：该特征的音效（当前仅 Sound 维度用；空则匹配时回退程序化暖音）。")]
+            [SerializeField] private AudioClip _clip;
 
             public FeatureDimension Dimension => _dimension;
             public int Value => _value;
             public string DisplayName => _displayName;
             public Color KeywordColor => _keywordColor;
+            public AudioClip Clip => _clip;
         }
 
         [SerializeField] private List<FeatureEntry> _entries = new List<FeatureEntry>();
@@ -51,6 +54,7 @@ namespace Ciga.AnchorHorror
                 case FeatureDimension.Shape: return ((FeatureShape)unit.Value).ToString();
                 case FeatureDimension.Material: return ((FeatureMaterial)unit.Value).ToString();
                 case FeatureDimension.Texture: return ((FeatureTexture)unit.Value).ToString();
+                case FeatureDimension.Sound: return ((FeatureSound)unit.Value).ToString();
                 default: return unit.ToString();
             }
         }
@@ -60,6 +64,13 @@ namespace Ciga.AnchorHorror
         {
             var entry = Find(unit);
             return entry != null ? entry.KeywordColor : Color.white;
+        }
+
+        /// <summary>取特征音效；查不到或未配置则返回 null（调用方回退程序化暖音）。当前仅 Sound 维度会配置。</summary>
+        public AudioClip GetAudioClip(FeatureUnit unit)
+        {
+            var entry = Find(unit);
+            return entry != null ? entry.Clip : null;
         }
 
         private FeatureEntry Find(FeatureUnit unit)

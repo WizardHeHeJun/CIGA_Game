@@ -73,6 +73,7 @@ namespace Ciga.AnchorHorror
             FeatureShape shape;
             FeatureMaterial material;
             FeatureTexture texture;
+            FeatureSound sound;
 
             if (placed.OverrideFeatures)
             {
@@ -80,6 +81,7 @@ namespace Ciga.AnchorHorror
                 shape = placed.Shape;
                 material = placed.Material;
                 texture = placed.Texture;
+                sound = placed.Sound;
             }
             else
             {
@@ -87,9 +89,10 @@ namespace Ciga.AnchorHorror
                 shape = def.Shape;
                 material = def.Material;
                 texture = def.Texture;
+                sound = def.Sound;
             }
 
-            tag.Configure(color, shape, material, texture);
+            tag.Configure(color, shape, material, texture, sound);
 
             return go;
         }

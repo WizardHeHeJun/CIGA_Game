@@ -542,17 +542,26 @@ namespace Ciga.AnchorHorror.EditorTools
                 }
             }
 
-            if (cjk.TryAddCharacters(sb.ToString(), out string missing))
+            try
             {
-                Debug.Log("[AnchorHorror] CJK 字形已预烤进图集。");
-            }
-            else
-            {
-                Debug.LogWarning($"[AnchorHorror] CJK 预烤部分缺字（图集可能已满，需增大 Atlas 尺寸）：{missing}");
-            }
+                if (cjk.TryAddCharacters(sb.ToString(), out string missing))
+                {
+                    Debug.Log("[AnchorHorror] CJK 字形已预烤进图集。");
+                }
+                else
+                {
+                    Debug.LogWarning($"[AnchorHorror] CJK 预烤部分缺字（图集可能已满，需增大 Atlas 尺寸）：{missing}");
+                }
 
-            EditorUtility.SetDirty(cjk);
-            AssetDatabase.SaveAssets();
+                EditorUtility.SetDirty(cjk);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception ex)
+            {
+                // 预烤仅为编辑态优化（防品红闪）；失败不影响运行时——CJK 是 Dynamic 字体，运行时按需生成字形照样显示。
+                // 大字形集（如配置表全量特征名）会触发 TMP 多图集增长，在编辑脚本上下文偶发 m_AtlasTextures 引用失效；降级为告警，不中断 BuildAll。
+                Debug.LogWarning($"[AnchorHorror] CJK 预烤跳过（{ex.GetType().Name}）：运行时动态字体仍会显示中文。如需消除编辑态品红闪，手动增大 AnchorCJK SDF 图集尺寸后重烤。");
+            }
         }
 
         private static void AddToTmpGlobalFallback(TMP_FontAsset cjk)

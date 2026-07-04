@@ -26,6 +26,7 @@ namespace Ciga.AnchorHorror
         [SerializeField] private FeatureShape _shape;
         [SerializeField] private FeatureMaterial _material;
         [SerializeField] private FeatureTexture _texture;
+        [SerializeField] private FeatureSound _sound;
 
         [Tooltip("为 true 时，_sprite 覆盖物品定义的默认图片。")]
         [SerializeField] private bool _overrideSprite;
@@ -57,6 +58,9 @@ namespace Ciga.AnchorHorror
 
         /// <summary>覆盖纹理特征（仅 OverrideFeatures=true 时生效）。</summary>
         public FeatureTexture Texture => _texture;
+
+        /// <summary>覆盖声音特征（仅 OverrideFeatures=true 时生效）。</summary>
+        public FeatureSound Sound => _sound;
 
         /// <summary>是否覆盖 Sprite。</summary>
         public bool OverrideSprite => _overrideSprite;

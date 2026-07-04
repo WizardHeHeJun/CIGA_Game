@@ -28,6 +28,11 @@ namespace Ciga.AnchorHorror
         [Tooltip("暖音基频（Hz）；越高越清脆、越低越沉。")]
         [SerializeField] private float _matchToneHz = 523f;
 
+        [Header("特征音效（Sound 维度命中时播放，与暖音叠加；clip 空则不播）")]
+        [SerializeField] private AudioSource _featureSoundSource;
+        [Range(0f, 1f)]
+        [SerializeField] private float _featureSoundVolume = 0.7f;
+
         private AudioClip _matchClip;
 
         private void Awake()
@@ -36,6 +41,12 @@ namespace Ciga.AnchorHorror
             {
                 _matchSource = gameObject.AddComponent<AudioSource>();
                 _matchSource.playOnAwake = false;
+            }
+
+            if (_featureSoundSource == null)
+            {
+                _featureSoundSource = gameObject.AddComponent<AudioSource>();
+                _featureSoundSource.playOnAwake = false;
             }
 
             _matchClip = GenerateWarmTone(_matchToneHz);
@@ -79,6 +90,16 @@ namespace Ciga.AnchorHorror
                 Color color = db != null ? db.GetKeywordColor(hits[i]) : Color.white;
                 SpawnText(label, color, origin + Vector3.up * offset);
                 offset += 0.5f;
+
+                // Sound 维度命中：播放该特征配置的 AudioClip（未配置则不播，暖音已作通用确认音）
+                if (hits[i].Dimension == FeatureDimension.Sound && db != null && _featureSoundSource != null)
+                {
+                    var clip = db.GetAudioClip(hits[i]);
+                    if (clip != null)
+                    {
+                        _featureSoundSource.PlayOneShot(clip, _featureSoundVolume);
+                    }
+                }
             }
         }
 
