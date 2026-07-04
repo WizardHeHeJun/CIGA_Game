@@ -38,6 +38,9 @@ namespace Ciga.AnchorHorror.EditorTools
         // 关卡列表（FindAssets 缓存，窗口打开/刷新时重建）
         private List<LevelData> _allLevels = new List<LevelData>();
 
+        // 复用的特征编辑缓冲（避免 OnGUI 每帧 new List）
+        private readonly List<FeatureUnit> _editedFeats = new List<FeatureUnit>();
+
         // 调色板每行格子数
         private const int PaletteCols = 4;
         private const float PaletteThumbSize = 64f;
@@ -47,6 +50,10 @@ namespace Ciga.AnchorHorror.EditorTools
         private static readonly GUIContent _labelSpawn = new GUIContent("玩家出生点");
         private static readonly GUIContent _labelDb = new GUIContent("物品目录 (ItemDatabase)");
         private static readonly GUIContent _labelCfg = new GUIContent("关卡配置 (LevelConfig)");
+
+        // 缓存维度数组，避免 OnGUI 每帧 Enum.GetValues 分配
+        private static readonly FeatureDimension[] _allDims =
+            (FeatureDimension[])System.Enum.GetValues(typeof(FeatureDimension));
 
         // -------- 入口 --------
 
@@ -393,21 +400,36 @@ namespace Ciga.AnchorHorror.EditorTools
 
             EditorGUILayout.LabelField("选中实例属性", EditorStyles.boldLabel);
 
-            // 五维枚举 Popup（含声音）
-            var newColor = (FeatureColor)EditorGUILayout.EnumPopup("颜色", _inspectedTag.Color);
-            var newShape = (FeatureShape)EditorGUILayout.EnumPopup("形状", _inspectedTag.Shape);
-            var newMaterial = (FeatureMaterial)EditorGUILayout.EnumPopup("材质", _inspectedTag.Material);
-            var newTexture = (FeatureTexture)EditorGUILayout.EnumPopup("纹理", _inspectedTag.Texture);
-            var newSound = (FeatureSound)EditorGUILayout.EnumPopup("声音", _inspectedTag.Sound);
+            // 动态维度 Popup：按 FeatureDimension 遍历、反射对齐生成枚举 Feature<Dim>。
+            // CSV 加/减维度这里自动跟随，零改动（根治「编辑器漏某维度」类 bug）。
+            var current = _inspectedTag.GetFeatures();
+            _editedFeats.Clear();
+            bool featureChanged = false;
+            foreach (var dim in _allDims)
+            {
+                int curVal = DimValue(current, dim);
+                var enumType = typeof(FeatureUnit).Assembly.GetType("Ciga.AnchorHorror.Feature" + dim);
+                if (enumType == null)
+                {
+                    _editedFeats.Add(new FeatureUnit(dim, curVal));
+                    continue;
+                }
 
-            bool featureChanged = newColor != _inspectedTag.Color || newShape != _inspectedTag.Shape ||
-                                  newMaterial != _inspectedTag.Material || newTexture != _inspectedTag.Texture ||
-                                  newSound != _inspectedTag.Sound;
+                var curEnum = (System.Enum)System.Enum.ToObject(enumType, curVal);
+                var newEnum = EditorGUILayout.EnumPopup(dim.ToString(), curEnum);
+                int newVal = System.Convert.ToInt32(newEnum);
+                if (newVal != curVal)
+                {
+                    featureChanged = true;
+                }
+
+                _editedFeats.Add(new FeatureUnit(dim, newVal));
+            }
 
             if (featureChanged)
             {
                 Undo.RecordObject(_inspectedTag, "修改物品特征");
-                _inspectedTag.Configure(newColor, newShape, newMaterial, newTexture, newSound);
+                _inspectedTag.SetFeatures(_editedFeats);
                 MarkSessionDirty();
                 EditorUtility.SetDirty(_inspectedTag);
             }
@@ -432,6 +454,25 @@ namespace Ciga.AnchorHorror.EditorTools
             {
                 _session.IsDirty = true;
             }
+        }
+
+        /// <summary>从特征列表取某维度的当前值（缺省 0=None）。</summary>
+        private static int DimValue(IReadOnlyList<FeatureUnit> feats, FeatureDimension dim)
+        {
+            if (feats == null)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < feats.Count; i++)
+            {
+                if (feats[i].Dimension == dim)
+                {
+                    return feats[i].Value;
+                }
+            }
+
+            return 0;
         }
 
         private bool IsUnderPreviewRoot(Transform t)

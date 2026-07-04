@@ -3,6 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -112,7 +113,7 @@ namespace Ciga.AnchorHorror.EditorTools
 
         /// <summary>
         /// 把预览根下所有子物体回写进 <paramref name="level"/> 的 _items 列表。
-        /// 读取顺序：transform → FeatureTag 四枚举属性 → SpriteRenderer.sprite。
+        /// 读取顺序：transform → FeatureTag 全维度特征（GetFeatures，动态）→ SpriteRenderer.sprite。
         /// 与 def 默认值比较决定 override 开关。
         /// 操作全部走 Undo + SetDirty + SaveAssets。
         /// </summary>
@@ -159,25 +160,20 @@ namespace Ciga.AnchorHorror.EditorTools
                 float rotZ = child.eulerAngles.z;
                 var scale = new Vector2(child.localScale.x, child.localScale.y);
 
-                // 读 FeatureTag 四枚举属性
+                // 读 FeatureTag 全维度特征（GetFeatures 逐维返回 (维度,值)，天然容纳任意维度）
                 var tag = child.GetComponent<FeatureTag>();
-                FeatureColor color = tag != null ? tag.Color : default;
-                FeatureShape shape = tag != null ? tag.Shape : default;
-                FeatureMaterial material = tag != null ? tag.Material : default;
-                FeatureTexture texture = tag != null ? tag.Texture : default;
+                var feats = tag != null ? tag.GetFeatures() : null;
 
                 // 读 SpriteRenderer.sprite
                 var sr = child.GetComponent<SpriteRenderer>();
                 Sprite sprite = sr != null ? sr.sprite : null;
 
-                // 与 def 默认比较决定 override 开关
-                bool overrideFeatures = false;
-                bool overrideSprite = false;
-
+                // 与 def 默认比较决定 override 开关（逐维度通用比较，不再硬编码维度）
+                bool overrideFeatures;
+                bool overrideSprite;
                 if (db != null && db.TryGetById(itemRef.ItemId, out var def))
                 {
-                    overrideFeatures = color != def.Color || shape != def.Shape ||
-                                       material != def.Material || texture != def.Texture;
+                    overrideFeatures = FeaturesDifferFromDef(feats, def);
                     overrideSprite = sprite != def.Sprite;
                 }
                 else
@@ -197,17 +193,14 @@ namespace Ciga.AnchorHorror.EditorTools
                 elem.FindPropertyRelative("_rotationZ").floatValue = rotZ;
                 elem.FindPropertyRelative("_scale").vector2Value = scale;
                 elem.FindPropertyRelative("_overrideFeatures").boolValue = overrideFeatures;
-                elem.FindPropertyRelative("_color").enumValueIndex = (int)color;
-                elem.FindPropertyRelative("_shape").enumValueIndex = (int)shape;
-                elem.FindPropertyRelative("_material").enumValueIndex = (int)material;
-                elem.FindPropertyRelative("_texture").enumValueIndex = (int)texture;
+                WriteFeatureFields(elem, feats); // 逐维度写 _<dim 小写> 字段（通用）
                 elem.FindPropertyRelative("_overrideSprite").boolValue = overrideSprite;
                 elem.FindPropertyRelative("_sprite").objectReferenceValue = sprite;
             }
 
             so.ApplyModifiedProperties();
             EditorUtility.SetDirty(level);
-            AssetDatabase.SaveAssets();
+            AssetDatabase.SaveAssetIfDirty(level); // 只存本关卡资产，不误存其他脏资产
 
             IsDirty = false;
         }
@@ -246,6 +239,60 @@ namespace Ciga.AnchorHorror.EditorTools
         {
             var itemRef = go.AddComponent<LevelEditorItemRef>();
             itemRef.ItemId = itemId;
+        }
+
+        /// <summary>逐维度比较预览物体特征与物品定义默认值（通用，容纳任意维度）。</summary>
+        private static bool FeaturesDifferFromDef(IReadOnlyList<FeatureUnit> feats, ItemDefinition def)
+        {
+            if (feats == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < feats.Count; i++)
+            {
+                var u = feats[i];
+                if (u.Value != DefValue(def, u.Dimension))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>反射取 ItemDefinition 某维度默认值（编辑器路径，非热路径）。</summary>
+        private static int DefValue(ItemDefinition def, FeatureDimension dim)
+        {
+            var prop = typeof(ItemDefinition).GetProperty(dim.ToString());
+            if (prop == null)
+            {
+                return 0;
+            }
+
+            var val = prop.GetValue(def);
+            return val != null ? System.Convert.ToInt32(val) : 0;
+        }
+
+        /// <summary>逐维度把预览物体特征写进 PlacedItem 的 _&lt;dim 小写&gt; 序列化字段（通用，容纳任意维度）。</summary>
+        private static void WriteFeatureFields(SerializedProperty elem, IReadOnlyList<FeatureUnit> feats)
+        {
+            if (feats == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < feats.Count; i++)
+            {
+                var u = feats[i];
+                string dimKey = u.Dimension.ToString();
+                string fieldName = "_" + char.ToLowerInvariant(dimKey[0]) + dimKey.Substring(1);
+                var p = elem.FindPropertyRelative(fieldName);
+                if (p != null)
+                {
+                    p.enumValueIndex = u.Value;
+                }
+            }
         }
     }
 }

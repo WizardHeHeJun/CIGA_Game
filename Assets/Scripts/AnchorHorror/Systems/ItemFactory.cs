@@ -35,7 +35,8 @@ namespace Ciga.AnchorHorror
             // --- 2. 设 Transform（局部，SetParent 后再设避免世界坐标污染）---
             go.transform.localPosition = placed.Position;
             go.transform.localRotation = Quaternion.Euler(0f, 0f, placed.RotationZ);
-            go.transform.localScale = placed.Scale;
+            // Vector2→Vector3 会把 z 截断为 0（污染子节点世界缩放/gizmo）；显式给 z=1。
+            go.transform.localScale = new Vector3(placed.Scale.x, placed.Scale.y, 1f);
 
             // --- 3. 挂 Collider2D（按 ColliderKind 选 Box/Circle；FeatureTag 依赖此组件）---
             switch (def.Collider)
