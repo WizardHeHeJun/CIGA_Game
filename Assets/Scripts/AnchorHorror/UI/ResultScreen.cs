@@ -9,18 +9,22 @@ using UnityEngine;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 通关 / 失败结算界面（uGUI + TMP）：订阅 PhaseChanged，Clear/Fail 时激活盖屏面板，显示结果标题与操作提示。
-    /// R 重开、Esc 返回主菜单。面板结构由 AnchorHorrorSetup 生成并接线；只订阅 EventBus，不被逻辑依赖。
+    /// 三态结算界面（uGUI + TMP）：订阅 PhaseChanged，SubClear/Victory/Fail 时激活盖屏面板。
+    /// 视觉与按键响应由挂载的 ResultConfig SO 数据驱动（ADR-5）：
+    ///   - SubClear：显示过关提示，R/Esc 均关闭（只等玩家走门），防止误按重开（陷阱 5）；
+    ///   - Victory ：显示胜利结算，Esc→返回主菜单；
+    ///   - Fail    ：显示失败结算，R→重开局，Esc→返回主菜单。
+    /// 面板结构由 AnchorHorrorSetup 生成并接线；只订阅 EventBus，不被逻辑依赖。
     /// </summary>
     public class ResultScreen : MonoBehaviour
     {
-        private static readonly Color ClearColor = new Color(1f, 0.85f, 0.3f);
-        private static readonly Color FailColor = new Color(1f, 0.4f, 0.4f);
-
         [Header("UI 引用（生成器接线）")]
         [SerializeField] private GameObject _root;
         [SerializeField] private TMP_Text _title;
         [SerializeField] private TMP_Text _hint;
+
+        [Header("结算配置（ADR-5）")]
+        [SerializeField] private ResultConfig _resultConfig;
 
         [Header("按键")]
         [SerializeField] private KeyCode _restartKey = KeyCode.R;
@@ -57,17 +61,19 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
+            var entry = _resultConfig != null ? _resultConfig.Get(_phase) : null;
             var gm = GameManager.Instance;
             if (gm == null)
             {
                 return;
             }
 
-            if (Input.GetKeyDown(_restartKey))
+            // 按 ResultConfig 开关门控 R/Esc（陷阱 5：SubClear 两者 false，防止玩家误按 R 直接重开）
+            if (entry != null && entry.RespondsRestart && Input.GetKeyDown(_restartKey))
             {
                 gm.RestartGame();
             }
-            else if (Input.GetKeyDown(_menuKey))
+            else if (entry != null && entry.RespondsMenu && Input.GetKeyDown(_menuKey))
             {
                 gm.ReturnToMainMenu();
             }
@@ -86,22 +92,29 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
-            bool clear = _phase == GamePhase.Clear;
-            if (_title != null)
+            // 有 ResultConfig 时走数据化路径；无配置兜底显示空内容（避免空引用崩溃）
+            if (_resultConfig != null)
             {
-                _title.text = clear ? "已 通 关" : "理 智 崩 溃";
-                _title.color = clear ? ClearColor : FailColor;
-            }
+                var entry = _resultConfig.Get(_phase);
+                if (entry != null)
+                {
+                    if (_title != null)
+                    {
+                        _title.text = entry.Title;
+                        _title.color = entry.Color;
+                    }
 
-            if (_hint != null)
-            {
-                _hint.text = $"按 {_restartKey} 重新开始      按 {_menuKey} 返回主菜单";
+                    if (_hint != null)
+                    {
+                        _hint.text = entry.Hint;
+                    }
+                }
             }
         }
 
         private bool IsResult()
         {
-            return _phase == GamePhase.Clear || _phase == GamePhase.Fail;
+            return _phase == GamePhase.SubClear || _phase == GamePhase.Victory || _phase == GamePhase.Fail;
         }
     }
 }

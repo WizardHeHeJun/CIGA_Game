@@ -10,11 +10,13 @@ namespace Ciga.AnchorHorror
 {
     /// <summary>
     /// 挂在每个可交互物品上的特征标签：四维枚举 + 是否已消耗。
-    /// 纯数据组件（零业务依赖），最底层。需 Collider2D 以供 2D 交互检测。
+    /// 实现 IInteractable：InitRoom/HorrorLevel 阶段且未消耗时可交互；
+    /// Interact 内联原 InteractionSystem 的 Collect/TryMatch 分派（ADR-2）。
+    /// 需 Collider2D 以供 2D 交互检测。
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Collider2D))]
-    public class FeatureTag : MonoBehaviour
+    public class FeatureTag : MonoBehaviour, IInteractable
     {
         [Header("四维特征")]
         [SerializeField] private FeatureColor _color;
@@ -77,6 +79,46 @@ namespace Ciga.AnchorHorror
             }
 
             return _features;
+        }
+
+        // -------- IInteractable 实现 --------
+
+        /// <summary>
+        /// InitRoom 或 HorrorLevel 阶段且未消耗时可交互（ADR-2/6）。
+        /// </summary>
+        public bool CanInteract(GamePhase phase)
+        {
+            if (Consumed)
+            {
+                return false;
+            }
+
+            return phase == GamePhase.InitRoom || phase == GamePhase.HorrorLevel;
+        }
+
+        /// <summary>
+        /// 按当前阶段分派：InitRoom → CollectCandidate；HorrorLevel → TryMatch。
+        /// 原 InteractionSystem 的相位 switch 搬入此处（ADR-2）。
+        /// </summary>
+        public void Interact()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Anchor == null)
+            {
+                return;
+            }
+
+            switch (gm.CurrentPhase)
+            {
+                case GamePhase.InitRoom:
+                    gm.Anchor.CollectCandidate(this);
+                    Consumed = true; // 初始房间：交互过的物品不再重复计入
+                    break;
+
+                case GamePhase.HorrorLevel:
+                    gm.Anchor.TryMatch(this);
+                    break;
+            }
         }
 
         /// <summary>切换高亮（占位实现：改 SpriteRenderer 颜色）。</summary>

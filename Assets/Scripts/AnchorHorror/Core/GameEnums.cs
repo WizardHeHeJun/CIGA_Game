@@ -13,7 +13,8 @@ namespace Ciga.AnchorHorror
         InitRoom,     // 初始房间：收集候选锚点
         Transition,   // 过渡：黑屏+低语，加载关卡→扫描→抽锚点
         HorrorLevel,  // 恐怖关卡：衰减+匹配
-        Clear,        // 通关
+        SubClear,     // 子关通关：本关锚点全激活，等待玩家通过门进入下一关
+        Victory,      // 最终胜利：末关通关
         Fail,         // 失败
     }
 
