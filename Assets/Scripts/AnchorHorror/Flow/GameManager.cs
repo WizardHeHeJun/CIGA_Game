@@ -429,20 +429,23 @@ namespace Ciga.AnchorHorror
                 _levelRoot = null;
             }
 
-            // 建关卡2 子场景1（entries[1]）
-            _levelIndex = 1;
+            // 建关卡2：从**中间**的子场景进入（用户要求，便于左右两侧都能立即走）。
+            // 5 个子场景 entries[1..5] → 取 entries[3]（中间）。subCount/2 整除天然取中。
+            int subStart = 1;
+            int subCount = _sequence != null ? _sequence.Count - subStart : 0;
+            _levelIndex = subCount > 0 ? subStart + subCount / 2 : subStart;
             _levelData = _sequence != null ? _sequence.GetLevel(_levelIndex) : null;
 
             if (_levelData != null)
             {
                 _levelRoot = new GameObject("__LevelRoot");
                 LevelSpawner.Spawn(_levelData, _levelRoot.transform);
-                SpawnLevelDoor(); // 子场景门（SwitchSubScene）
+                SpawnLevelDoor(); // 子场景门（左右门线性来回）
                 MovePlayerToSpawn(_levelData.PlayerSpawn);
             }
             else
             {
-                Debug.LogWarning("[AnchorHorror] EnterLevel2Routine：序列 entries[1] 数据为 null，无法生成关卡2子场景1。");
+                Debug.LogWarning($"[AnchorHorror] EnterLevel2Routine：序列 entries[{_levelIndex}] 数据为 null，无法生成关卡2起始子场景。");
             }
 
             _sanity.DecayEnabled = true;
