@@ -11,8 +11,8 @@ using UnityEngine;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 匹配反馈：命中 → 物品微光 + 每个命中特征浮出关键词文本；不匹配 → 物品红闪。
-    /// 只订阅 EventBus（ItemMatched / ItemMismatched），不被逻辑依赖。
+    /// 匹配反馈：命中 → 物品微光 + 每个命中特征浮出关键词文本 + 程序化"暖音"确认音；不匹配 → 物品红闪。
+    /// 只订阅 EventBus（ItemMatched / ItemMismatched），不被逻辑依赖。音源缺省自动自建，无需外部接线。
     /// </summary>
     public class MatchFeedback : MonoBehaviour
     {
@@ -20,6 +20,26 @@ namespace Ciga.AnchorHorror
         [SerializeField] private Color _glowColor = new Color(1f, 0.95f, 0.6f, 1f);
         [SerializeField] private Color _mismatchColor = new Color(1f, 0.3f, 0.3f, 1f);
         [SerializeField] private float _glowTime = 0.5f;
+
+        [Header("匹配暖音（AudioSource 可空，缺省自建；程序化生成柔和确认音）")]
+        [SerializeField] private AudioSource _matchSource;
+        [Range(0f, 1f)]
+        [SerializeField] private float _matchVolume = 0.45f;
+        [Tooltip("暖音基频（Hz）；越高越清脆、越低越沉。")]
+        [SerializeField] private float _matchToneHz = 523f;
+
+        private AudioClip _matchClip;
+
+        private void Awake()
+        {
+            if (_matchSource == null)
+            {
+                _matchSource = gameObject.AddComponent<AudioSource>();
+                _matchSource.playOnAwake = false;
+            }
+
+            _matchClip = GenerateWarmTone(_matchToneHz);
+        }
 
         private void OnEnable()
         {
@@ -36,6 +56,11 @@ namespace Ciga.AnchorHorror
 
         private void OnMatched(FeatureTag item, IReadOnlyList<FeatureUnit> hits)
         {
+            if (_matchSource != null && _matchClip != null)
+            {
+                _matchSource.PlayOneShot(_matchClip, _matchVolume);
+            }
+
             if (item != null)
             {
                 var sr = item.GetComponent<SpriteRenderer>();
@@ -105,6 +130,27 @@ namespace Ciga.AnchorHorror
 
             sr.color = baseColor;
             sr.transform.localScale = baseScale;
+        }
+
+        /// <summary>程序化生成柔和"暖音"确认音：基频 + 柔化八度泛音，软起音 + 指数衰减，约 0.35s。</summary>
+        private static AudioClip GenerateWarmTone(float hz)
+        {
+            const int rate = 44100;
+            int length = (int)(rate * 0.35f);
+            var data = new float[length];
+            for (int i = 0; i < length; i++)
+            {
+                float t = i / (float)rate;
+                float attack = Mathf.Clamp01(t / 0.012f);   // 12ms 软起音，去掉爆音
+                float decay = Mathf.Exp(-t * 6.5f);
+                float env = attack * decay;
+                float wave = Mathf.Sin(2f * Mathf.PI * hz * t) + 0.35f * Mathf.Sin(2f * Mathf.PI * 2f * hz * t);
+                data[i] = wave * env * 0.5f;
+            }
+
+            var clip = AudioClip.Create("MatchWarmTone", length, 1, rate, false);
+            clip.SetData(data, 0);
+            return clip;
         }
     }
 }
