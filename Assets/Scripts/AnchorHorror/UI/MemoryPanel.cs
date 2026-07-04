@@ -97,17 +97,8 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
-            // 1) _root 已接线但 _content 没接 → 复用其子级现成的 TMP 文本
-            if (_root != null)
-            {
-                _content = _root.GetComponentInChildren<TMP_Text>(true);
-                if (_content != null)
-                {
-                    return;
-                }
-            }
-
-            // 2) 找/建一个 Overlay Canvas
+            // 不复用生成器可能建坏/接错的旧文本节点，直接新建一个已知可见的文本（旧空节点无害）。
+            // 找/建一个 Overlay Canvas
             Canvas canvas = _root != null ? _root.GetComponentInParent<Canvas>() : null;
             if (canvas == null)
             {
