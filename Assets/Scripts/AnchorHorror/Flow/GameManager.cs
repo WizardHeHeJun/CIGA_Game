@@ -4,6 +4,7 @@
 // Created: 2026-07-04
 // ------------------------------------------------------------
 using System.Collections;
+using Ciga.Startup;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -391,7 +392,7 @@ namespace Ciga.AnchorHorror
             Time.timeScale = 1f;
             Instance = null;
             Destroy(gameObject);
-            SceneManager.LoadScene(0);
+            SceneManager.LoadScene(SceneNames.GameMain);
         }
 
         /// <summary>程序化生成 2 秒缓入缓出的低语噪声，避免依赖音频资产。</summary>
