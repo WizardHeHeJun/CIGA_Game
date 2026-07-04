@@ -129,6 +129,19 @@ namespace Ciga.AnchorHorror.EditorTools
             }
         }
 
+        /// <summary>一键重建：先重建 Bootstrap 装配，再建两关卡数据并重接序列（按序，缺一不可）。</summary>
+        [MenuItem("Ciga/AnchorHorror/★ 一键重建全部（装配 + 两关卡Demo数据）")]
+        public static void RebuildEverything()
+        {
+            AnchorHorrorSetup.BuildAll(); // 先重建 Bootstrap（相机跟随/UI/教程图/ResultConfig/操作提示等）
+            BuildAll();                   // 再建两关卡数据并重接 _sequence（上一步重建裸场景会清掉序列接线，必须再跑）
+            AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog(
+                "一键重建完成",
+                "已重建 Bootstrap（相机跟随/教程图/结算配置/操作提示）+ 两关卡 Demo 数据并接线。\n从 GameMain 场景 Play 即可。",
+                "好");
+        }
+
         /// <summary>幂等生成入口：建资产 + 接线到 Bootstrap。</summary>
         public static void BuildAll()
         {

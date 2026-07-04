@@ -114,6 +114,9 @@ namespace Ciga.AnchorHorror.EditorTools
             var noise = root.AddComponent<AudioSource>();
             noise.playOnAwake = false;
 
+            // 三态结算配置（修 bug：之前没建 ResultConfig，导致 ResultScreen 文案不更新、失败也显"已通关"）
+            var resultCfg = BuildResultConfig();
+
             // --- 玩家 ---
             var player = new GameObject("Player");
             player.transform.position = Vector3.zero;
@@ -202,6 +205,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(shake, "_camera", camGo.transform);
             WireObj(camFollow, "_target", player.transform);
             WireObj(camFollow, "_cam", cam);
+            WireObj(resultScreen, "_resultConfig", resultCfg);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
             // --- uGUI 界面（记忆面板 + 结算界面 + 倒计时面板），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
@@ -358,6 +362,34 @@ namespace Ciga.AnchorHorror.EditorTools
             tmp.richText = true;
             tmp.raycastTarget = false;
             return tmp;
+        }
+
+        /// <summary>建/更新三态结算配置 ResultConfig（Victory/Fail/SubClear 区分文案，修：之前没建导致失败也显"已通关"）。</summary>
+        private static ResultConfig BuildResultConfig()
+        {
+            var rc = CreateOrLoad<ResultConfig>("Assets/Res/AnchorHorror/ResultConfig.asset");
+            var so = new SerializedObject(rc);
+
+            SetResultEntry(so.FindProperty("_subClear"),
+                "过 关", new Color(1f, 0.84f, 0.2f), "走到门按 E 前往下一层", false, false);
+            SetResultEntry(so.FindProperty("_victory"),
+                "已 通 关", new Color(1f, 0.84f, 0.2f), "按 R 重新开始      按 Esc 返回主菜单", true, true);
+            SetResultEntry(so.FindProperty("_fail"),
+                "失 败", new Color(1f, 0.3f, 0.3f), "按 R 重新开始      按 Esc 返回主菜单", true, true);
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(rc);
+            return rc;
+        }
+
+        private static void SetResultEntry(
+            SerializedProperty entry, string title, Color color, string hint, bool restart, bool menu)
+        {
+            entry.FindPropertyRelative("_title").stringValue = title;
+            entry.FindPropertyRelative("_color").colorValue = color;
+            entry.FindPropertyRelative("_hint").stringValue = hint;
+            entry.FindPropertyRelative("_respondsRestart").boolValue = restart;
+            entry.FindPropertyRelative("_respondsMenu").boolValue = menu;
         }
 
         private static void PopulateHorrorLevel()

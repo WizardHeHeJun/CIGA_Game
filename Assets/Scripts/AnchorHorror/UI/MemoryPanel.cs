@@ -135,6 +135,44 @@ namespace Ciga.AnchorHorror
                 }
             }
 
+            // 背包内容（用户要求：Tab 能看已收集的物品及其特征）
+            _sb.AppendLine();
+            int count = backpack != null ? backpack.Count : 0;
+            int cap = backpack != null ? backpack.Capacity : 0;
+            _sb.AppendLine($"<b>背包 {count}/{cap}</b>");
+            if (backpack != null)
+            {
+                for (int i = 0; i < backpack.Items.Count; i++)
+                {
+                    var bi = backpack.Items[i];
+                    _sb.Append("  · ");
+                    bool any = false;
+                    for (int f = 0; f < bi.Features.Count; f++)
+                    {
+                        if (bi.Features[f].IsNone)
+                        {
+                            continue;
+                        }
+
+                        string fname = db != null ? db.GetDisplayName(bi.Features[f]) : bi.Features[f].ToString();
+                        if (any)
+                        {
+                            _sb.Append(" / ");
+                        }
+
+                        _sb.Append(fname);
+                        any = true;
+                    }
+
+                    if (!any)
+                    {
+                        _sb.Append("(无特征)");
+                    }
+
+                    _sb.AppendLine();
+                }
+            }
+
             _content.text = _sb.ToString();
         }
     }
