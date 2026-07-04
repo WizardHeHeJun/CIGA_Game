@@ -309,8 +309,8 @@ namespace Ciga.AnchorHorror.PlayTests
             _gm.PickupInLevel2(testItem);
             int backpackCountBeforeSwitch = _gm.Backpack.Count;
 
-            // 调 SwitchSubScene
-            _gm.SwitchSubScene();
+            // 调 SwitchSubScene（前往下一个）
+            _gm.SwitchSubScene(1);
 
             // 等切换完成，最多2秒
             deadline = Time.realtimeSinceStartup + 2f;
@@ -349,8 +349,8 @@ namespace Ciga.AnchorHorror.PlayTests
 
             Debug.Log($"[FLOWTEST] SC-4 SwitchSubScene保留状态 PASS: RemainingTime={_gm.RemainingTime:F1}, BackpackCount={_gm.Backpack.Count}, Targets={_gm.Anchor.Targets.Count}");
 
-            // 再切一次（环状）
-            _gm.SwitchSubScene();
+            // 再切一次（返回上一个，测双向）
+            _gm.SwitchSubScene(-1);
             deadline = Time.realtimeSinceStartup + 2f;
             while (IsTransitioning(_gm) && Time.realtimeSinceStartup < deadline)
             {
@@ -596,9 +596,9 @@ namespace Ciga.AnchorHorror.PlayTests
             // Entry[0]: L1（EnterLevel2 door）
             entries.Add(MakeEntry(entryType, doorSettingType, l1, LevelKind.Level1Select, DoorKind.EnterLevel2));
             // Entry[1]: Sub1（SwitchSubScene door）
-            entries.Add(MakeEntry(entryType, doorSettingType, sub1, LevelKind.Level2Sub, DoorKind.SwitchSubScene));
+            entries.Add(MakeEntry(entryType, doorSettingType, sub1, LevelKind.Level2Sub, DoorKind.SwitchSubSceneNext));
             // Entry[2]: Sub2（SwitchSubScene door）
-            entries.Add(MakeEntry(entryType, doorSettingType, sub2, LevelKind.Level2Sub, DoorKind.SwitchSubScene));
+            entries.Add(MakeEntry(entryType, doorSettingType, sub2, LevelKind.Level2Sub, DoorKind.SwitchSubSceneNext));
 
             // _entries 是 List<LevelSequence.Entry>，需要把 object List 转成正确类型
             var listType = typeof(System.Collections.Generic.List<>).MakeGenericType(entryType);

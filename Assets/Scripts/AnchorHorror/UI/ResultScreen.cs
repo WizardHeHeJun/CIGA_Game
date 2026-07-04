@@ -3,6 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
@@ -30,7 +31,12 @@ namespace Ciga.AnchorHorror
         [SerializeField] private KeyCode _restartKey = KeyCode.R;
         [SerializeField] private KeyCode _menuKey = KeyCode.Escape;
 
+        [Header("过渡")]
+        [SerializeField] private float _fadeDuration = 0.4f; // 结算面板淡入时长（#1）
+
         private GamePhase _phase = GamePhase.Boot;
+        private CanvasGroup _canvasGroup;
+        private Coroutine _fadeRoutine;
 
         private void OnEnable()
         {
@@ -82,14 +88,39 @@ namespace Ciga.AnchorHorror
         private void ApplyVisual()
         {
             bool show = IsResult();
-            if (_root != null)
-            {
-                _root.SetActive(show);
-            }
 
             if (!show)
             {
+                if (_fadeRoutine != null)
+                {
+                    StopCoroutine(_fadeRoutine);
+                    _fadeRoutine = null;
+                }
+
+                if (_root != null)
+                {
+                    _root.SetActive(false);
+                }
+
                 return;
+            }
+
+            if (_root != null)
+            {
+                _root.SetActive(true);
+            }
+
+            // 结算面板淡入（#1）：CanvasGroup alpha 0→1，比瞬间弹出更柔和。
+            var cg = EnsureCanvasGroup();
+            if (cg != null)
+            {
+                cg.alpha = 0f;
+                if (_fadeRoutine != null)
+                {
+                    StopCoroutine(_fadeRoutine);
+                }
+
+                _fadeRoutine = StartCoroutine(FadeInRoutine(cg));
             }
 
             // 有 ResultConfig 时走数据化路径；无配置兜底显示空内容（避免空引用崩溃）
@@ -110,6 +141,40 @@ namespace Ciga.AnchorHorror
                     }
                 }
             }
+        }
+
+        // _root 上懒挂 CanvasGroup（生成器未加也能自愈，无需重跑装配）。
+        private CanvasGroup EnsureCanvasGroup()
+        {
+            if (_root == null)
+            {
+                return null;
+            }
+
+            if (_canvasGroup == null)
+            {
+                _canvasGroup = _root.GetComponent<CanvasGroup>();
+                if (_canvasGroup == null)
+                {
+                    _canvasGroup = _root.AddComponent<CanvasGroup>();
+                }
+            }
+
+            return _canvasGroup;
+        }
+
+        private IEnumerator FadeInRoutine(CanvasGroup cg)
+        {
+            float t = 0f;
+            while (t < _fadeDuration)
+            {
+                t += Time.unscaledDeltaTime; // 结算可能处于暂停/timeScale 异常，用 unscaled 保证淡入照常
+                cg.alpha = _fadeDuration > 0f ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / _fadeDuration)) : 1f;
+                yield return null;
+            }
+
+            cg.alpha = 1f;
+            _fadeRoutine = null;
         }
 
         private bool IsResult()

@@ -16,8 +16,11 @@ namespace Ciga.AnchorHorror
         /// <summary>当前游戏阶段下，此对象是否允许交互。</summary>
         bool CanInteract(GamePhase phase);
 
-        /// <summary>执行交互逻辑。调用前须保证 CanInteract 为 true。</summary>
+        /// <summary>执行交互逻辑（E 键拾取/选择）。调用前须保证 CanInteract 为 true。</summary>
         void Interact();
+
+        /// <summary>检视对象（R 键，如听声音/看信息）；不产生业务后果。</summary>
+        void Inspect();
 
         /// <summary>切换高亮状态（靠近/离开时由 InteractionSystem 调用）。</summary>
         void SetHighlight(bool on);

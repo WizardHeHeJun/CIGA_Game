@@ -22,6 +22,7 @@ namespace Ciga.AnchorHorror
         // ---- 匹配 ----
         public static event Action<FeatureTag, IReadOnlyList<FeatureUnit>> ItemMatched; // (物品, 本次命中的特征)
         public static event Action<FeatureTag> ItemMismatched;                          // 不匹配（已扣分并消耗）
+        public static event Action<FeatureTag> ItemInspected;                           // 检视物品（R 键，听声音/看信息）
 
         // ---- 锚点 ----
         public static event Action<AnchorTarget> AnchorActivated;  // 某锚点刚被激活
@@ -52,6 +53,11 @@ namespace Ciga.AnchorHorror
         public static void RaiseItemMismatched(FeatureTag item)
         {
             ItemMismatched?.Invoke(item);
+        }
+
+        public static void RaiseItemInspected(FeatureTag item)
+        {
+            ItemInspected?.Invoke(item);
         }
 
         public static void RaiseAnchorActivated(AnchorTarget anchor)
@@ -89,6 +95,7 @@ namespace Ciga.AnchorHorror
             TargetsExtracted = null;
             ItemMatched = null;
             ItemMismatched = null;
+            ItemInspected = null;
             AnchorActivated = null;
             AllAnchorsActivated = null;
             SanityChanged = null;

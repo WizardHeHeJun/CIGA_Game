@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Ciga.AnchorHorror
 {
@@ -66,8 +67,10 @@ namespace Ciga.AnchorHorror
 
         private void SetOpen(bool open)
         {
-            // 生成器未接线（_root 为空）时绝不接管 timeScale：否则会"看不见面板还把游戏冻住"，
-            // 表现为按一次 Tab 像死机、再按一次才恢复。对齐 ResultScreen 的判空降级。
+            // 接线缺失时运行时自建/复用面板，摆脱生成器接线依赖（用户反馈：面板弹出但内容空白）。
+            EnsureUI();
+
+            // 仍拿不到 _root（极端异常）时判空降级：不接管 timeScale，避免"看不见面板还冻住游戏"。
             if (_root == null)
             {
                 _open = false;
@@ -81,6 +84,66 @@ namespace Ciga.AnchorHorror
             {
                 Refresh();
             }
+        }
+
+        /// <summary>
+        /// 确保 _root / _content 可用：优先用生成器接线；_content 缺失则复用 _root 子级 TMP，
+        /// 再缺则运行时自建 Canvas + 面板 + 文本（用户反馈 Tab 面板空白：_root 接了但 _content 没接）。
+        /// </summary>
+        private void EnsureUI()
+        {
+            if (_content != null)
+            {
+                return;
+            }
+
+            // 不复用生成器可能建坏/接错的旧文本节点，直接新建一个已知可见的文本（旧空节点无害）。
+            // 找/建一个 Overlay Canvas
+            Canvas canvas = _root != null ? _root.GetComponentInParent<Canvas>() : null;
+            if (canvas == null)
+            {
+                var canvasGo = new GameObject("MemoryPanelCanvas(runtime)");
+                canvas = canvasGo.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 200;
+                var scaler = canvasGo.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920f, 1080f);
+            }
+
+            // 3) 缺 _root 则自建居中暗色面板
+            if (_root == null)
+            {
+                var rootGo = new GameObject("MemoryPanelRoot(runtime)", typeof(RectTransform));
+                rootGo.transform.SetParent(canvas.transform, false);
+                var rt = (RectTransform)rootGo.transform;
+                rt.anchorMin = new Vector2(0.5f, 0.5f);
+                rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = new Vector2(760f, 620f);
+                var bg = rootGo.AddComponent<Image>();
+                bg.color = new Color(0.05f, 0.05f, 0.08f, 0.92f);
+                bg.raycastTarget = false;
+                _root = rootGo;
+            }
+
+            // 4) 自建内容文本，铺满 _root（留边距）
+            var contentGo = new GameObject("MemoryContent(runtime)", typeof(RectTransform));
+            contentGo.transform.SetParent(_root.transform, false);
+            var contentRt = (RectTransform)contentGo.transform;
+            contentRt.anchorMin = Vector2.zero;
+            contentRt.anchorMax = Vector2.one;
+            contentRt.offsetMin = new Vector2(40f, 40f);
+            contentRt.offsetMax = new Vector2(-40f, -40f);
+            var tmp = contentGo.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 32f;
+            tmp.alignment = TextAlignmentOptions.TopLeft;
+            tmp.color = Color.white;
+            tmp.richText = true;
+            tmp.raycastTarget = false;
+            tmp.enableWordWrapping = true;
+            _content = tmp;
         }
 
         private void OnTargetsChanged(IReadOnlyList<AnchorTarget> targets)
@@ -132,6 +195,44 @@ namespace Ciga.AnchorHorror
                 else
                 {
                     _sb.AppendLine($"<color={DimHex}>{name}　未满足</color>");
+                }
+            }
+
+            // 背包内容（用户要求：Tab 能看已收集的物品及其特征）
+            _sb.AppendLine();
+            int count = backpack != null ? backpack.Count : 0;
+            int cap = backpack != null ? backpack.Capacity : 0;
+            _sb.AppendLine($"<b>背包 {count}/{cap}</b>");
+            if (backpack != null)
+            {
+                for (int i = 0; i < backpack.Items.Count; i++)
+                {
+                    var bi = backpack.Items[i];
+                    _sb.Append("  · ");
+                    bool any = false;
+                    for (int f = 0; f < bi.Features.Count; f++)
+                    {
+                        if (bi.Features[f].IsNone)
+                        {
+                            continue;
+                        }
+
+                        string fname = db != null ? db.GetDisplayName(bi.Features[f]) : bi.Features[f].ToString();
+                        if (any)
+                        {
+                            _sb.Append(" / ");
+                        }
+
+                        _sb.Append(fname);
+                        any = true;
+                    }
+
+                    if (!any)
+                    {
+                        _sb.Append("(无特征)");
+                    }
+
+                    _sb.AppendLine();
                 }
             }
 

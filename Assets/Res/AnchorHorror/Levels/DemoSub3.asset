@@ -14,51 +14,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _levelName: "\u5173\u53612-\u5B50\u573A\u666F3"
   _items:
-  - _itemId: chair_wood
-    _position: {x: -3.3000002, y: 1.5}
-    _rotationZ: 0
-    _scale: {x: 1, y: 1}
-    _overrideFeatures: 1
-    _color: 1
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
-    _overrideSprite: 0
-    _sprite: {fileID: 0}
-  - _itemId: book_paper
+  - _itemId: clock_metal
     _position: {x: -1.1, y: 1.5}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 3
-    _shape: 0
+    _color: 0
+    _shape: 2
     _material: 0
     _texture: 0
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}
-  - _itemId: cup_glass
+  - _itemId: cloth_red
     _position: {x: 1.1, y: 1.5}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
     _color: 0
-    _shape: 1
-    _material: 0
-    _texture: 0
-    _sound: 0
-    _overrideSprite: 0
-    _sprite: {fileID: 0}
-  - _itemId: bottle_plastic
-    _position: {x: 3.3000002, y: 1.5}
-    _rotationZ: 0
-    _scale: {x: 1, y: 1}
-    _overrideFeatures: 1
-    _color: 0
     _shape: 0
-    _material: 0
-    _texture: 1
+    _material: 1
+    _texture: 0
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}

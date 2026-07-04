@@ -26,7 +26,8 @@ namespace Ciga.AnchorHorror
         private void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
-            _rb.gravityScale = 0f; // 俯视 2D 无重力
+            _rb.gravityScale = 0f;       // 俯视 2D 无重力
+            _rb.freezeRotation = true;   // 俯视 2D 碰撞不旋转（修：受碰撞角色会转）
         }
 
         private void Update()

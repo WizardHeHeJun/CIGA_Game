@@ -76,3 +76,6 @@ __pycache__/
 
 # ===== 对话记录导出（仅本地参考，不上传 GitHub）=====
 /chat-export-*.json
+
+# ===== 本地临时目录（不上传 GitHub）=====
+/acts/

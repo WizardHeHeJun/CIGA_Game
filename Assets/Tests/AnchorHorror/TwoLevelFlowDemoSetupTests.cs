@@ -12,8 +12,8 @@ using UnityEditor;
 namespace Ciga.AnchorHorror.Tests
 {
     /// <summary>
-    /// 触发 TwoLevelFlowDemoSetup.BuildAll()，断言 4 个 LevelData + LevelSequence 落盘，
-    /// 且 LevelSequence 共 4 条 entry（entries[0..3]）。
+    /// 触发 TwoLevelFlowDemoSetup.BuildAll()，断言 6 个 LevelData + LevelSequence 落盘，
+    /// 且 LevelSequence 共 6 条 entry（entries[0..5]）。
     /// </summary>
     public class TwoLevelFlowDemoSetupTests
     {
@@ -38,21 +38,27 @@ namespace Ciga.AnchorHorror.Tests
             Assert.IsNotNull(
                 AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub3.asset"),
                 "子场景3 LevelData 未生成");
+            Assert.IsNotNull(
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub4.asset"),
+                "子场景4 LevelData 未生成");
+            Assert.IsNotNull(
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub5.asset"),
+                "子场景5 LevelData 未生成");
 
             // LevelSequence
             var seq = AssetDatabase.LoadAssetAtPath<LevelSequence>(
                 LevelsDir + "/DemoTwoLevelFlow_Sequence.asset");
             Assert.IsNotNull(seq, "LevelSequence 未生成");
 
-            // 4 条 entry：entry[0]=Level1Select, entry[1..3]=Level2Sub
-            Assert.AreEqual(4, seq.Count, $"LevelSequence 应有 4 条 entry，实际 {seq.Count}");
+            // 6 条 entry：entry[0]=Level1Select, entry[1..5]=Level2Sub
+            Assert.AreEqual(6, seq.Count, $"LevelSequence 应有 6 条 entry，实际 {seq.Count}");
             Assert.AreEqual(LevelKind.Level1Select, seq.GetKind(0), "entry[0] 应为 Level1Select");
             Assert.AreEqual(DoorKind.EnterLevel2,  seq.GetDoorKind(0), "entry[0] 门应为 EnterLevel2");
 
-            for (int i = 1; i <= 3; i++)
+            for (int i = 1; i <= 5; i++)
             {
-                Assert.AreEqual(LevelKind.Level2Sub,     seq.GetKind(i),     $"entry[{i}] 应为 Level2Sub");
-                Assert.AreEqual(DoorKind.SwitchSubScene, seq.GetDoorKind(i), $"entry[{i}] 门应为 SwitchSubScene");
+                Assert.AreEqual(LevelKind.Level2Sub,         seq.GetKind(i),     $"entry[{i}] 应为 Level2Sub");
+                Assert.AreEqual(DoorKind.SwitchSubSceneNext, seq.GetDoorKind(i), $"entry[{i}] 门应为 SwitchSubSceneNext");
             }
 
             // 关卡1 有 8 个物品
