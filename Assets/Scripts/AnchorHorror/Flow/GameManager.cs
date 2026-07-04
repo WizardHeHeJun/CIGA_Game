@@ -216,6 +216,9 @@ namespace Ciga.AnchorHorror
             _level1Door = null;
             Anchor.Reset();
 
+            // 首屏起始压黑，建完房间后淡入（#1）——避免淡入前先闪一帧空场景/未布置场景。
+            SetOverlayAlpha(1f);
+
             // 背包重置为关卡1容量
             _backpack.Clear();
             _backpack.Capacity = _config.Level1SelectCap;
@@ -244,6 +247,9 @@ namespace Ciga.AnchorHorror
             {
                 Debug.LogWarning("[AnchorHorror] EnterInitRoom：序列 entries[0] 数据为 null，无法生成关卡1。");
             }
+
+            // 从黑淡入到关卡1首屏（#1）。允许淡入期间移动，纯视觉过渡不锁输入。
+            StartCoroutine(Fade(0f));
         }
 
         /// <summary>教程图结束回调（迭代B，SC-B1）：任意键关掉教程后进入关卡1。</summary>
@@ -443,6 +449,7 @@ namespace Ciga.AnchorHorror
             SetInputActive(true);
             SetPhase(GamePhase.HorrorLevel);
 
+            yield return HoldBlack();
             yield return Fade(0f);
             _transitioning = false;
         }
@@ -518,6 +525,7 @@ namespace Ciga.AnchorHorror
             // 相位不变（保留 HorrorLevel），背包/锚点/倒计时全保留（SC-4，陷阱 3/6）
             SetInputActive(true);
 
+            yield return HoldBlack();
             yield return Fade(0f);
             _transitioning = false;
         }
@@ -682,8 +690,9 @@ namespace Ciga.AnchorHorror
             float t = 0f;
             while (t < duration)
             {
-                t += Time.unscaledDeltaTime;
-                color.a = Mathf.Lerp(start, targetAlpha, duration > 0f ? t / duration : 1f);
+                t += Time.unscaledDeltaTime; // 用 unscaled：胜负/暂停可能改 timeScale，过渡不受影响
+                float k = duration > 0f ? Mathf.Clamp01(t / duration) : 1f;
+                color.a = Mathf.Lerp(start, targetAlpha, Mathf.SmoothStep(0f, 1f, k)); // 缓入缓出，比线性更顺
                 _transitionOverlay.color = color;
                 yield return null;
             }
@@ -692,23 +701,81 @@ namespace Ciga.AnchorHorror
             _transitionOverlay.color = color;
         }
 
-        /// <summary>重开本局（重载起始场景，彻底重置一切）。供结算界面调用。</summary>
-        public void RestartGame()
+        /// <summary>立即把过渡遮罩设为指定 alpha（首屏起始压黑、避免淡入前先闪一帧场景）。</summary>
+        private void SetOverlayAlpha(float alpha)
         {
-            Time.timeScale = 1f;
-            Instance = null;
-            var scene = string.IsNullOrEmpty(_startSceneName) ? SceneManager.GetActiveScene().name : _startSceneName;
-            Destroy(gameObject);
-            SceneManager.LoadScene(scene);
+            if (_transitionOverlay == null)
+            {
+                return;
+            }
+
+            var color = _transitionOverlay.color;
+            color.a = alpha;
+            _transitionOverlay.color = color;
         }
 
-        /// <summary>返回主菜单。</summary>
+        /// <summary>切场景全黑停顿（unscaled），让"切画面"读得清；FadeHold&lt;=0 时不停顿。</summary>
+        private IEnumerator HoldBlack()
+        {
+            float hold = _config != null ? _config.FadeHold : 0f;
+            if (hold > 0f)
+            {
+                yield return new WaitForSecondsRealtime(hold);
+            }
+        }
+
+        /// <summary>重开本局（重载起始场景，彻底重置一切）。供结算界面调用。先淡出黑屏再加载，消除硬切（#3）。</summary>
+        public void RestartGame()
+        {
+            var scene = string.IsNullOrEmpty(_startSceneName) ? SceneManager.GetActiveScene().name : _startSceneName;
+            LoadSceneWithFade(scene);
+        }
+
+        /// <summary>返回主菜单。先淡出黑屏再加载，消除硬切（#3）。</summary>
         public void ReturnToMainMenu()
         {
-            Time.timeScale = 1f;
+            LoadSceneWithFade(SceneNames.GameMain);
+        }
+
+        /// <summary>
+        /// 带过渡地切换 Unity 场景（重开 / 返回菜单，#3）。
+        ///   有 SceneLoader → 委托它：其 ScreenSpaceOverlay 加载遮罩(sortingOrder 1000)能盖住结算 UI(100)，
+        ///     淡入淡出即过渡。GameManager 根是 DontDestroyOnLoad，用 MoveGameObjectToScene 移回当前场景，
+        ///     使其随场景卸载被自动销毁——时机正好被不透明遮罩盖住，无闪烁、无僵尸单例、无需魔法等待。
+        ///   无 SceneLoader（编辑器直连 Bootstrap 联调）→ 本地世界遮罩淡出后直接加载兜底。
+        /// _transitioning 复用为幂等门闩：过渡中重复触发（连按 R/Esc）直接忽略。
+        /// </summary>
+        private void LoadSceneWithFade(string scene)
+        {
+            if (_transitioning)
+            {
+                return;
+            }
+
+            _transitioning = true;
+            StartCoroutine(LoadSceneWithFadeRoutine(scene));
+        }
+
+        private IEnumerator LoadSceneWithFadeRoutine(string scene)
+        {
+            SetInputActive(false);
+            Time.timeScale = 1f; // 记忆面板暂停或结算残留的 timeScale 复位，保证过渡与加载正常推进
+
+            var loader = SceneLoader.Instance;
+            if (loader != null && !loader.IsLoading && Application.CanStreamedLevelBeLoaded(scene))
+            {
+                Instance = null;
+                loader.LoadScene(scene); // 遮罩淡入(盖住结算UI+冻结玩法) → 加载 → 淡出到目标场景
+                // 脱离 DontDestroyOnLoad：移回当前场景 → 随 Single 加载卸载自动销毁（被不透明遮罩盖住，无闪烁）
+                SceneManager.MoveGameObjectToScene(gameObject, SceneManager.GetActiveScene());
+                yield break;
+            }
+
+            // 无 SceneLoader：本地淡出黑屏后直接加载；DontDestroyOnLoad 根同样移回当前场景随卸载销毁。
+            yield return Fade(1f);
             Instance = null;
-            Destroy(gameObject);
-            SceneManager.LoadScene(SceneNames.GameMain);
+            SceneManager.MoveGameObjectToScene(gameObject, SceneManager.GetActiveScene());
+            SceneManager.LoadScene(scene);
         }
 
         /// <summary>程序化生成 2 秒缓入缓出的低语噪声，避免依赖音频资产。</summary>

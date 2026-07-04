@@ -3,6 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using System.Collections;
 using Ciga.UI;
 using TMPro;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace Ciga.Startup
         private Image _barBgImage;
         private Image _barFillImage;
         private TMP_Text _hintLabel;
+        private CanvasGroup _canvasGroup;
 
         private LoadingConfig _config;
 
@@ -85,10 +87,54 @@ namespace Ciga.Startup
             }
         }
 
-        /// <summary>显示 / 隐藏整个 Overlay（直接切自身 GameObject，Overlay 无独立子根）。</summary>
+        /// <summary>显示 / 隐藏整个 Overlay（直接切自身 GameObject，Overlay 无独立子根）。瞬时，无淡入淡出。</summary>
         public void SetVisible(bool visible)
         {
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f; // 复位，避免上次淡出残留的半透明
+            }
+
             gameObject.SetActive(visible);
+        }
+
+        /// <summary>淡入显示（alpha 0→1，#2）。由 SceneLoader 在加载开始时 yield。</summary>
+        public IEnumerator FadeIn(float duration)
+        {
+            gameObject.SetActive(true);
+            yield return FadeTo(0f, 1f, duration);
+        }
+
+        /// <summary>淡出并隐藏（alpha 1→0 后停用，#2）。由 SceneLoader 在加载结束时 yield。</summary>
+        public IEnumerator FadeOut(float duration)
+        {
+            if (gameObject.activeSelf)
+            {
+                yield return FadeTo(1f, 0f, duration);
+            }
+
+            gameObject.SetActive(false);
+        }
+
+        // CanvasGroup.alpha 平滑插值（unscaled：加载期间 timeScale 可能被玩法残留改动）。
+        private IEnumerator FadeTo(float from, float to, float duration)
+        {
+            if (_canvasGroup == null)
+            {
+                yield break;
+            }
+
+            _canvasGroup.alpha = from;
+            float t = 0f;
+            while (t < duration)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = duration > 0f ? Mathf.Clamp01(t / duration) : 1f;
+                _canvasGroup.alpha = Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, k));
+                yield return null;
+            }
+
+            _canvasGroup.alpha = to;
         }
 
         // 在 Awake 里代码构建子 UI（Overlay 常驻不在具体场景，无法靠生成器接线）。
@@ -102,6 +148,15 @@ namespace Ciga.Startup
             }
 
             StretchFull(rt);
+
+            // 淡入淡出用 CanvasGroup（挂自身，覆盖所有子控件透明度，#2）
+            _canvasGroup = gameObject.GetComponent<CanvasGroup>();
+            if (_canvasGroup == null)
+            {
+                _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            }
+
+            _canvasGroup.alpha = 1f;
 
             // 背景层（全屏暗色/图片）
             var bgGo = new GameObject("LoadingBg", typeof(RectTransform));
