@@ -29,6 +29,11 @@ namespace Ciga.AnchorHorror
         [SerializeField] private float _noiseIntervalMin = 1.2f;
         [SerializeField] private float _noiseIntervalMax = 3.5f;
 
+        [Header("失败专属音效（Dead 触发一次，AudioSource 可空缺省自建）")]
+        [SerializeField] private AudioSource _failSource;
+        [Range(0f, 1f)]
+        [SerializeField] private float _failVolume = 0.7f;
+
         [Header("移速惩罚")]
         [SerializeField] private PlayerController2D _player;
         [SerializeField] private GlobalConfig _config;
@@ -36,6 +41,7 @@ namespace Ciga.AnchorHorror
         private SanityState _state = SanityState.Normal;
         private float _baseAlpha;
         private AudioClip _noiseClip;
+        private AudioClip _failClip;
         private float _noiseTimer;
 
         private void Awake()
@@ -47,6 +53,12 @@ namespace Ciga.AnchorHorror
             }
 
             _noiseClip = GenerateNoise();
+            _failClip = GenerateFailSting();
+            if (_failSource == null)
+            {
+                _failSource = gameObject.AddComponent<AudioSource>();
+                _failSource.playOnAwake = false;
+            }
         }
 
         private void OnEnable()
@@ -66,6 +78,12 @@ namespace Ciga.AnchorHorror
             SetOverlayAlpha(_baseAlpha); // 切档立即应用基础压暗，非闪烁档无需每帧写
             ApplyAudio(newState);
             ApplyMovePenalty(newState);
+
+            // Dead：心跳已在 ApplyAudio 停下，补一记失败专属音效（下行低沉音）
+            if (newState == SanityState.Dead && _failSource != null && _failClip != null)
+            {
+                _failSource.PlayOneShot(_failClip, _failVolume);
+            }
         }
 
         private void Update()
@@ -197,6 +215,32 @@ namespace Ciga.AnchorHorror
             }
 
             var clip = AudioClip.Create("Noise", length, 1, rate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        /// <summary>程序化生成失败音效：140→52Hz 下行滑音 + 沉底叠层，缓起慢衰，约 1.6s，营造终结/不安感。</summary>
+        private static AudioClip GenerateFailSting()
+        {
+            const int rate = 44100;
+            const float dur = 1.6f;
+            int length = (int)(rate * dur);
+            var data = new float[length];
+            float phase = 0f;
+            float subPhase = 0f;
+            for (int i = 0; i < length; i++)
+            {
+                float t = i / (float)rate;
+                float freq = Mathf.Lerp(140f, 52f, t / dur);        // 下行滑音（相位积分，保证瞬时频率正确）
+                phase += 2f * Mathf.PI * freq / rate;
+                subPhase += 2f * Mathf.PI * (freq * 0.5f) / rate;    // 低八度沉底，加重压迫感
+                float swell = Mathf.Clamp01(t / 0.08f);             // 80ms 缓起
+                float decay = Mathf.Exp(-t * 1.6f);
+                float env = swell * decay;
+                data[i] = (Mathf.Sin(phase) * 0.6f + Mathf.Sin(subPhase) * 0.35f) * env * 0.7f;
+            }
+
+            var clip = AudioClip.Create("FailSting", length, 1, rate, false);
             clip.SetData(data, 0);
             return clip;
         }
