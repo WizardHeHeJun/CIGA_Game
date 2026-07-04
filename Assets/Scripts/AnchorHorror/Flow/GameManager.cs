@@ -212,16 +212,16 @@ namespace Ciga.AnchorHorror
             // 取下一关数据
             _levelData = _sequence != null ? _sequence.GetLevel(_levelIndex) : null;
 
-            // 手动销毁旧关卡根（门随之一并清除；绕开 BeginTransition 的 InitRoom 守卫——陷阱 1）
+            // 手动销毁旧关卡根（旧门随之一并清除；绕开 BeginTransition 的 InitRoom 守卫——陷阱 1）
             if (_levelRoot != null)
             {
                 Destroy(_levelRoot);
                 _levelRoot = null;
             }
 
-            // 重建 AnchorSystem（_levelConfig 是 readonly，重建比加 setter 干净，且天然清跨关状态——ADR-4/陷阱 3/4）
-            var levelCfg = _levelData != null ? _levelData.LevelConfig : _levelConfig;
-            Anchor = new AnchorSystem(_config, levelCfg, _sanity); // 新实例天然清零，无需再 Reset
+            // 不重建 AnchorSystem！候选池只在开局 InitRoom 收集一次、跨关保持；
+            // 本关锚点由 TransitionRoutine 的 ExtractTargets 从同一候选池重新随机抽取（用户确认的模型）。
+            // ExtractTargets 内部先 _targets.Clear() 再重抽，无残留、无需重置——重建会清空候选池导致后续关卡无锚点。
 
             _transitioning = true;
             StartCoroutine(TransitionRoutine());
@@ -249,11 +249,15 @@ namespace Ciga.AnchorHorror
                 var tags = LevelSpawner.Spawn(_levelData, _levelRoot.transform);
                 _registry.Scan(tags);
 
-                // 4. 抽锚点（RequiredCount clamp 到场景实际数量，防死局）
+                // 4. 抽锚点（从跨关保持的候选池重抽本关锚点，RequiredCount clamp 到场景实际数量，防死局）
                 Anchor.ExtractTargets(_registry);
 
                 // 5a. 放玩家进场：取 LevelData 出生点
                 MovePlayerToSpawn(_levelData.PlayerSpawn);
+
+                // 6a. 门：进关即生成（一直可见），但 LevelDoor.CanInteract 仅 SubClear 返回 true，
+                //     故锚定后才可交互（而非才出现）；末关无门。随 _levelRoot 换关销毁。
+                SpawnLevelDoor();
             }
             else
             {
@@ -344,11 +348,25 @@ namespace Ciga.AnchorHorror
             }
 
             _sanity.DecayEnabled = false;
-            SetInputActive(true); // 保持输入启用，玩家需要走向门
+            SetInputActive(true); // 保持输入启用，玩家需走向门
             SetPhase(GamePhase.SubClear);
+            // 门已在 TransitionRoutine 进关时生成、一直可见；此刻不再生成。
+            // 门的 CanInteract 仅 SubClear 返回 true，故此相位起门才可交互（陷阱 2 门控仍成立）。
+        }
 
-            // 在关卡根下代码建门（ADR-3，与 ItemFactory 风格一致，无 prefab 依赖）
+        /// <summary>
+        /// 进关时生成门（一直可见）。门的 CanInteract 仅 SubClear 返回 true，故锚定后才可交互（非"才出现"）。
+        /// 末关（无下一关）不生成门。门挂 _levelRoot 下，换关随之销毁。代码建，与 ItemFactory 风格一致、无 prefab 依赖（ADR-3）。
+        /// </summary>
+        private void SpawnLevelDoor()
+        {
             if (_levelRoot == null || _sequence == null)
+            {
+                return;
+            }
+
+            // 末关无下一关，不生成门
+            if (_levelIndex + 1 >= _sequence.Count)
             {
                 return;
             }
@@ -370,8 +388,7 @@ namespace Ciga.AnchorHorror
             if (doorSetting.Sprite != null)
             {
                 sr.sprite = doorSetting.Sprite;
-                var bounds = doorSetting.Sprite.bounds;
-                col.size = bounds.size;
+                col.size = doorSetting.Sprite.bounds.size;
             }
             else
             {
