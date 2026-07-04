@@ -23,6 +23,7 @@ namespace Ciga.AnchorHorror
         [SerializeField] private GlobalConfig _config;
         [SerializeField] private FeatureDatabase _database;
         [SerializeField] private LevelConfig _levelConfig;
+        [SerializeField] private LevelData _levelData; // 可空：非空走 data 分支，空则原 additive 路径逐字节不变
 
         [Header("系统 / 角色（挂在常驻层级上）")]
         [SerializeField] private SanitySystem _sanity;
@@ -39,6 +40,7 @@ namespace Ciga.AnchorHorror
         private bool _transitioning;
         private bool _initialized; // Awake 完整跑完才为 true；失败者单例/缺依赖时保持 false，阻止 Start/Update
         private string _startSceneName; // 起始（Bootstrap）场景名，供重开局重载
+        private GameObject _levelRoot; // data 分支关卡根；_levelData==null 时恒为 null
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.Boot;
         public AnchorSystem Anchor { get; private set; }
@@ -160,6 +162,13 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
+            // 幂等清理：防重进过渡时残留关卡根叠加
+            if (_levelRoot != null)
+            {
+                Destroy(_levelRoot);
+                _levelRoot = null;
+            }
+
             _transitioning = true;
             StartCoroutine(TransitionRoutine());
         }
@@ -176,41 +185,62 @@ namespace Ciga.AnchorHorror
             }
             yield return Fade(1f);
 
-            // 2. 异步加载关卡场景（Additive）；玩家仍冻结
-            var op = SceneManager.LoadSceneAsync(_horrorLevelScene, LoadSceneMode.Additive);
-            if (op != null)
+            if (_levelData != null)
             {
-                while (!op.isDone)
+                // ——— data 分支：不 LoadSceneAsync，不 SetActiveScene ———
+                // 2a. 建关卡根（挂在当前活动场景下）
+                _levelRoot = new GameObject("__LevelRoot");
+
+                // 3a. LevelSpawner 生成物品并返回 FeatureTag 列表；registry 只扫关卡根（隔离 InitRoom 候选，防死局）
+                var tags = LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+                _registry.Scan(tags);
+
+                // 4. 抽锚点（RequiredCount clamp 到场景实际数量，防死局）
+                Anchor.ExtractTargets(_registry);
+
+                // 5a. 放玩家进场：取 LevelData 出生点
+                MovePlayerToSpawn(_levelData.PlayerSpawn);
+            }
+            else
+            {
+                // ——— 原 additive 路径逐字节不变 ———
+                // 2. 异步加载关卡场景（Additive）；玩家仍冻结
+                var op = SceneManager.LoadSceneAsync(_horrorLevelScene, LoadSceneMode.Additive);
+                if (op != null)
                 {
-                    yield return null;
+                    while (!op.isDone)
+                    {
+                        yield return null;
+                    }
                 }
-            }
-            else
-            {
-                Debug.LogWarning($"[AnchorHorror] 关卡场景 '{_horrorLevelScene}' 未加载（未加入 Build Settings？），沿用当前场景扫描。");
+                else
+                {
+                    Debug.LogWarning($"[AnchorHorror] 关卡场景 '{_horrorLevelScene}' 未加载（未加入 Build Settings？），沿用当前场景扫描。");
+                }
+
+                var levelScene = SceneManager.GetSceneByName(_horrorLevelScene);
+                if (levelScene.IsValid() && levelScene.isLoaded)
+                {
+                    SceneManager.SetActiveScene(levelScene);
+                }
+
+                // 3. registry 扫描关卡特征数量
+                if (levelScene.IsValid() && levelScene.isLoaded)
+                {
+                    _registry.Scan(levelScene);
+                }
+                else
+                {
+                    _registry.Scan(SceneManager.GetActiveScene());
+                }
+
+                // 4. 抽锚点（RequiredCount clamp 到场景实际数量，防死局）
+                Anchor.ExtractTargets(_registry);
+
+                // 5. 放玩家进场：定位出生点、开启衰减与交互
+                MovePlayerToSpawn(levelScene);
             }
 
-            var levelScene = SceneManager.GetSceneByName(_horrorLevelScene);
-            if (levelScene.IsValid() && levelScene.isLoaded)
-            {
-                SceneManager.SetActiveScene(levelScene);
-            }
-
-            // 3. registry 扫描关卡特征数量
-            if (levelScene.IsValid() && levelScene.isLoaded)
-            {
-                _registry.Scan(levelScene);
-            }
-            else
-            {
-                _registry.Scan(SceneManager.GetActiveScene());
-            }
-
-            // 4. 抽锚点（RequiredCount clamp 到场景实际数量，防死局）
-            Anchor.ExtractTargets(_registry);
-
-            // 5. 放玩家进场：定位出生点、开启衰减与交互
-            MovePlayerToSpawn(levelScene);
             _sanity.DecayEnabled = true;
             SetInputActive(true);
             SetPhase(GamePhase.HorrorLevel);
@@ -284,6 +314,18 @@ namespace Ciga.AnchorHorror
             }
         }
 
+        /// <summary>data 分支：直接使用 LevelData 中序列化的出生点坐标。</summary>
+        private void MovePlayerToSpawn(Vector2 spawnPosition)
+        {
+            if (_player == null)
+            {
+                return;
+            }
+
+            _player.transform.position = spawnPosition;
+        }
+
+        /// <summary>additive 路径：在关卡场景根下查找名为 PlayerSpawn 的对象。</summary>
         private void MovePlayerToSpawn(Scene levelScene)
         {
             if (_player == null || !levelScene.IsValid() || !levelScene.isLoaded)
@@ -343,7 +385,7 @@ namespace Ciga.AnchorHorror
             SceneManager.LoadScene(scene);
         }
 
-        /// <summary>返回主菜单（构建列表第 0 个场景，通常是 GameMain）。</summary>
+        /// <summary>返回主菜单（按场景名加载，Build Settings 顺序变动不影响逻辑）。</summary>
         public void ReturnToMainMenu()
         {
             Time.timeScale = 1f;

@@ -24,14 +24,33 @@ namespace Ciga.AnchorHorror
 
         [Header("高亮（可选，缺省自动取本体 SpriteRenderer）")]
         [SerializeField] private SpriteRenderer _renderer;
-        [SerializeField] private Color _highlightColor = new Color(1f, 1f, 0.6f, 1f);
+        [SerializeField] private UnityEngine.Color _highlightColor = new UnityEngine.Color(1f, 1f, 0.6f, 1f);
 
         private readonly List<FeatureUnit> _features = new List<FeatureUnit>(4);
-        private Color _baseColor = Color.white;
+        private UnityEngine.Color _baseColor = UnityEngine.Color.white;
         private bool _highlighted;
 
         /// <summary>关卡中已交互（命中或不命中）的物品置 true，之后不可再交互。见设计决策 B。</summary>
         public bool Consumed { get; set; }
+
+        // -------- 只读枚举属性（供 ItemFactory 装配与编辑器回写读取）--------
+        public FeatureColor Color => _color;
+        public FeatureShape Shape => _shape;
+        public FeatureMaterial Material => _material;
+        public FeatureTexture Texture => _texture;
+
+        /// <summary>
+        /// 运行时安全写入四维特征（幂等）。设私有字段后调 RebuildFeatures 重建缓存。
+        /// ItemFactory 装配后调用；编辑器预览也走此路径，避免两套写法漂移。
+        /// </summary>
+        public void Configure(FeatureColor color, FeatureShape shape, FeatureMaterial material, FeatureTexture texture)
+        {
+            _color = color;
+            _shape = shape;
+            _material = material;
+            _texture = texture;
+            RebuildFeatures();
+        }
 
         private void Awake()
         {
