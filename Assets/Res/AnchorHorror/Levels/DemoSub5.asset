@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e7b8e3d1badb918498e4984666ae8be7, type: 3}
-  m_Name: DemoSub1
+  m_Name: DemoSub5
   m_EditorClassIdentifier: 
-  _levelName: "\u5173\u53612-\u5B50\u573A\u666F1"
+  _levelName: "\u5173\u53612-\u5B50\u573A\u666F5"
   _items:
   - _itemId: chair_wood
-    _position: {x: -1.1, y: 1.5}
+    _position: {x: -2.2, y: 1.5}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
@@ -26,15 +26,27 @@ MonoBehaviour:
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}
-  - _itemId: lamp_metal
-    _position: {x: 1.1, y: 1.5}
+  - _itemId: cup_glass
+    _position: {x: 0, y: 1.5}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 2
-    _shape: 0
+    _color: 0
+    _shape: 1
     _material: 0
     _texture: 0
+    _sound: 0
+    _overrideSprite: 0
+    _sprite: {fileID: 0}
+  - _itemId: bottle_plastic
+    _position: {x: 2.2, y: 1.5}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 0
+    _shape: 0
+    _material: 0
+    _texture: 1
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}

@@ -26,7 +26,8 @@ namespace Ciga.AnchorHorror
     public enum DoorKind
     {
         EnterLevel2,
-        SwitchSubScene,
+        SwitchSubScenePrev,   // 左门：返回上一子场景
+        SwitchSubSceneNext,   // 右门：前往下一子场景
     }
 
     /// <summary>
@@ -62,7 +63,7 @@ namespace Ciga.AnchorHorror
             [SerializeField] private LevelData _level;
             [SerializeField] private DoorSetting _door = new DoorSetting();
             [SerializeField] private LevelKind _kind = LevelKind.Level2Sub;
-            [SerializeField] private DoorKind _doorKind = DoorKind.SwitchSubScene;
+            [SerializeField] private DoorKind _doorKind = DoorKind.SwitchSubSceneNext;
 
             /// <summary>本关的关卡数据资产。</summary>
             public LevelData Level => _level;
@@ -123,8 +124,8 @@ namespace Ciga.AnchorHorror
         {
             if (_entries == null || index < 0 || index >= _entries.Count)
             {
-                Debug.LogWarning($"[LevelSequence] GetDoorKind({index}) 越界（共 {Count} 关），返回 SwitchSubScene。");
-                return DoorKind.SwitchSubScene;
+                Debug.LogWarning($"[LevelSequence] GetDoorKind({index}) 越界（共 {Count} 关），返回 SwitchSubSceneNext。");
+                return DoorKind.SwitchSubSceneNext;
             }
 
             return _entries[index].DoorKind;

@@ -310,39 +310,60 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
-            // 本物品能"新命中"哪些此前未覆盖的锚点（供拾取反馈，SC-B4）。入包前算，用未覆盖态判定。
+            // 分析本物品与 5 个目标锚点的关系（入包前算）：
+            //   新命中(_pickupHitBuffer) = 命中某个"尚未覆盖"的锚点 → 暖音/浮字奖励（SC-B4）；
+            //   matchesAnyTarget = 命中任一目标锚点（哪怕已覆盖）；
+            //   都不命中 = 完全无关的"错误物品" → 扣 San + 红闪（用户实测反馈：恢复拾错惩罚）。
             _pickupHitBuffer.Clear();
+            bool matchesAnyTarget = false;
             var itemFeatures = item.GetFeatures();
             var targets = Anchor.Targets;
             for (int i = 0; i < targets.Count; i++)
             {
                 var t = targets[i];
-                if (_backpack.Covers(t))
-                {
-                    continue; // 已覆盖，拾同特征不再奖励反馈（陷阱：仅新命中触发）
-                }
-
+                bool itemHasFeature = false;
                 for (int f = 0; f < itemFeatures.Count; f++)
                 {
                     if (!itemFeatures[f].IsNone && itemFeatures[f] == t.Feature)
                     {
-                        _pickupHitBuffer.Add(t.Feature);
+                        itemHasFeature = true;
                         break;
                     }
+                }
+
+                if (!itemHasFeature)
+                {
+                    continue;
+                }
+
+                matchesAnyTarget = true;
+                if (!_backpack.Covers(t))
+                {
+                    _pickupHitBuffer.Add(t.Feature); // 新命中（尚未覆盖的锚点）
                 }
             }
 
             if (!_backpack.TryAdd(item))
             {
-                return; // 背包满，CanInteract 层已封
+                return; // 背包满，CanInteract 层已封（错误物品也照样占格）
             }
 
             item.Consumed = true;
 
-            // 拾取反馈：有新命中 → 暖音/浮字（复用 MatchFeedback，SC-B4）。隐藏物品前触发（浮字取物品位置）。
+            // 反馈（隐藏物品前触发，浮字/红闪取物品位置）：
             if (_pickupHitBuffer.Count > 0)
             {
-                EventBus.RaiseItemMatched(item, _pickupHitBuffer);
+                EventBus.RaiseItemMatched(item, _pickupHitBuffer); // 新命中 → 暖音/浮字
+            }
+            else if (!matchesAnyTarget)
+            {
+                // 完全无关的错误物品：扣 San + 红闪（双失败线之一由 San 承接）。
+                if (_sanity != null)
+                {
+                    _sanity.Modify(-_config.MismatchLoss);
+                }
+
+                EventBus.RaiseItemMismatched(item);
             }
 
             // 隐藏/销毁场景 GO（物品已入包，场景对象不再需要）
@@ -428,7 +449,7 @@ namespace Ciga.AnchorHorror
         /// 绝不调 ExtractTargets（陷阱 3）；不清包、不重置计时（陷阱 6）。
         /// 各自销毁 _levelRoot，不复用 BeginTransition（陷阱 4）。
         /// </summary>
-        public void SwitchSubScene()
+        public void SwitchSubScene(int direction)
         {
             if (_transitioning)
             {
@@ -436,20 +457,28 @@ namespace Ciga.AnchorHorror
             }
 
             _transitioning = true;
-            StartCoroutine(SwitchSubSceneRoutine());
+            StartCoroutine(SwitchSubSceneRoutine(direction));
         }
 
-        private IEnumerator SwitchSubSceneRoutine()
+        private IEnumerator SwitchSubSceneRoutine(int direction)
         {
             // 先校验子场景存在再动手：避免销毁旧根后无处可去、玩家沉默挂机（W-4）。
             int subStart = 1;
-            int subCount = _sequence != null ? _sequence.Count - subStart : 0;
-            if (subCount <= 0)
+            int last = _sequence != null ? _sequence.Count - 1 : 0;
+            if (_sequence == null || last < subStart)
             {
                 Debug.LogError(
                     $"[AnchorHorror] SwitchSubScene：序列无关卡2子场景（共 {(_sequence != null ? _sequence.Count : 0)} 条 entry），配置错误，取消切换。");
                 _transitioning = false;
                 yield break;
+            }
+
+            // 线性来回（#3）：clamp 到 [subStart, last]，到边界不动（左右门按边界只生成一侧，通常到不了此分支）。
+            int target = Mathf.Clamp(_levelIndex + direction, subStart, last);
+            if (target == _levelIndex)
+            {
+                _transitioning = false;
+                yield break; // 已在边界
             }
 
             SetInputActive(false);
@@ -467,10 +496,7 @@ namespace Ciga.AnchorHorror
                 _levelRoot = null;
             }
 
-            // 环状 next：在 entries[1..Count-1] 内循环（SC-4）
-            int subIndex = (_levelIndex - subStart + 1) % subCount;
-            _levelIndex = subStart + subIndex;
-
+            _levelIndex = target;
             _levelData = _sequence.GetLevel(_levelIndex);
 
             if (_levelData != null)
@@ -552,24 +578,46 @@ namespace Ciga.AnchorHorror
             }
 
             var doorSetting = _sequence.GetDoor(_levelIndex);
-            if (doorSetting == null)
+            var sprite = doorSetting != null ? doorSetting.Sprite : null;
+
+            if (_sequence.GetKind(_levelIndex) == LevelKind.Level1Select)
             {
+                // 关卡1门：进入关卡2（右侧）。CanInteract 仅 SelectionLocked 后为 true。
+                Vector2 pos = doorSetting != null ? doorSetting.Spawn : new Vector2(4f, -4f);
+                string prompt = doorSetting != null && !string.IsNullOrEmpty(doorSetting.Prompt)
+                    ? doorSetting.Prompt : "按 E 进入第二关";
+                _level1Door = SpawnDoor(DoorKind.EnterLevel2, pos, sprite, prompt);
                 return;
             }
 
-            var doorKind = _sequence.GetDoorKind(_levelIndex);
+            // 关卡2 子场景：左右门线性来回（#3）。非首场景建左门（上一个），非末场景建右门（下一个）。
+            int subStart = 1;
+            int last = _sequence.Count - 1;
+            if (_levelIndex < last)
+            {
+                SpawnDoor(DoorKind.SwitchSubSceneNext, new Vector2(6f, -3.5f), sprite, "按 E 前往下一场景 →");
+            }
 
+            if (_levelIndex > subStart)
+            {
+                SpawnDoor(DoorKind.SwitchSubScenePrev, new Vector2(-6f, -3.5f), sprite, "← 按 E 返回上一场景");
+            }
+        }
+
+        /// <summary>在 _levelRoot 下代码建一扇门（碰撞体 + 精灵 + LevelDoor），返回该门。</summary>
+        private LevelDoor SpawnDoor(DoorKind kind, Vector2 pos, Sprite sprite, string prompt)
+        {
             var doorGo = new GameObject("__LevelDoor");
             doorGo.transform.SetParent(_levelRoot.transform, false);
-            doorGo.transform.position = doorSetting.Spawn;
+            doorGo.transform.position = pos;
 
             var sr = doorGo.AddComponent<SpriteRenderer>();
             var col = doorGo.AddComponent<BoxCollider2D>();
 
-            if (doorSetting.Sprite != null)
+            if (sprite != null)
             {
-                sr.sprite = doorSetting.Sprite;
-                col.size = doorSetting.Sprite.bounds.size;
+                sr.sprite = sprite;
+                col.size = sprite.bounds.size;
             }
             else
             {
@@ -577,13 +625,8 @@ namespace Ciga.AnchorHorror
             }
 
             var door = doorGo.AddComponent<LevelDoor>();
-            door.Configure(doorKind, doorSetting.Sprite, doorSetting.Prompt);
-
-            // 关卡1门引用（LockSelection 后门的 CanInteract 自动通过 SelectionLocked 判定）
-            if (doorKind == DoorKind.EnterLevel2)
-            {
-                _level1Door = door;
-            }
+            door.Configure(kind, sprite, prompt);
+            return door;
         }
 
         private void SetPhase(GamePhase phase)

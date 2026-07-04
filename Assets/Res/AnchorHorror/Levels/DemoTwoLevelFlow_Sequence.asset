@@ -22,22 +22,36 @@ MonoBehaviour:
     _doorKind: 0
   - _level: {fileID: 11400000, guid: aaf0f1cd03005b24c8df15f3f8d64689, type: 2}
     _door:
-      _spawn: {x: 4, y: -3.5}
+      _spawn: {x: 6, y: -3.5}
       _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
       _prompt: "\u6309 E \u5207\u6362\u573A\u666F"
     _kind: 1
-    _doorKind: 1
+    _doorKind: 2
   - _level: {fileID: 11400000, guid: b4b8f54fde0ab3442959dc39adf266eb, type: 2}
     _door:
-      _spawn: {x: 4, y: -3.5}
+      _spawn: {x: 6, y: -3.5}
       _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
       _prompt: "\u6309 E \u5207\u6362\u573A\u666F"
     _kind: 1
-    _doorKind: 1
+    _doorKind: 2
   - _level: {fileID: 11400000, guid: e9df96bd518eaaa4e92bd1efdd027be3, type: 2}
     _door:
-      _spawn: {x: 4, y: -3.5}
+      _spawn: {x: 6, y: -3.5}
       _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
       _prompt: "\u6309 E \u5207\u6362\u573A\u666F"
     _kind: 1
-    _doorKind: 1
+    _doorKind: 2
+  - _level: {fileID: 11400000, guid: 11e341ea4c3997e4e92d569184df810d, type: 2}
+    _door:
+      _spawn: {x: 6, y: -3.5}
+      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
+      _prompt: "\u6309 E \u5207\u6362\u573A\u666F"
+    _kind: 1
+    _doorKind: 2
+  - _level: {fileID: 11400000, guid: c1e8d32f58b1c1e4c8894ed60a0649e2, type: 2}
+    _door:
+      _spawn: {x: 6, y: -3.5}
+      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
+      _prompt: "\u6309 E \u5207\u6362\u573A\u666F"
+    _kind: 1
+    _doorKind: 2

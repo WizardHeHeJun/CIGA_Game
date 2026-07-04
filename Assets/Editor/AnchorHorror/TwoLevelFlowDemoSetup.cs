@@ -69,30 +69,39 @@ namespace Ciga.AnchorHorror.EditorTools
             "bottle_plastic",// 带 F8=Texture.Smooth
         };
 
-        // 子场景物品数据：(itemId, featureIndex in Features8[])
-        // 子场景1：F1(Red), F2(Blue), F4(Round), F6(Wood)  → index 0,1,3,5
+        // 子场景物品数据：(itemId, featureIndex in Features8[])。5 个子场景，并集覆盖全 8 种特征（可解）。
+        // 子场景1：F1(Red), F2(Blue)
         private static readonly (string id, int fi)[] Sub1Items =
         {
-            ("chair_wood",     0), // F1=Color.Red
-            ("lamp_metal",     1), // F2=Color.Blue
-            ("cup_glass",      3), // F4=Shape.Round
-            ("cloth_red",      5), // F6=Material.Wood
+            ("chair_wood", 0), // F1=Color.Red
+            ("lamp_metal", 1), // F2=Color.Blue
         };
 
-        // 子场景2：F3(Green), F5(Square), F7(Metal), F8(Smooth)  → index 2,4,6,7
+        // 子场景2：F3(Green), F4(Round)
         private static readonly (string id, int fi)[] Sub2Items =
         {
-            ("book_paper",     2), // F3=Color.Green
-            ("clock_metal",    4), // F5=Shape.Square
+            ("book_paper", 2), // F3=Color.Green
+            ("cup_glass",  3), // F4=Shape.Round
+        };
+
+        // 子场景3：F5(Square), F6(Wood)
+        private static readonly (string id, int fi)[] Sub3Items =
+        {
+            ("clock_metal", 4), // F5=Shape.Square
+            ("cloth_red",   5), // F6=Material.Wood
+        };
+
+        // 子场景4：F7(Metal), F8(Smooth)
+        private static readonly (string id, int fi)[] Sub4Items =
+        {
             ("box_wood",       6), // F7=Material.Metal
             ("bottle_plastic", 7), // F8=Texture.Smooth
         };
 
-        // 子场景3：F1(Red), F3(Green), F4(Round), F8(Smooth)  → index 0,2,3,7（冗余覆盖）
-        private static readonly (string id, int fi)[] Sub3Items =
+        // 子场景5：F1(Red), F4(Round), F8(Smooth)（冗余，方便玩家来回找齐）
+        private static readonly (string id, int fi)[] Sub5Items =
         {
             ("chair_wood",     0), // F1=Color.Red
-            ("book_paper",     2), // F3=Color.Green
             ("cup_glass",      3), // F4=Shape.Round
             ("bottle_plastic", 7), // F8=Texture.Smooth
         };
@@ -135,14 +144,16 @@ namespace Ciga.AnchorHorror.EditorTools
             var levelCfg = AssetDatabase.LoadAssetAtPath<LevelConfig>(ResDir + "/LevelConfig.asset");
             var square = AssetDatabase.LoadAssetAtPath<Sprite>(SquareSpritePath);
 
-            // 1. 建 4 个 LevelData
+            // 1. 建 6 个 LevelData（关卡1 + 5 子场景）
             var level1 = BuildLevel1Data(db, levelCfg);
             var sub1   = BuildSubLevelData("DemoSub1", "关卡2-子场景1", db, levelCfg, Sub1Items);
             var sub2   = BuildSubLevelData("DemoSub2", "关卡2-子场景2", db, levelCfg, Sub2Items);
             var sub3   = BuildSubLevelData("DemoSub3", "关卡2-子场景3", db, levelCfg, Sub3Items);
+            var sub4   = BuildSubLevelData("DemoSub4", "关卡2-子场景4", db, levelCfg, Sub4Items);
+            var sub5   = BuildSubLevelData("DemoSub5", "关卡2-子场景5", db, levelCfg, Sub5Items);
 
             // 2. 建 LevelSequence
-            var seq = BuildLevelSequence(level1, sub1, sub2, sub3, square);
+            var seq = BuildLevelSequence(level1, new[] { sub1, sub2, sub3, sub4, sub5 }, square);
 
             // 3. 接线到 Bootstrap
             WireBootstrapScene(seq);
@@ -276,7 +287,7 @@ namespace Ciga.AnchorHorror.EditorTools
         // ──────────────────────────────────────────────────────────────
 
         private static LevelSequence BuildLevelSequence(
-            LevelData level1, LevelData sub1, LevelData sub2, LevelData sub3, Sprite square)
+            LevelData level1, LevelData[] subs, Sprite square)
         {
             var path = LevelsDir + "/DemoTwoLevelFlow_Sequence.asset";
             var seq = LoadOrCreate<LevelSequence>(path);
@@ -291,26 +302,16 @@ namespace Ciga.AnchorHorror.EditorTools
                 doorSprite: square,
                 doorPrompt: "按 E 进入第二关");
 
-            // entry[1]：子场景1，Level2Sub，门 SwitchSubScene
-            AddEntry(entries, 1, sub1,
-                kind: LevelKind.Level2Sub, doorKind: DoorKind.SwitchSubScene,
-                doorSpawn: new Vector2(4f, -3.5f),
-                doorSprite: square,
-                doorPrompt: "按 E 切换场景");
-
-            // entry[2]：子场景2，Level2Sub，门 SwitchSubScene
-            AddEntry(entries, 2, sub2,
-                kind: LevelKind.Level2Sub, doorKind: DoorKind.SwitchSubScene,
-                doorSpawn: new Vector2(4f, -3.5f),
-                doorSprite: square,
-                doorPrompt: "按 E 切换场景");
-
-            // entry[3]：子场景3，Level2Sub，门 SwitchSubScene
-            AddEntry(entries, 3, sub3,
-                kind: LevelKind.Level2Sub, doorKind: DoorKind.SwitchSubScene,
-                doorSpawn: new Vector2(4f, -3.5f),
-                doorSprite: square,
-                doorPrompt: "按 E 切换场景");
+            // entry[1..N]：5 个子场景，Level2Sub。左右门由 GameManager 按索引程序化生成（首场景无左门、末场景无右门），
+            // doorKind 字段对子场景不再被读取，仅占位。
+            for (int i = 0; i < subs.Length; i++)
+            {
+                AddEntry(entries, i + 1, subs[i],
+                    kind: LevelKind.Level2Sub, doorKind: DoorKind.SwitchSubSceneNext,
+                    doorSpawn: new Vector2(6f, -3.5f),
+                    doorSprite: square,
+                    doorPrompt: "按 E 切换场景");
+            }
 
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(seq);
