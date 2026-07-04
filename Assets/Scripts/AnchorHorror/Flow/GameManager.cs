@@ -617,6 +617,7 @@ namespace Ciga.AnchorHorror
 
             var sr = doorGo.AddComponent<SpriteRenderer>();
             var col = doorGo.AddComponent<BoxCollider2D>();
+            col.isTrigger = true; // 门靠 OverlapCircle 交互，不物理阻挡玩家
 
             if (sprite != null)
             {

@@ -134,13 +134,17 @@ namespace Ciga.AnchorHorror.EditorTools
             SpawnItem("Item_C", new Vector2(-2, -1), FeatureColor.Green, FeatureShape.Long, FeatureMaterial.Glass, FeatureTexture.Glossy);
             SpawnItem("Item_D", new Vector2(2, -1), FeatureColor.Yellow, FeatureShape.Flat, FeatureMaterial.Fabric, FeatureTexture.Matte);
 
-            // --- 相机 ---
+            // --- 相机（挂在 CameraRig 下：Rig 跟随玩家、相机本身受 Shake 局部抖动，两者互不抢 transform）---
+            var cameraRig = new GameObject("CameraRig");
             var camGo = new GameObject("Main Camera");
+            camGo.transform.SetParent(cameraRig.transform, false);
             var cam = camGo.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = 5f;
-            cam.transform.position = new Vector3(0, 0, -10);
+            camGo.transform.localPosition = new Vector3(0, 0, -10);
             camGo.tag = "MainCamera";
+
+            var camFollow = cameraRig.AddComponent<CameraFollow2D>();
 
             // --- 全屏黑遮罩（San 压暗）；层级由 sortingOrder=1000 决定，z 偏移仅为落在相机近裁剪面内可见 ---
             var overlay = new GameObject("DarkOverlay");
@@ -166,7 +170,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var hint = new GameObject("HintText");
             hint.transform.position = new Vector3(0f, -4.3f, 0f);
             var htmp = hint.AddComponent<TextMeshPro>();
-            htmp.text = "WASD 移动    E 交互物品    Tab 记忆面板";
+            htmp.text = "WASD 移动    E 拾取/选择    R 检视(听声音/看信息)    Tab 记忆面板";
             htmp.fontSize = 2.2f;
             htmp.alignment = TextAlignmentOptions.Center;
             htmp.color = new Color(1f, 1f, 1f, 0.72f);
@@ -196,6 +200,8 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_transitionOverlay", tsr);
             WireObj(gm, "_whisperSource", whisper);
             WireObj(shake, "_camera", camGo.transform);
+            WireObj(camFollow, "_target", player.transform);
+            WireObj(camFollow, "_cam", cam);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
             // --- uGUI 界面（记忆面板 + 结算界面 + 倒计时面板），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
