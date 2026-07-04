@@ -20,6 +20,11 @@ namespace Ciga.AnchorHorror
         [SerializeField] private GameObject _root;
         [SerializeField] private TextMeshProUGUI _timeText;
 
+        [Header("紧迫强调（迭代B，SC-B3）")]
+        [SerializeField] private float _warnThreshold = 30f;      // 剩余 ≤ 此秒数时变红
+        [SerializeField] private Color _normalColor = Color.white;
+        [SerializeField] private Color _warnColor = new Color(1f, 0.25f, 0.2f, 1f);
+
         private readonly StringBuilder _sb = new StringBuilder(8); // "MM:SS\0" 最多 6 字符，留余量
 
         private int _lastDisplayedSeconds = -1; // 仅秒数变化才刷新文本，避免热路径字符串 GC
@@ -88,6 +93,7 @@ namespace Ciga.AnchorHorror
 
             if (_timeText != null)
             {
+                _timeText.color = totalSeconds <= _warnThreshold ? _warnColor : _normalColor; // <阈值变红（SC-B3）
                 _timeText.SetText(_sb);
             }
         }

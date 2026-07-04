@@ -39,6 +39,9 @@ namespace Ciga.AnchorHorror
         [SerializeField] private SpriteRenderer _transitionOverlay;
         [SerializeField] private AudioSource _whisperSource;
 
+        [Header("教程（迭代B，可选）")]
+        [SerializeField] private TutorialPanel _tutorial;
+
         private bool _transitioning;
         private bool _initialized;
         private string _startSceneName;
@@ -154,7 +157,17 @@ namespace Ciga.AnchorHorror
 
         private void Start()
         {
-            if (_initialized)
+            if (!_initialized)
+            {
+                return;
+            }
+
+            // 迭代B：挂了教程图则先展示，任意键后经 BeginAfterTutorial 进关卡1；未挂则直接进（向后兼容）。
+            if (_tutorial != null)
+            {
+                _tutorial.Show(this);
+            }
+            else
             {
                 EnterInitRoom();
             }
@@ -227,6 +240,12 @@ namespace Ciga.AnchorHorror
             {
                 Debug.LogWarning("[AnchorHorror] EnterInitRoom：序列 entries[0] 数据为 null，无法生成关卡1。");
             }
+        }
+
+        /// <summary>教程图结束回调（迭代B，SC-B1）：任意键关掉教程后进入关卡1。</summary>
+        public void BeginAfterTutorial()
+        {
+            EnterInitRoom();
         }
 
         /// <summary>

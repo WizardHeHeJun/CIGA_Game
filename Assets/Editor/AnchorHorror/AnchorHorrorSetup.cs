@@ -105,6 +105,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var memoryPanel = root.AddComponent<MemoryPanel>();
             var resultScreen = root.AddComponent<ResultScreen>();
             var countdown = root.AddComponent<CountdownPanel>();
+            var tutorial = root.AddComponent<TutorialPanel>();
             var hud = root.AddComponent<DebugHUD>();
             var audio = root.AddComponent<AudioSource>();
             audio.playOnAwake = false;
@@ -183,6 +184,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_sanity", sanity);
             WireObj(gm, "_interaction", interaction);
             WireObj(gm, "_player", pc);
+            WireObj(gm, "_tutorial", tutorial);
 
             WireObj(interaction, "_player", player.transform);
             WireObj(hud, "_sanity", sanity);
@@ -197,12 +199,12 @@ namespace Ciga.AnchorHorror.EditorTools
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
             // --- uGUI 界面（记忆面板 + 结算界面 + 倒计时面板），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
-            BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown);
+            BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown, tutorial);
         }
 
         // 构建共享的 Screen Space Overlay Canvas，内含记忆面板、结算界面与倒计时面板（初始均隐藏），并接线到组件。
         // 无按钮交互（Tab / R / Esc 走键盘），故不加 GraphicRaycaster / EventSystem。
-        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown)
+        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown, TutorialPanel tutorial)
         {
             var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
             canvasGo.transform.SetParent(parent, false);
@@ -288,6 +290,40 @@ namespace Ciga.AnchorHorror.EditorTools
 
             WireObj(countdown, "_root", countdownRoot.gameObject);
             WireObj(countdown, "_timeText", countdownText);
+
+            // --- 教程图盖屏（迭代B，占位）：全屏灰底 + 占位图框 + 提示，任意键继续 ---
+            var tutorialRoot = NewUiNode(canvas.transform, "TutorialRoot");
+            StretchFull(tutorialRoot);
+            var tutorialDim = tutorialRoot.gameObject.AddComponent<Image>();
+            tutorialDim.color = new Color(0.03f, 0.03f, 0.05f, 1f);
+            tutorialDim.raycastTarget = false;
+
+            var tutorialImageRt = NewUiNode(tutorialRoot, "TutorialImage");
+            tutorialImageRt.anchorMin = new Vector2(0.5f, 0.5f);
+            tutorialImageRt.anchorMax = new Vector2(0.5f, 0.5f);
+            tutorialImageRt.pivot = new Vector2(0.5f, 0.5f);
+            tutorialImageRt.anchoredPosition = new Vector2(0f, 60f);
+            tutorialImageRt.sizeDelta = new Vector2(900f, 520f);
+            var tutorialImg = tutorialImageRt.gameObject.AddComponent<Image>();
+            tutorialImg.color = new Color(0.5f, 0.5f, 0.5f, 1f); // 占位灰图（缺美术资源，可替换真教程图）
+            tutorialImg.raycastTarget = false;
+
+            var tutorialLabel = CreateText(tutorialImageRt, "TutorialLabel", 44f, TextAlignmentOptions.Center);
+            tutorialLabel.text = "教程（占位）";
+
+            var tutorialPrompt = CreateText(tutorialRoot, "TutorialPrompt", 40f, TextAlignmentOptions.Center);
+            tutorialPrompt.text = "按任意键继续";
+            var tutorialPromptRt = (RectTransform)tutorialPrompt.transform;
+            tutorialPromptRt.anchorMin = new Vector2(0f, 0f);
+            tutorialPromptRt.anchorMax = new Vector2(1f, 0f);
+            tutorialPromptRt.pivot = new Vector2(0.5f, 0f);
+            tutorialPromptRt.sizeDelta = new Vector2(0f, 80f);
+            tutorialPromptRt.anchoredPosition = new Vector2(0f, 120f);
+            tutorialRoot.gameObject.SetActive(false); // Show() 时激活
+
+            WireObj(tutorial, "_root", tutorialRoot.gameObject);
+            WireObj(tutorial, "_image", tutorialImg);
+            WireObj(tutorial, "_prompt", tutorialPrompt);
         }
 
         private static RectTransform NewUiNode(Transform parent, string name)
