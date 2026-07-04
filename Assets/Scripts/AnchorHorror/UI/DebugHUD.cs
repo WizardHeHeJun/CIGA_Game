@@ -70,8 +70,47 @@ namespace Ciga.AnchorHorror
                 }
             }
 
-            GUI.Box(new Rect(10, 10, 320, 24 * (5 + (gm.Anchor != null ? gm.Anchor.Targets.Count : 0))), string.Empty);
-            GUI.Label(new Rect(18, 14, 320, 400), _sb.ToString(), _style);
+            // 背包内容（每件物品的特征）——常驻显示，不依赖 Tab/记忆面板接线（用户反馈 Tab 看不到背包）
+            if (bp != null && bp.Count > 0)
+            {
+                _sb.AppendLine("背包内容:");
+                for (int i = 0; i < bp.Items.Count; i++)
+                {
+                    var bi = bp.Items[i];
+                    _sb.Append("  · ");
+                    bool any = false;
+                    for (int f = 0; f < bi.Features.Count; f++)
+                    {
+                        if (bi.Features[f].IsNone)
+                        {
+                            continue;
+                        }
+
+                        if (any)
+                        {
+                            _sb.Append(", ");
+                        }
+
+                        _sb.Append(bi.Features[f].ToString());
+                        any = true;
+                    }
+
+                    if (!any)
+                    {
+                        _sb.Append("(无特征)");
+                    }
+
+                    _sb.AppendLine();
+                }
+            }
+
+            int lines = 3
+                        + (gm.CurrentPhase == GamePhase.HorrorLevel ? 1 : 0)
+                        + (gm.Anchor != null ? gm.Anchor.Targets.Count : 0)
+                        + (bp != null && bp.Count > 0 ? bp.Count + 1 : 0);
+            float h = 22f * lines + 14f;
+            GUI.Box(new Rect(10, 10, 340, h), string.Empty);
+            GUI.Label(new Rect(18, 14, 330, h), _sb.ToString(), _style);
         }
     }
 }
