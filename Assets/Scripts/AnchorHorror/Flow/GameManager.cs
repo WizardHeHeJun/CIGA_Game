@@ -4,6 +4,7 @@
 // Created: 2026-07-04
 // ------------------------------------------------------------
 using System.Collections;
+using System.Collections.Generic;
 using Ciga.Startup;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -56,6 +57,9 @@ namespace Ciga.AnchorHorror
 
         // 关卡2 倒计时（仅 HorrorLevel 递减，独立字段不与旧 InitRoom 兜底计时混用——陷阱 6）
         private float _remainingTime;
+
+        // 拾取反馈"新命中"缓冲（复用避免每次拾取分配，SC-B4）
+        private readonly List<FeatureUnit> _pickupHitBuffer = new List<FeatureUnit>();
 
         // 关卡1 门引用（LockSelection 后开启可交互）
         private LevelDoor _level1Door;
@@ -306,12 +310,40 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
+            // 本物品能"新命中"哪些此前未覆盖的锚点（供拾取反馈，SC-B4）。入包前算，用未覆盖态判定。
+            _pickupHitBuffer.Clear();
+            var itemFeatures = item.GetFeatures();
+            var targets = Anchor.Targets;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var t = targets[i];
+                if (_backpack.Covers(t))
+                {
+                    continue; // 已覆盖，拾同特征不再奖励反馈（陷阱：仅新命中触发）
+                }
+
+                for (int f = 0; f < itemFeatures.Count; f++)
+                {
+                    if (!itemFeatures[f].IsNone && itemFeatures[f] == t.Feature)
+                    {
+                        _pickupHitBuffer.Add(t.Feature);
+                        break;
+                    }
+                }
+            }
+
             if (!_backpack.TryAdd(item))
             {
                 return; // 背包满，CanInteract 层已封
             }
 
             item.Consumed = true;
+
+            // 拾取反馈：有新命中 → 暖音/浮字（复用 MatchFeedback，SC-B4）。隐藏物品前触发（浮字取物品位置）。
+            if (_pickupHitBuffer.Count > 0)
+            {
+                EventBus.RaiseItemMatched(item, _pickupHitBuffer);
+            }
 
             // 隐藏/销毁场景 GO（物品已入包，场景对象不再需要）
             item.gameObject.SetActive(false);
