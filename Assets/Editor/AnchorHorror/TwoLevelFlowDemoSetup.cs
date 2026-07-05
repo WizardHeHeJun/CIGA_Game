@@ -37,6 +37,7 @@ namespace Ciga.AnchorHorror.EditorTools
     {
         private const string ResDir = "Assets/Res/AnchorHorror";
         private const string LevelsDir = ResDir + "/Levels";
+        private const string BgDir = ResDir + "/Backgrounds";
         private const string BootstrapScene = ResDir + "/Bootstrap.unity";
         private const string SquareSpritePath = ResDir + "/WhiteSquare.png";
 
@@ -117,8 +118,8 @@ namespace Ciga.AnchorHorror.EditorTools
                     "两关卡流程 Demo 数据",
                     $"已生成/更新：\n" +
                     $"  关卡1 LevelData（8 物品，8 种 distinct 特征）\n" +
-                    $"  子场景1、2、3 LevelData\n" +
-                    $"  LevelSequence（entry[0..3]）\n" +
+                    $"  子场景1..5 LevelData\n" +
+                    $"  LevelSequence（entry[0..5]，含 6 张房间背景）\n" +
                     $"  并已接线到 Bootstrap.unity。",
                     "好");
             }
@@ -165,8 +166,19 @@ namespace Ciga.AnchorHorror.EditorTools
             var sub4   = BuildSubLevelData("DemoSub4", "关卡2-子场景4", db, levelCfg, Sub4Items);
             var sub5   = BuildSubLevelData("DemoSub5", "关卡2-子场景5", db, levelCfg, Sub5Items);
 
-            // 2. 建 LevelSequence
-            var seq = BuildLevelSequence(level1, new[] { sub1, sub2, sub3, sub4, sub5 }, square);
+            // 2. 建 LevelSequence，并把 6 张房间背景接到 entry._background（数据驱动，重建自动复现）
+            //    映射：关卡1=卧室；子场景 1..5 = 起居室/浴室/走廊/厨房/杂物间。
+            //    注意关卡2从中间 entry[3] 进入，因此 entry[3] 接 Aisle（走廊）。
+            var backgrounds = new[]
+            {
+                LoadBg("Bedroom"),
+                LoadBg("LivingRoom"),
+                LoadBg("Bathroom"),
+                LoadBg("Aisle"),
+                LoadBg("Kitchen"),
+                LoadBg("Utility"),
+            };
+            var seq = BuildLevelSequence(level1, new[] { sub1, sub2, sub3, sub4, sub5 }, square, backgrounds);
 
             // 3. 接线到 Bootstrap
             WireBootstrapScene(seq);
@@ -300,7 +312,7 @@ namespace Ciga.AnchorHorror.EditorTools
         // ──────────────────────────────────────────────────────────────
 
         private static LevelSequence BuildLevelSequence(
-            LevelData level1, LevelData[] subs, Sprite square)
+            LevelData level1, LevelData[] subs, Sprite square, Sprite[] backgrounds)
         {
             var path = LevelsDir + "/DemoTwoLevelFlow_Sequence.asset";
             var seq = LoadOrCreate<LevelSequence>(path);
@@ -313,7 +325,8 @@ namespace Ciga.AnchorHorror.EditorTools
                 kind: LevelKind.Level1Select, doorKind: DoorKind.EnterLevel2,
                 doorSpawn: new Vector2(4f, -4f),
                 doorSprite: square,
-                doorPrompt: "按 E 进入第二关");
+                doorPrompt: "按 E 进入第二关",
+                background: GetBackground(backgrounds, 0));
 
             // entry[1..N]：5 个子场景，Level2Sub。左右门由 GameManager 按索引程序化生成（首场景无左门、末场景无右门），
             // doorKind 字段对子场景不再被读取，仅占位。
@@ -323,7 +336,8 @@ namespace Ciga.AnchorHorror.EditorTools
                     kind: LevelKind.Level2Sub, doorKind: DoorKind.SwitchSubSceneNext,
                     doorSpawn: new Vector2(6f, -3.5f),
                     doorSprite: square,
-                    doorPrompt: "按 E 切换场景");
+                    doorPrompt: "按 E 切换场景",
+                    background: GetBackground(backgrounds, i + 1));
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
@@ -334,7 +348,7 @@ namespace Ciga.AnchorHorror.EditorTools
         private static void AddEntry(
             SerializedProperty entries, int idx, LevelData level,
             LevelKind kind, DoorKind doorKind,
-            Vector2 doorSpawn, Sprite doorSprite, string doorPrompt)
+            Vector2 doorSpawn, Sprite doorSprite, string doorPrompt, Sprite background)
         {
             entries.InsertArrayElementAtIndex(idx);
             var entry = entries.GetArrayElementAtIndex(idx);
@@ -347,6 +361,17 @@ namespace Ciga.AnchorHorror.EditorTools
             door.FindPropertyRelative("_spawn").vector2Value       = doorSpawn;
             door.FindPropertyRelative("_sprite").objectReferenceValue = doorSprite;
             door.FindPropertyRelative("_prompt").stringValue       = doorPrompt;
+
+            var bg = entry.FindPropertyRelative("_background");
+            if (bg != null)
+            {
+                bg.objectReferenceValue = background;
+            }
+        }
+
+        private static Sprite GetBackground(Sprite[] backgrounds, int index)
+        {
+            return backgrounds != null && index >= 0 && index < backgrounds.Length ? backgrounds[index] : null;
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -422,6 +447,19 @@ namespace Ciga.AnchorHorror.EditorTools
         {
             return AssetDatabase.LoadAssetAtPath<ItemDatabase>(ResDir + "/ItemDatabase.asset");
         }
+
+        /// <summary>按文件名加载 Backgrounds/ 下的房间背景 Sprite（缺则告警返回 null）。</summary>
+        private static Sprite LoadBg(string fileName)
+        {
+            var bg = AssetDatabase.LoadAssetAtPath<Sprite>(BgDir + "/" + fileName + ".png");
+            if (bg == null)
+            {
+                Debug.LogWarning($"[TwoLevelFlowDemoSetup] 找不到背景图：{BgDir}/{fileName}.png（该关卡将无背景）。");
+            }
+
+            return bg;
+        }
+
 
         private static T LoadOrCreate<T>(string path) where T : ScriptableObject
         {

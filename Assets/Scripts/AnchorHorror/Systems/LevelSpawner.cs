@@ -72,5 +72,6 @@ namespace Ciga.AnchorHorror
 
             return result;
         }
+
     }
 }

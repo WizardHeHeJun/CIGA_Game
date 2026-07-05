@@ -232,6 +232,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(feedback, "_noiseSource", noise);
             WireObj(gm, "_transitionOverlay", tsr);
             WireObj(gm, "_whisperSource", whisper);
+            WireObj(gm, "_cameraFollow", camFollow); // 背景边界/镜头 clamp 需要持有 CameraRig 跟随组件
             WireObj(shake, "_camera", camGo.transform);
             WireObj(camFollow, "_target", player.transform);
             WireObj(camFollow, "_cam", cam);
@@ -357,7 +358,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(countdown, "_root", countdownRoot.gameObject);
             WireObj(countdown, "_timeText", countdownText);
 
-            // --- 教程图盖屏（迭代B，占位）：全屏灰底 + 占位图框 + 提示，任意键继续 ---
+            // --- 教程图盖屏（迭代B）：全屏教程图 + 提示，任意键继续 ---
             var tutorialRoot = NewUiNode(canvas.transform, "TutorialRoot");
             StretchFull(tutorialRoot);
             var tutorialDim = tutorialRoot.gameObject.AddComponent<Image>();
@@ -365,17 +366,23 @@ namespace Ciga.AnchorHorror.EditorTools
             tutorialDim.raycastTarget = false;
 
             var tutorialImageRt = NewUiNode(tutorialRoot, "TutorialImage");
-            tutorialImageRt.anchorMin = new Vector2(0.5f, 0.5f);
-            tutorialImageRt.anchorMax = new Vector2(0.5f, 0.5f);
-            tutorialImageRt.pivot = new Vector2(0.5f, 0.5f);
-            tutorialImageRt.anchoredPosition = new Vector2(0f, 60f);
-            tutorialImageRt.sizeDelta = new Vector2(900f, 520f);
+            StretchFull(tutorialImageRt);
             var tutorialImg = tutorialImageRt.gameObject.AddComponent<Image>();
-            tutorialImg.color = new Color(0.5f, 0.5f, 0.5f, 1f); // 占位灰图（缺美术资源，可替换真教程图）
             tutorialImg.raycastTarget = false;
+            tutorialImg.preserveAspect = true;
+            var tutorialSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Res/UI/Education.png");
+            if (tutorialSprite != null)
+            {
+                tutorialImg.sprite = tutorialSprite;
+                tutorialImg.color = Color.white;
+            }
+            else
+            {
+                tutorialImg.color = new Color(0.5f, 0.5f, 0.5f, 1f); // 缺美术资源时灰底占位
+            }
 
             var tutorialLabel = CreateText(tutorialImageRt, "TutorialLabel", 44f, TextAlignmentOptions.Center);
-            tutorialLabel.text = "教程（占位）";
+            tutorialLabel.text = tutorialSprite != null ? string.Empty : "教程（占位）";
 
             var tutorialPrompt = CreateText(tutorialRoot, "TutorialPrompt", 40f, TextAlignmentOptions.Center);
             tutorialPrompt.text = "按任意键继续";
