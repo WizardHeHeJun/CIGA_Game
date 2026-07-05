@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Ciga.AnchorHorror;
+using Ciga.Startup;
 using Ciga.UI;
 using TMPro;
 using UnityEditor;
@@ -37,6 +38,8 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string GameFontPath = SoDir + "/HanyiLotus SDF.asset";
         private const string LiberationFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
+        private const string BgmPath = "Assets/Res/Audio/AnchorHorror/bgm.mp3";
+        private const string UiClickPath = "Assets/Res/Audio/AnchorHorror/ui-click.mp3";
 
         // 关卡2 HUD 美术：从 acts/ 原始美术拷入 Assets 并导为 Sprite（全屏叠加层，按 1920x1080 定位）
         private const string InGameUiDir = "Assets/Res/UI/InGame";
@@ -158,7 +161,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var gm = root.AddComponent<GameManager>();
             var feedback = root.AddComponent<SanityFeedback>();
             var shake = root.AddComponent<CameraShake2D>();
-            root.AddComponent<MatchFeedback>();
+            var matchFeedback = root.AddComponent<MatchFeedback>();
             var memoryPanel = root.AddComponent<MemoryPanel>();
             var resultScreen = root.AddComponent<ResultScreen>();
             var countdown = root.AddComponent<CountdownPanel>();
@@ -194,12 +197,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var walkAnimator = player.AddComponent<PlayerWalkSpriteAnimator>();
             player.AddComponent<PlayerJitter2D>(); // 低 San 手抖（缩放微颤，_target 缺省用自身）
 
-            // --- InitRoom 候选物品（散布，供收集）---
-            SpawnItem("Item_A", new Vector2(-2, 1), FeatureColor.Red, FeatureShape.Round, FeatureMaterial.Wood, FeatureTexture.Smooth);
-            SpawnItem("Item_B", new Vector2(2, 1), FeatureColor.Blue, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.Rough);
-            SpawnItem("Item_C", new Vector2(-2, -1), FeatureColor.Green, FeatureShape.Long, FeatureMaterial.Glass, FeatureTexture.Glossy);
-            SpawnItem("Item_D", new Vector2(2, -1), FeatureColor.Yellow, FeatureShape.Flat, FeatureMaterial.Fabric, FeatureTexture.Matte);
-
+            // --- InitRoom 候选物品（改走 LevelSequence/LevelSpawner 数据驱动生成，不在 Bootstrap 根节点额外散放演示白块）---
             // --- 相机（挂在 CameraRig 下：Rig 跟随玩家、相机本身受 Shake 局部抖动，两者互不抢 transform）---
             var cameraRig = new GameObject("CameraRig");
             var camGo = new GameObject("Main Camera");
@@ -241,6 +239,9 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_player", pc);
             WireObj(gm, "_tutorial", tutorial);
 
+            var bgmClip = AssetDatabase.LoadAssetAtPath<AudioClip>(BgmPath);
+            var uiClickClip = AssetDatabase.LoadAssetAtPath<AudioClip>(UiClickPath);
+
             WireObj(interaction, "_player", player.transform);
             WireObj(hud, "_sanity", sanity);
             WireBool(hud, "_visible", false);
@@ -260,7 +261,15 @@ namespace Ciga.AnchorHorror.EditorTools
             WirePlayerWalkSprites(walkAnimator);
             WirePlayerHitSprites(walkAnimator);
             WireObj(resultScreen, "_resultConfig", resultCfg);
+            WireObj(matchFeedback, "_featureSoundSource", audio);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
+
+            var loader = UnityEngine.Object.FindObjectOfType<SceneLoader>();
+            if (loader != null)
+            {
+                WireObj(loader, "_bgmClip", bgmClip);
+                WireObj(loader, "_uiClickClip", uiClickClip);
+            }
 
             // --- uGUI 界面（记忆页 + 结算 + 倒计时 + 关卡2 HUD），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
             BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown, tutorial, inGameHud, sanBar, backpack);
@@ -600,10 +609,14 @@ namespace Ciga.AnchorHorror.EditorTools
             img.sprite = sprite;
             img.type = Image.Type.Simple;
             img.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
-            img.raycastTarget = sprite != null && sprite.texture != null && sprite.texture.isReadable;
-            if (img.raycastTarget)
+            img.raycastTarget = true;
+            if (sprite != null && sprite.texture != null && sprite.texture.isReadable)
             {
                 img.alphaHitTestMinimumThreshold = 0.1f;
+            }
+            else if (sprite == null)
+            {
+                img.raycastTarget = false;
             }
 
             var btn = rt.gameObject.AddComponent<Button>();

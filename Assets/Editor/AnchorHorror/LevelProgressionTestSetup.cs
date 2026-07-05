@@ -230,6 +230,12 @@ namespace Ciga.AnchorHorror.EditorTools
                         spriteProp.objectReferenceValue = square;
                     }
 
+                    var activeSpriteProp = door.FindPropertyRelative("_activeSprite");
+                    if (activeSpriteProp != null)
+                    {
+                        activeSpriteProp.objectReferenceValue = null;
+                    }
+
                     var promptProp = door.FindPropertyRelative("_prompt");
                     if (promptProp != null)
                     {

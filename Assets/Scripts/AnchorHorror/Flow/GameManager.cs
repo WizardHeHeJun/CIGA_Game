@@ -72,6 +72,9 @@ namespace Ciga.AnchorHorror
         // 拾取反馈"新命中"缓冲（复用避免每次拾取分配，SC-B4）
         private readonly List<FeatureUnit> _pickupHitBuffer = new List<FeatureUnit>();
 
+        // 第二关房间内实例消费态：房间切换会销毁重建场景对象，需独立保存已交互实例键。
+        private readonly HashSet<string> _consumedRuntimeKeys = new HashSet<string>();
+
         public GamePhase CurrentPhase { get; private set; } = GamePhase.Boot;
         public AnchorSystem Anchor { get; private set; }
         public GlobalConfig Config => _config;
@@ -228,6 +231,7 @@ namespace Ciga.AnchorHorror
             _transitioning = false;
             SelectionLocked = false;
             Anchor.Reset();
+            _consumedRuntimeKeys.Clear();
 
             // 首屏起始压黑，建完房间后淡入（#1）——避免淡入前先闪一帧空场景/未布置场景。
             SetOverlayAlpha(1f);
@@ -255,7 +259,7 @@ namespace Ciga.AnchorHorror
 
                 _levelRoot = new GameObject("__LevelRoot");
                 ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（关卡1=卧室）
-                LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+                LevelSpawner.Spawn(_levelData, _levelRoot.transform, BuildSpawnContext());
             }
             else
             {
@@ -289,6 +293,7 @@ namespace Ciga.AnchorHorror
             }
 
             item.Consumed = true;
+            MarkConsumed(item.RuntimeKey);
             EventBus.RaiseBackpackChanged(_backpack);
 
             if (_backpack.Count >= _config.Level1SelectCap)
@@ -370,6 +375,7 @@ namespace Ciga.AnchorHorror
             }
 
             item.Consumed = true;
+            MarkConsumed(item.RuntimeKey);
             EventBus.RaiseBackpackChanged(_backpack);
 
             // 反馈（隐藏物品前触发，浮字/红闪取物品位置）：
@@ -597,6 +603,7 @@ namespace Ciga.AnchorHorror
 
             var doorSetting = _sequence.GetDoor(_levelIndex);
             var sprite = doorSetting != null ? doorSetting.Sprite : null;
+            var activeSprite = doorSetting != null ? doorSetting.ActiveSprite : null;
 
             if (_sequence.GetKind(_levelIndex) == LevelKind.Level1Select)
             {
@@ -606,7 +613,7 @@ namespace Ciga.AnchorHorror
 
             if (_levelIndex == _level2CorridorIndex)
             {
-                SpawnCorridorDoors(sprite);
+                SpawnCorridorDoors(sprite, activeSprite);
                 return;
             }
 
@@ -617,28 +624,28 @@ namespace Ciga.AnchorHorror
                                        doorSetting != null &&
                                        !string.IsNullOrEmpty(doorSetting.Prompt);
                 string prompt = hasReturnPrompt ? doorSetting.Prompt : "按 E 返回走廊";
-                SpawnDoor(DoorKind.ReturnToCorridor, pos, sprite, prompt);
+                SpawnDoor(DoorKind.ReturnToCorridor, pos, sprite, activeSprite, prompt);
             }
         }
 
-        private void SpawnCorridorDoors(Sprite sprite)
+        private void SpawnCorridorDoors(Sprite sprite, Sprite activeSprite)
         {
-            TrySpawnCorridorDoor(0, DoorKind.EnterRoom1, new Vector2(-4.5f, 2.2f), sprite, "按 E 进入房间1");
-            TrySpawnCorridorDoor(1, DoorKind.EnterRoom2, new Vector2(4.5f, 2.2f), sprite, "按 E 进入房间2");
-            TrySpawnCorridorDoor(2, DoorKind.EnterRoom3, new Vector2(-4.5f, -3.5f), sprite, "按 E 进入房间3");
-            TrySpawnCorridorDoor(3, DoorKind.EnterRoom4, new Vector2(4.5f, -3.5f), sprite, "按 E 进入房间4");
+            TrySpawnCorridorDoor(0, DoorKind.EnterRoom1, new Vector2(-4.5f, 2.2f), sprite, activeSprite, "按 E 进入房间1");
+            TrySpawnCorridorDoor(1, DoorKind.EnterRoom2, new Vector2(4.5f, 2.2f), sprite, activeSprite, "按 E 进入房间2");
+            TrySpawnCorridorDoor(2, DoorKind.EnterRoom3, new Vector2(-4.5f, -3.5f), sprite, activeSprite, "按 E 进入房间3");
+            TrySpawnCorridorDoor(3, DoorKind.EnterRoom4, new Vector2(4.5f, -3.5f), sprite, activeSprite, "按 E 进入房间4");
         }
 
-        private void TrySpawnCorridorDoor(int roomOffset, DoorKind kind, Vector2 pos, Sprite sprite, string prompt)
+        private void TrySpawnCorridorDoor(int roomOffset, DoorKind kind, Vector2 pos, Sprite sprite, Sprite activeSprite, string prompt)
         {
             if (GetLevel2RoomIndex(roomOffset) >= 0)
             {
-                SpawnDoor(kind, pos, sprite, prompt);
+                SpawnDoor(kind, pos, sprite, activeSprite, prompt);
             }
         }
 
         /// <summary>在 _levelRoot 下代码建一扇门（碰撞体 + 精灵 + LevelDoor），返回该门。</summary>
-        private LevelDoor SpawnDoor(DoorKind kind, Vector2 pos, Sprite sprite, string prompt)
+        private LevelDoor SpawnDoor(DoorKind kind, Vector2 pos, Sprite sprite, Sprite activeSprite, string prompt)
         {
             var doorGo = new GameObject("__LevelDoor");
             doorGo.transform.SetParent(_levelRoot.transform, false);
@@ -660,6 +667,7 @@ namespace Ciga.AnchorHorror
 
             var door = doorGo.AddComponent<LevelDoor>();
             door.Configure(kind, sprite, prompt);
+            door.ConfigureSprites(sprite, activeSprite);
             return door;
         }
 
@@ -722,6 +730,19 @@ namespace Ciga.AnchorHorror
             return fallback;
         }
 
+        private LevelSpawner.SpawnContext BuildSpawnContext()
+        {
+            return new LevelSpawner.SpawnContext(_consumedRuntimeKeys);
+        }
+
+        private void MarkConsumed(string runtimeKey)
+        {
+            if (!string.IsNullOrEmpty(runtimeKey))
+            {
+                _consumedRuntimeKeys.Add(runtimeKey);
+            }
+        }
+
         private void RebuildCurrentLevelRoot(string context)
         {
             if (_levelRoot != null)
@@ -739,7 +760,7 @@ namespace Ciga.AnchorHorror
 
             _levelRoot = new GameObject("__LevelRoot");
             ApplyBackgroundAndBounds();
-            LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+            LevelSpawner.Spawn(_levelData, _levelRoot.transform, BuildSpawnContext());
             SpawnLevelDoor();
             MovePlayerToSpawn(_levelData.PlayerSpawn);
         }

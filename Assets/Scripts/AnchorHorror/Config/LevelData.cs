@@ -103,6 +103,12 @@ namespace Ciga.AnchorHorror
 
         /// <summary>仅渲染不交互（无 FeatureTag / Collider）。</summary>
         public bool VisualOnly => _visualOnly;
+
+        /// <summary>该实例的稳定运行时键；为空时由运行时兜底生成。</summary>
+        public string RuntimeKey => _runtimeKey;
+
+        /// <summary>仅 VisualOnly 物体使用：跟随该实例键的已交互状态一起隐藏。</summary>
+        public string HideWhenConsumedOf => _hideWhenConsumedOf;
     }
 
     /// <summary>

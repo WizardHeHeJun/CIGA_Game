@@ -17,6 +17,13 @@ namespace Ciga.AnchorHorror
     /// </summary>
     public static class ItemFactory
     {
+        public struct SpawnRuntimeState
+        {
+            public string RuntimeKey;
+            public bool Consumed;
+            public bool Hidden;
+        }
+
         /// <summary>
         /// 根据物品定义与实例描述装配 GameObject。
         /// </summary>
@@ -24,8 +31,10 @@ namespace Ciga.AnchorHorror
         /// <param name="placed">关卡中的物品实例描述（非空）。</param>
         /// <param name="fallback">全局兜底 Sprite；def 与 placed 均无 Sprite 时使用。</param>
         /// <param name="parent">挂载父节点（关卡根 Transform）。</param>
+        /// <param name="runtimeState">运行时状态：实例键与是否应以已消费/隐藏态生成。</param>
         /// <returns>装配完毕的 GameObject，含 Collider2D / SpriteRenderer / FeatureTag。</returns>
-        public static GameObject Create(ItemDefinition def, PlacedItem placed, Sprite fallback, Transform parent)
+        public static GameObject Create(ItemDefinition def, PlacedItem placed, Sprite fallback, Transform parent,
+            SpawnRuntimeState runtimeState)
         {
             // --- 1. 建 GameObject，名称取显示名，无则用 ID ---
             string goName = !string.IsNullOrEmpty(def.DisplayName) ? def.DisplayName : def.Id;
@@ -65,6 +74,11 @@ namespace Ciga.AnchorHorror
             }
             sr.sprite = sprite;
 
+            if (runtimeState.Hidden)
+            {
+                go.SetActive(false);
+            }
+
             if (placed.VisualOnly)
             {
                 return go;
@@ -88,6 +102,8 @@ namespace Ciga.AnchorHorror
 
             // --- 5. 挂 FeatureTag（Awake 在 AddComponent 后立即运行，会 GetComponent<SpriteRenderer> 取基色）---
             var tag = go.AddComponent<FeatureTag>();
+            tag.ConfigureRuntimeKey(runtimeState.RuntimeKey);
+            tag.Consumed = runtimeState.Consumed;
             tag.ConfigureSprites(sprite, placed.ActiveSprite);
 
             // --- 6. Configure 覆盖特征（幂等；覆盖 Awake 用 Inspector 默认枚举建的缓存）---

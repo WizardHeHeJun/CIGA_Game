@@ -4,6 +4,8 @@
 // Created: 2026-07-05
 // ------------------------------------------------------------
 using System.Collections.Generic;
+using Ciga.Startup;
+using Ciga.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,6 +34,7 @@ namespace Ciga.AnchorHorror
         [SerializeField] private Image _pageDownImage;
 
         private int _firstVisibleIndex;
+        private UiClickSfxBinder _clickSfxBinder;
 
         private void OnEnable()
         {
@@ -77,6 +80,7 @@ namespace Ciga.AnchorHorror
                                  "请运行菜单 Ciga/AnchorHorror/生成可运行装配 重建场景。");
             }
 
+            EnsureClickSfxBinder();
             SetVisible(false);
         }
 
@@ -267,6 +271,27 @@ namespace Ciga.AnchorHorror
             }
 
             return ((count - 1) / pageSize) * pageSize;
+        }
+
+        private void EnsureClickSfxBinder()
+        {
+            if (_clickSfxBinder == null)
+            {
+                _clickSfxBinder = GetComponent<UiClickSfxBinder>();
+                if (_clickSfxBinder == null)
+                {
+                    _clickSfxBinder = gameObject.AddComponent<UiClickSfxBinder>();
+                }
+            }
+
+            if (_clickSfxBinder == null)
+            {
+                return;
+            }
+
+            var loader = SceneLoader.Instance;
+            _clickSfxBinder.SetClickClip(loader != null ? loader.UiClickClip : null);
+            _clickSfxBinder.RefreshButtons();
         }
 
         private void SetVisible(bool visible)

@@ -287,34 +287,34 @@ MonoBehaviour:
     _value: 1
     _displayName: "\u5E03\u6599\u8F7B\u89E6\u58F0"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: e9ca2f19965b28c4b97f8e55c7b60ed1, type: 3}
   - _dimension: 4
     _value: 2
     _displayName: "\u6728\u8D28\u6469\u64E6\u58F0"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: 9024c8de3b668104cba4d0b01006a696, type: 3}
   - _dimension: 4
     _value: 3
     _displayName: "\u706F\u5149\u55E1\u9E23"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: 128dfb7c48ed1df46b1b386e93f6697b, type: 3}
   - _dimension: 4
     _value: 4
     _displayName: "\u73BB\u7483\u8F7B\u54CD"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: d1a5400822b57094c83a9789c2b5087c, type: 3}
   - _dimension: 4
     _value: 5
     _displayName: "\u6EF4\u7B54\u58F0"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: 9dea5f36320b7c24699fa1e5fa653658, type: 3}
   - _dimension: 4
     _value: 6
     _displayName: "\u91D1\u5C5E\u673A\u68B0\u58F0"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: 3f8b5e2673d410343bf0bcce2c982f8e, type: 3}
   - _dimension: 4
     _value: 7
     _displayName: "\u5851\u6599\u8F7B\u54CD"
     _keywordColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: 6ffe71eb742d556439cda501c5c909e7, type: 3}

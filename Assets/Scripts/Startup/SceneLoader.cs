@@ -4,6 +4,7 @@
 // Created: 2026-07-04
 // ------------------------------------------------------------
 using System.Collections;
+using Ciga.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -27,12 +28,20 @@ namespace Ciga.Startup
         [Header("加载配置")]
         [SerializeField] private LoadingConfig _loadingConfig;
 
+        [Header("音频")]
+        [SerializeField] private AudioClip _bgmClip;
+        [SerializeField] private AudioClip _uiClickClip;
+        [Range(0f, 1f)]
+        [SerializeField] private float _bgmVolume = 0.35f;
+
         private LoadingOverlay _overlay;
         private bool _isLoading;
         private Coroutine _loadCoroutine;
+        private AudioSource _bgmSource;
 
         /// <summary>当前是否正在加载场景（幂等保护：加载中调 LoadScene 直接忽略）。</summary>
         public bool IsLoading => _isLoading;
+        public AudioClip UiClickClip => _uiClickClip;
 
         private void Awake()
         {
@@ -49,6 +58,8 @@ namespace Ciga.Startup
             DontDestroyOnLoad(gameObject);
 
             EnsureOverlay();
+            EnsureBgmSource();
+            PlayBgm();
         }
 
         private void OnDestroy()
@@ -133,7 +144,6 @@ namespace Ciga.Startup
             _loadCoroutine = null;
         }
 
-        // 懒创建 Overlay Canvas（子物体挂 LoadingOverlay）。
         private void EnsureOverlay()
         {
             if (_overlay != null)
@@ -160,6 +170,60 @@ namespace Ciga.Startup
             _overlay = overlayGo.AddComponent<LoadingOverlay>();
             _overlay.Setup(_loadingConfig);
             _overlay.SetVisible(false);
+        }
+
+        private void EnsureBgmSource()
+        {
+            if (_bgmSource != null)
+            {
+                _bgmSource.playOnAwake = false;
+                _bgmSource.loop = true;
+                _bgmSource.spatialBlend = 0f;
+                _bgmSource.volume = _bgmVolume;
+                return;
+            }
+
+            _bgmSource = GetComponent<AudioSource>();
+            if (_bgmSource == null)
+            {
+                _bgmSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            _bgmSource.playOnAwake = false;
+            _bgmSource.loop = true;
+            _bgmSource.spatialBlend = 0f;
+            _bgmSource.volume = _bgmVolume;
+        }
+
+        private void PlayBgm()
+        {
+            EnsureBgmSource();
+            if (_bgmSource == null)
+            {
+                return;
+            }
+
+            _bgmSource.volume = _bgmVolume;
+            if (_bgmClip == null)
+            {
+                if (_bgmSource.isPlaying)
+                {
+                    _bgmSource.Stop();
+                }
+
+                _bgmSource.clip = null;
+                return;
+            }
+
+            if (_bgmSource.clip != _bgmClip)
+            {
+                _bgmSource.clip = _bgmClip;
+            }
+
+            if (!_bgmSource.isPlaying)
+            {
+                _bgmSource.Play();
+            }
         }
     }
 }

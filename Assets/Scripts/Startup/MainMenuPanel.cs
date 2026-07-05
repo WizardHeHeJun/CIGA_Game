@@ -47,6 +47,7 @@ namespace Ciga.Startup
         private bool _guideReturnHintShown;
         private UITextBreathe _guideHintBreathe;
         private UIFadePanel _guideFade;
+        private UiClickSfxBinder _clickSfxBinder;
 
         private void Start()
         {
@@ -143,6 +144,7 @@ namespace Ciga.Startup
             // 操作指引：已接线则配置、留空则自建
             EnsureGuideButton();
             EnsureGuidePanel();
+            EnsureClickSfxBinder();
         }
 
         private void ApplyBackground()
@@ -491,6 +493,27 @@ namespace Ciga.Startup
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
+        }
+
+        private void EnsureClickSfxBinder()
+        {
+            if (_clickSfxBinder == null)
+            {
+                _clickSfxBinder = GetComponent<UiClickSfxBinder>();
+                if (_clickSfxBinder == null)
+                {
+                    _clickSfxBinder = gameObject.AddComponent<UiClickSfxBinder>();
+                }
+            }
+
+            if (_clickSfxBinder == null)
+            {
+                return;
+            }
+
+            var loader = SceneLoader.Instance;
+            _clickSfxBinder.SetClickClip(loader != null ? loader.UiClickClip : null);
+            _clickSfxBinder.RefreshButtons();
         }
 
         private void OnStartClicked()

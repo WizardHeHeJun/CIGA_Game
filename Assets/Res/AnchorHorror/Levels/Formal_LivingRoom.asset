@@ -31,6 +31,8 @@ MonoBehaviour:
     _colliderOffset: {x: 1.7892332, y: 1.353479}
     _colliderSize: {x: 6.8796344, y: 7.321991}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -48,6 +50,8 @@ MonoBehaviour:
     _colliderOffset: {x: -5.965211, y: -0.14855257}
     _colliderSize: {x: 3.5718641, y: 5.7836466}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -65,6 +69,8 @@ MonoBehaviour:
     _colliderOffset: {x: -1.492128, y: -1.2181311}
     _colliderSize: {x: 5.3610973, y: 5.25546}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -82,6 +88,8 @@ MonoBehaviour:
     _colliderOffset: {x: 8.091164, y: -1.0629761}
     _colliderSize: {x: 3.5454547, y: 4.496191}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -99,6 +107,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0.5116811, y: -5.351194}
     _colliderSize: {x: 4.469782, y: 1.9278822}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -116,6 +126,8 @@ MonoBehaviour:
     _colliderOffset: {x: -3.2219403, y: 3.3407822}
     _colliderSize: {x: 2.8390048, y: 5.8430676}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   _itemDatabase: {fileID: 11400000, guid: 80bc23451957f8a4097bab598ecb7d1c, type: 2}
   _levelConfig: {fileID: 11400000, guid: 2dd6847d9e164e0438400537b6edd76a, type: 2}
   _playerSpawn: {x: 0, y: -3.5}

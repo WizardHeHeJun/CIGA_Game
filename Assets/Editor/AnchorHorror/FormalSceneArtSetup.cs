@@ -126,8 +126,6 @@ namespace Ciga.AnchorHorror.EditorTools
                     Obj("lamp", "走廊灯", "Default/Aisle_Lamp_Default.PNG", "Active/Aisle_Lamp_Active.PNG", 1),
                     Obj("key", "钥匙", "Default/Aisle_Key_Default.PNG", "Active/Aisle_Key_Active.PNG", 2),
                     Obj("carpet", "走廊地毯", "Default/Aisle_Carpet_Default.PNG", "Active/Aisle_Carpet_Active.PNG", 3),
-                    Obj("door_a", "门A", "Default/Aisle_DoorA_Default.PNG", "Active/Aisle_DoorA_Active.PNG", -1, "chair_wood", true),
-                    Obj("door_b", "门B", "Default/Aisle_DoorB_Default.PNG", "Active/Aisle_DoorB_Active.PNG", -1, "chair_wood", true),
                 });
         }
 
@@ -317,14 +315,14 @@ namespace Ciga.AnchorHorror.EditorTools
             entries.ClearArray();
 
             AddEntry(entries, 0, level1, LevelKind.Level1Select, DoorKind.EnterLevel2,
-                new Vector2(4f, -4f), null, "选满后自动进入第二关", level1Spec.Background);
+                new Vector2(4f, -4f), null, null, "选满后自动进入第二关", level1Spec.Background);
             AddEntry(entries, 1, corridor, LevelKind.Level2Sub, DoorKind.EnterRoom1,
-                Vector2.zero, null, "按 E 进入房间", corridorSpec.Background);
+                Vector2.zero, null, null, "按 E 进入房间", corridorSpec.Background);
 
             for (int i = 0; i < rooms.Length; i++)
             {
                 AddEntry(entries, i + 2, rooms[i], LevelKind.Level2Sub, DoorKind.ReturnToCorridor,
-                    new Vector2(0f, -3.5f), null, "按 E 返回走廊", roomSpecs[i].Background);
+                    new Vector2(0f, -3.5f), null, null, "按 E 返回走廊", roomSpecs[i].Background);
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
@@ -341,6 +339,7 @@ namespace Ciga.AnchorHorror.EditorTools
             DoorKind doorKind,
             Vector2 doorSpawn,
             Sprite doorSprite,
+            Sprite doorActiveSprite,
             string doorPrompt,
             Sprite background)
         {
@@ -353,6 +352,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var door = entry.FindPropertyRelative("_door");
             door.FindPropertyRelative("_spawn").vector2Value = doorSpawn;
             door.FindPropertyRelative("_sprite").objectReferenceValue = doorSprite;
+            door.FindPropertyRelative("_activeSprite").objectReferenceValue = doorActiveSprite;
             door.FindPropertyRelative("_prompt").stringValue = doorPrompt;
 
             entry.FindPropertyRelative("_background").objectReferenceValue = background;

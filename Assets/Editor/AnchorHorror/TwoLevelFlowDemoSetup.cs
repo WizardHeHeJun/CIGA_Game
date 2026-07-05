@@ -355,6 +355,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 kind: LevelKind.Level1Select, doorKind: DoorKind.EnterLevel2,
                 doorSpawn: new Vector2(4f, -4f),
                 doorSprite: square,
+                doorActiveSprite: null,
                 doorPrompt: "按 E 进入第二关",
                 background: GetBackground(backgrounds, 0));
 
@@ -363,6 +364,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 kind: LevelKind.Level2Sub, doorKind: DoorKind.EnterRoom1,
                 doorSpawn: Vector2.zero,
                 doorSprite: square,
+                doorActiveSprite: null,
                 doorPrompt: "按 E 进入房间",
                 background: GetBackground(backgrounds, 1));
 
@@ -373,6 +375,7 @@ namespace Ciga.AnchorHorror.EditorTools
                     kind: LevelKind.Level2Sub, doorKind: DoorKind.ReturnToCorridor,
                     doorSpawn: new Vector2(0f, -3.5f),
                     doorSprite: square,
+                    doorActiveSprite: null,
                     doorPrompt: "按 E 返回走廊",
                     background: GetBackground(backgrounds, i + 2));
             }
@@ -385,7 +388,7 @@ namespace Ciga.AnchorHorror.EditorTools
         private static void AddEntry(
             SerializedProperty entries, int idx, LevelData level,
             LevelKind kind, DoorKind doorKind,
-            Vector2 doorSpawn, Sprite doorSprite, string doorPrompt, Sprite background)
+            Vector2 doorSpawn, Sprite doorSprite, Sprite doorActiveSprite, string doorPrompt, Sprite background)
         {
             entries.InsertArrayElementAtIndex(idx);
             var entry = entries.GetArrayElementAtIndex(idx);
@@ -397,6 +400,7 @@ namespace Ciga.AnchorHorror.EditorTools
             var door = entry.FindPropertyRelative("_door");
             door.FindPropertyRelative("_spawn").vector2Value       = doorSpawn;
             door.FindPropertyRelative("_sprite").objectReferenceValue = doorSprite;
+            door.FindPropertyRelative("_activeSprite").objectReferenceValue = doorActiveSprite;
             door.FindPropertyRelative("_prompt").stringValue       = doorPrompt;
 
             var bg = entry.FindPropertyRelative("_background");
