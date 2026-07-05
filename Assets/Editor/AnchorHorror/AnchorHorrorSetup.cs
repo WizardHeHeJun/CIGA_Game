@@ -12,6 +12,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -31,9 +32,28 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string SquareSpritePath = SoDir + "/WhiteSquare.png";
         private const string CjkTtfPath = SoDir + "/AnchorCJK.ttf";
         private const string CjkFontPath = SoDir + "/AnchorCJK SDF.asset";
+        private const string GameFontTtfPath = SoDir + "/HanyiLotus.ttf";
+        private const string GameFontPath = SoDir + "/HanyiLotus SDF.asset";
+        private const string LiberationFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
 
+        // 关卡2 HUD 美术：从 acts/ 原始美术拷入 Assets 并导为 Sprite（全屏叠加层，按 1920x1080 定位）
+        private const string InGameUiDir = "Assets/Res/UI/InGame";
+        private static readonly string[] UiSrcParts = { "acts", "ciga美术资产", "ciga美术资产", "ui" };
+
         private static Sprite _squareSprite;
+
+        // 关卡2 HUD sprite（由 EnsureInGameHudSprites 填充；缺图为 null，运行时判空/透明降级）
+        private static Sprite _frameSprite;
+        private static Sprite _bagSprite;
+        private static Sprite _memorySprite;
+        private static Sprite _noCollectSprite;
+        private static Sprite[] _collectedSprites;
+        private static Sprite _sanFrameSprite;
+        private static Sprite _sanFillSprite;
+
+        // 游戏主字体（汉仪新蒂莲花体），设为 TMP 默认字体；缺失时为 null（沿用默认）
+        private static TMPro.TMP_FontAsset _gameFont;
 
         [MenuItem("Ciga/AnchorHorror/生成可运行装配")]
         public static void BuildAll()
@@ -45,8 +65,10 @@ namespace Ciga.AnchorHorror.EditorTools
             var level = CreateOrLoad<LevelConfig>(SoDir + "/LevelConfig.asset");
             PopulateFeatureDatabase(db);               // 填中文特征名/关键词颜色（空库时）
             _squareSprite = GetOrCreateSquareSprite(); // 玩家/物品可见所需的方块 sprite
+            EnsureInGameHudSprites();                   // 关卡2 HUD 美术（边框/背包/记忆石板/命中数/San 条）拷入并导为 Sprite
             EnsureTmpEssentials();                     // 保证 TMP 通用字体(LiberationSans)+着色器可用（浮字/面板文本）
             EnsureCjkFallback();                       // 中文字形回退（黑体动态字体加入 TMP 全局 fallback）
+            EnsureGameFont();                          // 游戏主字体（汉仪新蒂莲花体）设为 TMP 默认字体（全局主字体）
             BakeCjkGlyphs(db);                         // 预烤用到的中文字形进图集，避免编辑态动态生成时机导致品红闪现
 
             // 使当前场景"干净有路径"，后续 Single 建场景才不会弹保存框（自动化/测试环境活动场景常是未命名的）
@@ -106,6 +128,9 @@ namespace Ciga.AnchorHorror.EditorTools
             var resultScreen = root.AddComponent<ResultScreen>();
             var countdown = root.AddComponent<CountdownPanel>();
             var tutorial = root.AddComponent<TutorialPanel>();
+            var inGameHud = root.AddComponent<InGameHudPanel>(); // 边框 + 顶部命中数（HorrorLevel）
+            var sanBar = root.AddComponent<SanBarPanel>();        // San 条（HorrorLevel）
+            var backpack = root.AddComponent<BackpackPanel>();    // 右侧背包（HorrorLevel）
             var hud = root.AddComponent<DebugHUD>();
             var audio = root.AddComponent<AudioSource>();
             audio.playOnAwake = false;
@@ -177,6 +202,11 @@ namespace Ciga.AnchorHorror.EditorTools
             htmp.fontSize = 2.2f;
             htmp.alignment = TextAlignmentOptions.Center;
             htmp.color = new Color(1f, 1f, 1f, 0.72f);
+            if (_gameFont != null)
+            {
+                htmp.font = _gameFont;
+            }
+
             var hmr = hint.GetComponent<MeshRenderer>();
             if (hmr != null)
             {
@@ -208,13 +238,15 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(resultScreen, "_resultConfig", resultCfg);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
-            // --- uGUI 界面（记忆面板 + 结算界面 + 倒计时面板），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
-            BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown, tutorial);
+            // --- uGUI 界面（记忆页 + 结算 + 倒计时 + 关卡2 HUD），挂在常驻 root 下，随 GameManager 跨场景常驻 ---
+            BuildAndWireUi(root.transform, memoryPanel, resultScreen, countdown, tutorial, inGameHud, sanBar, backpack);
         }
 
         // 构建共享的 Screen Space Overlay Canvas，内含记忆面板、结算界面与倒计时面板（初始均隐藏），并接线到组件。
-        // 无按钮交互（Tab / R / Esc 走键盘），故不加 GraphicRaycaster / EventSystem。
-        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown, TutorialPanel tutorial)
+        // 结算界面的胜/负图层按钮需要点击，故加 GraphicRaycaster 并确保场景有 EventSystem
+        // （ResultScreen 运行时也会自愈补上，这里烘进场景使其无需自愈即可点击）。
+        private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown, TutorialPanel tutorial,
+            InGameHudPanel inGameHud, SanBarPanel sanBar, BackpackPanel backpack)
         {
             var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
             canvasGo.transform.SetParent(parent, false);
@@ -226,24 +258,48 @@ namespace Ciga.AnchorHorror.EditorTools
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>(); // 结算图层按钮需要射线命中
 
-            // --- 记忆面板：居中的半透明暗色盒，内含 richText 内容 ---
+            // 场景无 EventSystem 则建一个（uGUI 点击必需；用 StandaloneInputModule 走旧版 Input）
+            if (UnityEngine.Object.FindObjectOfType<EventSystem>() == null)
+            {
+                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            }
+
+            // 关卡2 HUD 三层（边框+命中数 / San 条 / 背包）先建：作为 memory/result/countdown/tutorial 的底层，
+            // 被记忆页与结算图覆盖。均全屏叠加、初始隐藏，各自组件按 HorrorLevel 相位显隐。
+            BuildInGameHud(canvas.transform, inGameHud);
+            BuildSanBar(canvas.transform, sanBar);
+            BuildBackpack(canvas.transform, backpack);
+
+            // --- 记忆页签：全屏暗底 + Memory 石板 + 5 椭圆槽锚点标签 ---
             var memRoot = NewUiNode(canvas.transform, "MemoryPanelRoot");
-            memRoot.anchorMin = new Vector2(0.5f, 0.5f);
-            memRoot.anchorMax = new Vector2(0.5f, 0.5f);
-            memRoot.pivot = new Vector2(0.5f, 0.5f);
-            memRoot.anchoredPosition = Vector2.zero;
-            memRoot.sizeDelta = new Vector2(760f, 620f);
-            var memBg = memRoot.gameObject.AddComponent<Image>();
-            memBg.color = new Color(0.05f, 0.05f, 0.08f, 0.92f);
-            memBg.raycastTarget = false;
+            StretchFull(memRoot);
+            var memDim = memRoot.gameObject.AddComponent<Image>();
+            memDim.color = new Color(0f, 0f, 0f, 0.55f);
+            memDim.raycastTarget = false;
+            AddFullScreenImage(memRoot, "MemoryTablet", _memorySprite);
 
-            var memContent = CreateText(memRoot, "MemoryContent", 32f, TextAlignmentOptions.TopLeft);
-            var memContentRt = (RectTransform)memContent.transform;
-            StretchFull(memContentRt);
-            memContentRt.offsetMin = new Vector2(40f, 40f);
-            memContentRt.offsetMax = new Vector2(-40f, -40f);
-            memContent.enableWordWrapping = true;
+            // 5 椭圆槽中心（顶左像素，实测 Memory.PNG）：TL TR C BL BR
+            var ovalCenters = new[]
+            {
+                new Vector2(600f, 410f), new Vector2(1130f, 410f),
+                new Vector2(875f, 515f), new Vector2(600f, 640f), new Vector2(1120f, 640f),
+            };
+            var anchorLabels = new TMP_Text[ovalCenters.Length];
+            for (int i = 0; i < ovalCenters.Length; i++)
+            {
+                var lbl = CreateText(memRoot, "AnchorLabel" + i, 34f, TextAlignmentOptions.Center);
+                lbl.fontStyle = FontStyles.Bold;
+                var lrt = (RectTransform)lbl.transform;
+                lrt.anchorMin = Vector2.zero;
+                lrt.anchorMax = Vector2.zero;
+                lrt.pivot = new Vector2(0.5f, 0.5f);
+                lrt.anchoredPosition = new Vector2(ovalCenters[i].x, 1080f - ovalCenters[i].y); // 顶左像素 → 画布底左
+                lrt.sizeDelta = new Vector2(240f, 70f);
+                anchorLabels[i] = lbl;
+            }
+
             memRoot.gameObject.SetActive(false);
 
             // --- 结算界面：全屏压暗 + 大标题 + 操作提示 ---
@@ -274,7 +330,7 @@ namespace Ciga.AnchorHorror.EditorTools
             resultRoot.gameObject.SetActive(false);
 
             WireObj(memory, "_root", memRoot.gameObject);
-            WireObj(memory, "_content", memContent);
+            WireObjArray(memory, "_anchorLabels", anchorLabels);
             WireObj(result, "_root", resultRoot.gameObject);
             WireObj(result, "_title", title);
             WireObj(result, "_hint", hint);
@@ -336,6 +392,258 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(tutorial, "_prompt", tutorialPrompt);
         }
 
+        // ────────────────────────────────────────────────────────────
+        //  关卡2 HUD 构建（边框 / San 条 / 背包）——全屏叠加层，初始隐藏，各组件按 HorrorLevel 相位显隐
+        // ────────────────────────────────────────────────────────────
+
+        // 边框（Frame）+ 顶部命中数（No Collect 底 + Collected1..5 叠加）。
+        private static void BuildInGameHud(Transform canvas, InGameHudPanel inGameHud)
+        {
+            var hudRoot = NewUiNode(canvas, "InGameHudRoot");
+            StretchFull(hudRoot);
+            AddFullScreenImage(hudRoot, "Frame", _frameSprite);
+            AddFullScreenImage(hudRoot, "HitCountBase", _noCollectSprite);
+
+            var collectedIcons = new Image[5];
+            for (int i = 0; i < collectedIcons.Length; i++)
+            {
+                Sprite s = _collectedSprites != null && i < _collectedSprites.Length ? _collectedSprites[i] : null;
+                var img = AddFullScreenImage(hudRoot, "Collected" + (i + 1), s);
+                img.enabled = false; // 命中后由 InGameHudPanel 逐个点亮
+                collectedIcons[i] = img;
+            }
+
+            hudRoot.gameObject.SetActive(false);
+            WireObj(inGameHud, "_root", hudRoot.gameObject);
+            WireObjArray(inGameHud, "_collectedIcons", collectedIcons);
+        }
+
+        // San 条：san frame 外框（全屏）+ san 填充（裁剪图放到条形位置，Image.Filled 水平从左）。
+        private static void BuildSanBar(Transform canvas, SanBarPanel sanBar)
+        {
+            var sanRoot = NewUiNode(canvas, "SanBarRoot");
+            StretchFull(sanRoot);
+            AddFullScreenImage(sanRoot, "SanFrame", _sanFrameSprite);
+
+            // San 填充条形区域（画布底左原点）：x=254, y=30, 宽=1192, 高=38（实测 san.PNG 填充 bbox）
+            var fillRt = NewUiNode(sanRoot, "SanFill");
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = Vector2.zero;
+            fillRt.pivot = Vector2.zero;
+            fillRt.anchoredPosition = new Vector2(254f, 30f);
+            fillRt.sizeDelta = new Vector2(1192f, 38f);
+            var fillImg = fillRt.gameObject.AddComponent<Image>();
+            fillImg.sprite = _sanFillSprite;
+            fillImg.color = _sanFillSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            fillImg.raycastTarget = false;
+            fillImg.type = Image.Type.Filled;
+            fillImg.fillMethod = Image.FillMethod.Horizontal;
+            fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fillImg.fillAmount = 1f;
+
+            sanRoot.gameObject.SetActive(false);
+            WireObj(sanBar, "_root", sanRoot.gameObject);
+            WireObj(sanBar, "_fill", fillImg);
+        }
+
+        // 右侧背包：Bag 羊皮纸（全屏）+ 4 个物品槽图标 + 溢出 +N 角标。
+        private static void BuildBackpack(Transform canvas, BackpackPanel backpack)
+        {
+            var bagRoot = NewUiNode(canvas, "BackpackRoot");
+            StretchFull(bagRoot);
+            AddFullScreenImage(bagRoot, "Bag", _bagSprite);
+
+            // 4 槽中心（顶左像素，实测 Bag.PNG）：x≈1745，y=264/426/618/774
+            float[] slotTopY = { 264f, 426f, 618f, 774f };
+            var slots = new Image[slotTopY.Length];
+            for (int i = 0; i < slotTopY.Length; i++)
+            {
+                var srt = NewUiNode(bagRoot, "Slot" + i);
+                srt.anchorMin = Vector2.zero;
+                srt.anchorMax = Vector2.zero;
+                srt.pivot = new Vector2(0.5f, 0.5f);
+                srt.anchoredPosition = new Vector2(1745f, 1080f - slotTopY[i]); // 顶左像素 → 画布底左
+                srt.sizeDelta = new Vector2(110f, 110f);
+                var img = srt.gameObject.AddComponent<Image>();
+                img.raycastTarget = false;
+                img.preserveAspect = true;
+                img.enabled = false; // 有物品时由 BackpackPanel 填充
+                slots[i] = img;
+            }
+
+            // 溢出角标 +N（4 槽下方）
+            var overflow = CreateText(bagRoot, "BackpackOverflow", 34f, TextAlignmentOptions.Center);
+            overflow.color = new Color(1f, 0.9f, 0.6f);
+            var ort = (RectTransform)overflow.transform;
+            ort.anchorMin = Vector2.zero;
+            ort.anchorMax = Vector2.zero;
+            ort.pivot = new Vector2(0.5f, 0.5f);
+            ort.anchoredPosition = new Vector2(1745f, 1080f - 872f);
+            ort.sizeDelta = new Vector2(160f, 50f);
+            overflow.enabled = false;
+
+            bagRoot.gameObject.SetActive(false);
+            WireObj(backpack, "_root", bagRoot.gameObject);
+            WireObjArray(backpack, "_slots", slots);
+            WireObj(backpack, "_overflow", overflow);
+        }
+
+        private static Image AddFullScreenImage(RectTransform parent, string name, Sprite sprite)
+        {
+            var rt = NewUiNode(parent, name);
+            StretchFull(rt);
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = sprite;
+            img.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f); // 缺图透明降级
+            img.raycastTarget = false;
+            return img;
+        }
+
+        // ────────────────────────────────────────────────────────────
+        //  关卡2 HUD 美术导入（从 acts/ 拷入 Assets 并导为 Sprite；缺源图静默透明降级）
+        // ────────────────────────────────────────────────────────────
+
+        private static void EnsureInGameHudSprites()
+        {
+            EnsureFolder(InGameUiDir);
+            string uiSrc = System.IO.Path.Combine(
+                System.IO.Directory.GetParent(Application.dataPath).FullName,
+                System.IO.Path.Combine(UiSrcParts));
+
+            _frameSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Previous Page", "Frame.PNG"), "Frame.png");
+            _bagSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Previous Page", "Bag.PNG"), "Bag.png");
+            _memorySprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Memory", "Memory.PNG"), "Memory.png");
+            _noCollectSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Memory", "No Collect.PNG"), "NoCollect.png");
+
+            _collectedSprites = new Sprite[5];
+            for (int i = 0; i < _collectedSprites.Length; i++)
+            {
+                _collectedSprites[i] = CopyImportUiSprite(
+                    System.IO.Path.Combine(uiSrc, "Memory", "Collected" + (i + 1) + ".PNG"),
+                    "Collected" + (i + 1) + ".png");
+            }
+
+            _sanFrameSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "san frame.PNG"), "SanFrame.png");
+            _sanFillSprite = EnsureSanFillSprite(System.IO.Path.Combine(uiSrc, "Night page", "san.PNG"));
+        }
+
+        private static Sprite CopyImportUiSprite(string sourceAbs, string targetFile)
+        {
+            string assetPath = InGameUiDir + "/" + targetFile;
+            if (!System.IO.File.Exists(assetPath))
+            {
+                if (!System.IO.File.Exists(sourceAbs))
+                {
+                    Debug.LogWarning($"[AnchorHorror] 找不到 UI 美术源：{sourceAbs}（{targetFile} 将缺图，运行时透明降级）。");
+                    return null;
+                }
+
+                System.IO.File.Copy(sourceAbs, assetPath, true);
+                AssetDatabase.ImportAsset(assetPath);
+            }
+
+            ConfigureUiSprite(assetPath);
+            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        }
+
+        private static void ConfigureUiSprite(string assetPath)
+        {
+            var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+            if (importer == null)
+            {
+                return;
+            }
+
+            bool dirty = false;
+            if (importer.textureType != TextureImporterType.Sprite)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                dirty = true;
+            }
+
+            if (importer.spriteImportMode != SpriteImportMode.Single)
+            {
+                importer.spriteImportMode = SpriteImportMode.Single;
+                dirty = true;
+            }
+
+            if (!Mathf.Approximately(importer.spritePixelsPerUnit, 100f))
+            {
+                importer.spritePixelsPerUnit = 100f;
+                dirty = true;
+            }
+
+            if (importer.mipmapEnabled)
+            {
+                importer.mipmapEnabled = false;
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                importer.SaveAndReimport();
+            }
+        }
+
+        // San 填充图：把 san.PNG 裁剪到填充条 bbox 生成 SanFill.png，供 Image.Filled 线性缩减。
+        // （全屏图直接 Filled 会按整屏宽度比例裁，而填充条不从 x=0 起，低 San 时会提前消失，故必须裁剪。）
+        private static Sprite EnsureSanFillSprite(string sourceAbs)
+        {
+            string assetPath = InGameUiDir + "/SanFill.png";
+            if (!System.IO.File.Exists(assetPath))
+            {
+                if (!System.IO.File.Exists(sourceAbs))
+                {
+                    Debug.LogWarning($"[AnchorHorror] 找不到 San 源图：{sourceAbs}（San 填充缺图）。");
+                    return null;
+                }
+
+                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                tex.LoadImage(System.IO.File.ReadAllBytes(sourceAbs)); // 加载后 tex = 源图尺寸(1920x1080)，可读
+                const int cropX = 254, cropW = 1192, cropY = 30, cropH = 38; // 顶左 y[1012,1050] → 底左 y0=30 高38
+                bool ok = tex.width >= cropX + cropW && tex.height >= cropY + cropH;
+                if (ok)
+                {
+                    var crop = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
+                    crop.SetPixels(tex.GetPixels(cropX, cropY, cropW, cropH));
+                    crop.Apply();
+                    System.IO.File.WriteAllBytes(assetPath, crop.EncodeToPNG());
+                    UnityEngine.Object.DestroyImmediate(crop);
+                }
+
+                UnityEngine.Object.DestroyImmediate(tex);
+                if (!ok)
+                {
+                    Debug.LogWarning("[AnchorHorror] San 源图尺寸异常，跳过 SanFill 裁剪。");
+                    return null;
+                }
+
+                AssetDatabase.ImportAsset(assetPath);
+            }
+
+            ConfigureUiSprite(assetPath);
+            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        }
+
+        private static void WireObjArray(Component c, string prop, UnityEngine.Object[] values)
+        {
+            var so = new SerializedObject(c);
+            var p = so.FindProperty(prop);
+            if (p == null)
+            {
+                Debug.LogWarning($"[AnchorHorror] 接线失败（数组）：{c.GetType().Name} 无属性 {prop}");
+                return;
+            }
+
+            p.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++)
+            {
+                p.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static RectTransform NewUiNode(Transform parent, string name)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -361,6 +669,11 @@ namespace Ciga.AnchorHorror.EditorTools
             tmp.color = Color.white;
             tmp.richText = true;
             tmp.raycastTarget = false;
+            if (_gameFont != null)
+            {
+                tmp.font = _gameFont; // 游戏主字体（汉仪新蒂莲花体）
+            }
+
             return tmp;
         }
 
@@ -377,9 +690,54 @@ namespace Ciga.AnchorHorror.EditorTools
             SetResultEntry(so.FindProperty("_fail"),
                 "失 败", new Color(1f, 0.3f, 0.3f), "按 R 重新开始      按 Esc 返回主菜单", true, true);
 
+            // 美术接线（Victory=win 全屏图 + 返回标题/制作组/退出；Fail=defeat 全屏图 + 重新开始/返回标题/退出）。
+            // 素材在 Assets/Res/UI/Result/，按钮图开 Read/Write 供 alpha 笔触命中。
+            const string dir = "Assets/Res/UI/Result/";
+            SetResultArt(so.FindProperty("_victory"), dir + "VictoryBackground.png",
+                new[] { dir + "VictoryMenuButton.png", dir + "CreditsButton.png", dir + "VictoryQuitButton.png" },
+                new[] { ResultAction.Menu, ResultAction.Credits, ResultAction.Quit });
+            SetResultArt(so.FindProperty("_fail"), dir + "DefeatBackground.png",
+                new[] { dir + "RestartButton.png", dir + "DefeatMenuButton.png", dir + "DefeatQuitButton.png" },
+                new[] { ResultAction.Restart, ResultAction.Menu, ResultAction.Quit });
+
+            var creditsText = so.FindProperty("_creditsText");
+            if (creditsText != null && string.IsNullOrEmpty(creditsText.stringValue))
+            {
+                creditsText.stringValue = "制作组（名单待补）";
+            }
+
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(rc);
             return rc;
+        }
+
+        /// <summary>为某结算态接线全屏背景图与图层按钮（图未导入时静默跳过该项，不清已有引用）。</summary>
+        private static void SetResultArt(SerializedProperty entry, string bgPath, string[] buttonPaths, ResultAction[] actions)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            var bg = AssetDatabase.LoadAssetAtPath<Sprite>(bgPath);
+            if (bg != null)
+            {
+                entry.FindPropertyRelative("_background").objectReferenceValue = bg;
+            }
+
+            var buttons = entry.FindPropertyRelative("_buttons");
+            buttons.arraySize = buttonPaths.Length;
+            for (int i = 0; i < buttonPaths.Length; i++)
+            {
+                var el = buttons.GetArrayElementAtIndex(i);
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(buttonPaths[i]);
+                if (sprite != null)
+                {
+                    el.FindPropertyRelative("_sprite").objectReferenceValue = sprite;
+                }
+
+                el.FindPropertyRelative("_action").enumValueIndex = (int)actions[i];
+            }
         }
 
         private static void SetResultEntry(
@@ -613,12 +971,6 @@ namespace Ciga.AnchorHorror.EditorTools
         // 预烤后编辑态与运行时都稳定显示，不再依赖动态生成时机。
         private static void BakeCjkGlyphs(FeatureDatabase db)
         {
-            var cjk = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(CjkFontPath);
-            if (cjk == null)
-            {
-                return;
-            }
-
             var sb = new StringBuilder();
             sb.Append("记忆锚点已锚定已通关理智崩溃按重新开始返回主菜单移动交互物品记忆面板"); // UI 固定文案
             if (db != null) // 特征名从 DB 取，避免与 PopulateFeatureDatabase 硬编码漂移
@@ -638,25 +990,134 @@ namespace Ciga.AnchorHorror.EditorTools
                 }
             }
 
+            string chars = sb.ToString();
+            BakeGlyphsInto(AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(GameFontPath), chars); // 游戏主字体（汉仪莲花体）
+            BakeGlyphsInto(AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(CjkFontPath), chars);  // CJK 兜底字体
+        }
+
+        /// <summary>把指定字形预烤进某动态字体图集并落盘。失败仅告警（运行时动态生成仍显示）。</summary>
+        private static void BakeGlyphsInto(TMP_FontAsset font, string chars)
+        {
+            if (font == null || string.IsNullOrEmpty(chars))
+            {
+                return;
+            }
+
             try
             {
-                if (cjk.TryAddCharacters(sb.ToString(), out string missing))
+                if (font.TryAddCharacters(chars, out string missing))
                 {
-                    Debug.Log("[AnchorHorror] CJK 字形已预烤进图集。");
+                    Debug.Log($"[AnchorHorror] 字形已预烤进 {font.name} 图集。");
                 }
                 else
                 {
-                    Debug.LogWarning($"[AnchorHorror] CJK 预烤部分缺字（图集可能已满，需增大 Atlas 尺寸）：{missing}");
+                    Debug.LogWarning($"[AnchorHorror] {font.name} 预烤部分缺字（图集可能已满，需增大 Atlas 尺寸）：{missing}");
                 }
 
-                EditorUtility.SetDirty(cjk);
+                EditorUtility.SetDirty(font);
                 AssetDatabase.SaveAssets();
             }
             catch (System.Exception ex)
             {
-                // 预烤仅为编辑态优化（防品红闪）；失败不影响运行时——CJK 是 Dynamic 字体，运行时按需生成字形照样显示。
-                // 大字形集（如配置表全量特征名）会触发 TMP 多图集增长，在编辑脚本上下文偶发 m_AtlasTextures 引用失效；降级为告警，不中断 BuildAll。
-                Debug.LogWarning($"[AnchorHorror] CJK 预烤跳过（{ex.GetType().Name}）：运行时动态字体仍会显示中文。如需消除编辑态品红闪，手动增大 AnchorCJK SDF 图集尺寸后重烤。");
+                // 预烤仅为编辑态优化（防品红闪）；失败不影响运行时——动态字体运行时按需生成字形照样显示。
+                Debug.LogWarning($"[AnchorHorror] {font.name} 预烤跳过（{ex.GetType().Name}）：运行时动态字体仍会显示中文。");
+            }
+        }
+
+        // 游戏主字体（汉仪新蒂莲花体 HanyiSentyLotus）：从 acts/ 拷入并建 Dynamic TMP 字体，
+        // 设为 TMP 默认字体（全局主字体）；LiberationSans 挂 fallback（拉丁/数字/符号兜底），
+        // AnchorCJK 已由 EnsureCjkFallback 挂 fallback（罕见 CJK 兜底）。
+        private static void EnsureGameFont()
+        {
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(GameFontPath);
+            if (font == null)
+            {
+                if (!System.IO.File.Exists(GameFontTtfPath))
+                {
+                    string src = System.IO.Path.Combine(
+                        System.IO.Directory.GetParent(Application.dataPath).FullName,
+                        "acts", "ciga美术资产", "ciga美术资产", "HanyiSentyLotus-2.ttf");
+                    if (!System.IO.File.Exists(src))
+                    {
+                        Debug.LogWarning($"[AnchorHorror] 找不到游戏字体源：{src}，沿用默认字体。");
+                        return;
+                    }
+
+                    System.IO.File.Copy(src, GameFontTtfPath, true);
+                    AssetDatabase.ImportAsset(GameFontTtfPath);
+                }
+
+                var srcFont = AssetDatabase.LoadAssetAtPath<Font>(GameFontTtfPath);
+                if (srcFont == null)
+                {
+                    Debug.LogWarning("[AnchorHorror] 游戏字体 .ttf 导入失败。");
+                    return;
+                }
+
+                font = TMP_FontAsset.CreateFontAsset(srcFont); // Dynamic，运行时按需生成字形
+                if (font == null)
+                {
+                    Debug.LogWarning("[AnchorHorror] 游戏字体 TMP 资产创建失败。");
+                    return;
+                }
+
+                font.name = "HanyiLotus SDF";
+                AssetDatabase.CreateAsset(font, GameFontPath);
+                if (font.material != null)
+                {
+                    font.material.name = "HanyiLotus SDF Material";
+                    AssetDatabase.AddObjectToAsset(font.material, font);
+                }
+
+                if (font.atlasTexture != null)
+                {
+                    font.atlasTexture.name = "HanyiLotus SDF Atlas";
+                    AssetDatabase.AddObjectToAsset(font.atlasTexture, font);
+                }
+
+                AssetDatabase.SaveAssets();
+            }
+
+            _gameFont = font;
+            SetTmpDefaultFont(font); // 设为 TMP 全局默认字体（游戏内所有 TMP 文本主字体）
+            EnsureLatinFallback();   // LiberationSans 挂 fallback，拉丁/数字/符号兜底
+        }
+
+        // 设 TMP 默认字体资产（TMP Settings 的 m_defaultFontAsset）。
+        private static void SetTmpDefaultFont(TMP_FontAsset font)
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<TMP_Settings>(TmpSettingsPath);
+            if (settings == null)
+            {
+                Debug.LogWarning("[AnchorHorror] 找不到 TMP Settings，无法设默认字体。");
+                return;
+            }
+
+            var so = new SerializedObject(settings);
+            var prop = so.FindProperty("m_defaultFontAsset");
+            if (prop == null)
+            {
+                Debug.LogWarning("[AnchorHorror] TMP Settings 无 m_defaultFontAsset 字段。");
+                return;
+            }
+
+            if (prop.objectReferenceValue == font)
+            {
+                return;
+            }
+
+            prop.objectReferenceValue = font;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(settings);
+        }
+
+        // LiberationSans SDF 加入 TMP 全局 fallback（拉丁/数字/符号兜底；主字体缺字时回退）。
+        private static void EnsureLatinFallback()
+        {
+            var lib = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(LiberationFontPath);
+            if (lib != null)
+            {
+                AddToTmpGlobalFallback(lib);
             }
         }
 

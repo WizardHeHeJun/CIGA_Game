@@ -12,10 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24d0493012fc6594e914f9062ee7f1c7, type: 3}
   m_Name: MainMenuConfig
   m_EditorClassIdentifier: 
-  _background: {fileID: 0}
+  _background: {fileID: 21300000, guid: e9d54957cdab49e48b2b1b1beb7ec294, type: 3}
   _logo: {fileID: 0}
-  _titleText: "\u951A\u70B9\u89E3\u8C1C"
-  _startButtonSprite: {fileID: 0}
+  _titleText:
+  _startButtonSprite: {fileID: 21300000, guid: 557988ce36e88a740b139e7881d93e7d, type: 3}
   _startButtonText: "\u5F00\u59CB\u6E38\u620F"
-  _quitButtonSprite: {fileID: 0}
+  _quitButtonSprite: {fileID: 21300000, guid: 41f4e018be261fe43b130534fa83a640, type: 3}
   _quitButtonText: "\u9000\u51FA"
+  _guideButtonSprite: {fileID: 21300000, guid: 0ed9d34bcea3a93449141cb051a28f01, type: 3}
+  _guidePageImage: {fileID: 21300000, guid: d7ef69ed10344d7ca97fb3abeadf6d36, type: 3}
