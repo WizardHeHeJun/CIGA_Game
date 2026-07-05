@@ -15,7 +15,7 @@ MonoBehaviour:
   _background: {fileID: 21300000, guid: e9d54957cdab49e48b2b1b1beb7ec294, type: 3}
   _logo: {fileID: 0}
   _uiFont: {fileID: 11400000, guid: e689f08eb2cd5c84db71c90d81384d98, type: 2}
-  _titleText:
+  _titleText: "旧室"
   _startButtonSprite: {fileID: 21300000, guid: 557988ce36e88a740b139e7881d93e7d, type: 3}
   _startButtonText: "\u5F00\u59CB\u6E38\u620F"
   _quitButtonSprite: {fileID: 21300000, guid: 41f4e018be261fe43b130534fa83a640, type: 3}

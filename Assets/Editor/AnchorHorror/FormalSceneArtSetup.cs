@@ -32,17 +32,12 @@ namespace Ciga.AnchorHorror.EditorTools
 
         private static readonly string[] ArtRootParts = { "acts", "ciga美术资产", "ciga美术资产" };
 
-        private static readonly (FeatureDimension dim, int val)[] Features8 =
-        {
-            (FeatureDimension.Color,    (int)FeatureColor.Red),
-            (FeatureDimension.Color,    (int)FeatureColor.Blue),
-            (FeatureDimension.Color,    (int)FeatureColor.Green),
-            (FeatureDimension.Shape,    (int)FeatureShape.Round),
-            (FeatureDimension.Shape,    (int)FeatureShape.Square),
-            (FeatureDimension.Material, (int)FeatureMaterial.Wood),
-            (FeatureDimension.Material, (int)FeatureMaterial.Metal),
-            (FeatureDimension.Texture,  (int)FeatureTexture.Smooth),
-        };
+        private static readonly FeatureSpec NoneFeature = new FeatureSpec(
+            FeatureColor.None,
+            FeatureShape.None,
+            FeatureMaterial.None,
+            FeatureTexture.None,
+            FeatureSound.None);
 
         [MenuItem("Ciga/AnchorHorror/生成正式关卡美术数据（并接线）")]
         public static void BuildAllMenu()
@@ -104,14 +99,22 @@ namespace Ciga.AnchorHorror.EditorTools
                 "Bedroom_BG.PNG", new Vector2(0f, -4f),
                 new[]
                 {
-                    Obj("bed", "床", "Default/Bedrrom_Bed_Default.PNG", "Active/Bedrrom_Bed_Active.PNG", 0),
-                    Obj("lamp", "台灯", "Default/Bedrrom_Lamp_Default.PNG", "Active/Bedrrom_Lamp_Active..PNG", 1),
-                    Obj("window", "窗户", "Default/Bedrrom_Window_Default.PNG", "Active/Bedrrom_Window_Active..PNG", 2),
-                    Obj("chair", "椅子", "Default/Bedrrom_Chair_Default.PNG", "Active/Bedrrom_Chair_Active..PNG", 3),
-                    Obj("album", "相册", "Default/Bedrrom_Album_Default.PNG", "Active/Bedrrom_Album_Active..PNG", 4),
-                    Obj("carpet", "地毯", "Default/Bedrrom_Carpet_Default.PNG", "Active/Bedrrom_Carpet_Active..PNG", 5),
-                    Obj("desk", "书桌", "Default/Bedrrom_Desk_Default.PNG", "Active/Bedrrom_Desk_Active..PNG", 6),
-                    Obj("drobe", "衣柜", "Default/Bedrrom_Drobe_Default.PNG", null, 7),
+                    Obj("bed", "床", "Default/Bedrrom_Bed_Default.PNG", "Active/Bedrrom_Bed_Active.PNG",
+                        Feature(FeatureColor.White, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Soft, FeatureSound.ClothTouch)),
+                    Obj("drobe", "衣柜", "Default/Bedrrom_Drobe_Default.PNG", null,
+                        Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Rough, FeatureSound.WoodFriction)),
+                    Obj("desk", "梳妆台", "Default/Bedrrom_Desk_Default.PNG", "Active/Bedrrom_Desk_Active..PNG",
+                        Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction)),
+                    Obj("lamp", "台灯", "Default/Bedrrom_Lamp_Default.PNG", "Active/Bedrrom_Lamp_Active..PNG",
+                        Feature(FeatureColor.Beige, FeatureShape.Round, FeatureMaterial.Metal, FeatureTexture.SoftLight, FeatureSound.LightHum)),
+                    Obj("album", "和母亲的合照", "Default/Bedrrom_Album_Default.PNG", "Active/Bedrrom_Album_Active..PNG",
+                        Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.WoodGlass, FeatureTexture.Smooth, FeatureSound.GlassClink)),
+                    Obj("window", "窗户", "Default/Bedrrom_Window_Default.PNG", "Active/Bedrrom_Window_Active..PNG",
+                        Feature(FeatureColor.Transparent, FeatureShape.Square, FeatureMaterial.Glass, FeatureTexture.Reflective, FeatureSound.Ticking)),
+                    Obj("carpet", "地毯", "Default/Bedrrom_Carpet_Default.PNG", "Active/Bedrrom_Carpet_Active..PNG",
+                        Feature(FeatureColor.LightGray, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Soft, FeatureSound.ClothTouch)),
+                    Obj("chair", "椅子", "Default/Bedrrom_Chair_Default.PNG", "Active/Bedrrom_Chair_Active..PNG",
+                        Feature(FeatureColor.White, FeatureShape.Irregular, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction)),
                 });
         }
 
@@ -122,10 +125,20 @@ namespace Ciga.AnchorHorror.EditorTools
                 "Aisle_BG.PNG", new Vector2(0f, -3.5f),
                 new[]
                 {
-                    Obj("stair", "楼梯", "Default/Aisle_Stair_Default.PNG", "Active/Aisle_Stair_Active.PNG", 0),
-                    Obj("lamp", "走廊灯", "Default/Aisle_Lamp_Default.PNG", "Active/Aisle_Lamp_Active.PNG", 1),
-                    Obj("key", "钥匙", "Default/Aisle_Key_Default.PNG", "Active/Aisle_Key_Active.PNG", 2),
-                    Obj("carpet", "走廊地毯", "Default/Aisle_Carpet_Default.PNG", "Active/Aisle_Carpet_Active.PNG", 3),
+                    Obj("door_a", "门A", null, null,
+                        Feature(FeatureColor.DarkBrown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Peeling, FeatureSound.WoodFriction),
+                        visualOnly: true),
+                    Obj("door_b", "门B", null, null,
+                        Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction),
+                        visualOnly: true),
+                    Obj("carpet", "地毯", "Default/Aisle_Carpet_Default.PNG", "Active/Aisle_Carpet_Active.PNG",
+                        Feature(FeatureColor.DarkRed, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Fiber, FeatureSound.ClothTouch)),
+                    Obj("lamp", "墙灯", "Default/Aisle_Lamp_Default.PNG", "Active/Aisle_Lamp_Active.PNG",
+                        Feature(FeatureColor.WarmYellow, FeatureShape.Round, FeatureMaterial.GlassMetal, FeatureTexture.Glossy, FeatureSound.LightHum)),
+                    Obj("key", "钥匙", "Default/Aisle_Key_Default.PNG", "Active/Aisle_Key_Active.PNG",
+                        Feature(FeatureColor.Gold, FeatureShape.Irregular, FeatureMaterial.Metal, FeatureTexture.Smooth, FeatureSound.MetalMechanical)),
+                    Obj("stair", "楼梯", "Default/Aisle_Stair_Default.PNG", "Active/Aisle_Stair_Active.PNG",
+                        Feature(FeatureColor.Gray, FeatureShape.Long, FeatureMaterial.Stone, FeatureTexture.Rough, FeatureSound.WoodFriction)),
                 });
         }
 
@@ -136,12 +149,18 @@ namespace Ciga.AnchorHorror.EditorTools
                 "LivingRoom_BG.PNG", new Vector2(0f, -3.5f),
                 new[]
                 {
-                    Obj("sofa", "沙发", "Default/LivingRoom_Sofa_Default.PNG", "Active/LivingRoom_Sofa_Active.PNG", 0),
-                    Obj("tv", "电视", "Default/LivingRoom_TV_Default.PNG", "Active/LivingRoom_TV_Active.PNG", 1),
-                    Obj("table", "茶几", "Default/LivingRoom_Table_Default.PNG", null, 2),
-                    Obj("toy_box", "玩具箱", "Default/LivingRoom_ToyBox_Default.PNG", "Active/LivingRoom_ToyBox_Active.PNG", 3),
-                    Obj("frame", "相框", "Default/LivingRoom_Frame_Default.PNG", "Active/LivingRoom_Frame_Active.PNG", 4),
-                    Obj("lamp", "落地灯", "Default/LivingRoom_Lamp_Default.PNG", "Active/LivingRoom_TLamp_Active.PNG", 5),
+                    Obj("sofa", "沙发", "Default/LivingRoom_Sofa_Default.PNG", "Active/LivingRoom_Sofa_Active.PNG",
+                        Feature(FeatureColor.DarkGray, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Soft, FeatureSound.ClothTouch)),
+                    Obj("tv", "电视机", "Default/LivingRoom_TV_Default.PNG", "Active/LivingRoom_TV_Active.PNG",
+                        Feature(FeatureColor.Black, FeatureShape.Square, FeatureMaterial.Glass, FeatureTexture.Smooth, FeatureSound.MetalMechanical)),
+                    Obj("frame", "相框", "Default/LivingRoom_Frame_Default.PNG", "Active/LivingRoom_Frame_Active.PNG",
+                        Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.GlassClink)),
+                    Obj("table", "茶几", "Default/LivingRoom_Table_Default.PNG", null,
+                        Feature(FeatureColor.DarkBrown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Worn, FeatureSound.WoodFriction)),
+                    Obj("lamp", "落地灯", "Default/LivingRoom_Lamp_Default.PNG", "Active/LivingRoom_TLamp_Active.PNG",
+                        Feature(FeatureColor.Beige, FeatureShape.Cone, FeatureMaterial.Fabric, FeatureTexture.SoftLight, FeatureSound.LightHum)),
+                    Obj("toy_box", "玩具箱", "Default/LivingRoom_ToyBox_Default.PNG", "Active/LivingRoom_ToyBox_Active.PNG",
+                        Feature(FeatureColor.Colorful, FeatureShape.Square, FeatureMaterial.Plastic, FeatureTexture.Rough, FeatureSound.PlasticClick)),
                 });
         }
 
@@ -152,12 +171,18 @@ namespace Ciga.AnchorHorror.EditorTools
                 "bathroom bg.png", new Vector2(0f, -3.5f),
                 new[]
                 {
-                    Obj("toilet", "马桶", "Default/toilet.png", "achieve/toilet.png", 4),
-                    Obj("laundry", "洗衣机", "Default/laundry.png", "achieve/laundry.png", 5),
-                    Obj("mirror", "镜子", "Default/mirror.png", "achieve/mirror.png", 6),
-                    Obj("sink", "洗手池", "Default/sink.png", "achieve/sink.png", 7),
-                    Obj("towel", "毛巾", "Default/towel.png", "achieve/towel.png", 0),
-                    Obj("outfall", "排水口", "Default/outfall.png", "achieve/outfall.png", 1),
+                    Obj("toilet", "马桶", "Default/toilet.png", "achieve/toilet.png",
+                        Feature(FeatureColor.White, FeatureShape.Round, FeatureMaterial.Ceramic, FeatureTexture.Smooth, FeatureSound.Ticking)),
+                    Obj("laundry", "洗衣机", "Default/laundry.png", "achieve/laundry.png",
+                        Feature(FeatureColor.White, FeatureShape.Round, FeatureMaterial.Metal, FeatureTexture.Matte, FeatureSound.MetalMechanical)),
+                    Obj("mirror", "镜子", "Default/mirror.png", "achieve/mirror.png",
+                        Feature(FeatureColor.Silver, FeatureShape.Square, FeatureMaterial.Glass, FeatureTexture.Reflective, FeatureSound.GlassClink)),
+                    Obj("sink", "洗手台", "Default/sink.png", "achieve/sink.png",
+                        Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.Ceramic, FeatureTexture.Smooth, FeatureSound.Ticking)),
+                    Obj("towel", "毛巾", "Default/towel.png", "achieve/towel.png",
+                        Feature(FeatureColor.Blue, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Soft, FeatureSound.ClothTouch)),
+                    Obj("outfall", "排水口", "Default/outfall.png", "achieve/outfall.png",
+                        Feature(FeatureColor.Black, FeatureShape.Round, FeatureMaterial.Metal, FeatureTexture.Wet, FeatureSound.Ticking)),
                 });
         }
 
@@ -168,14 +193,22 @@ namespace Ciga.AnchorHorror.EditorTools
                 "KITCHEN bg.png", new Vector2(0f, -3.5f),
                 new[]
                 {
-                    Obj("cooker", "锅具", "Default/cooker.png", "achieve/cooker.png", 2),
-                    Obj("ice_box", "冰箱", "Default/ice box.png", "achieve/ice box.png", 3),
-                    Obj("case", "柜子", "Default/case.png", "achieve/case.png", 4),
-                    Obj("window", "厨房窗", "Default/window.png", "achieve/window.png", 5),
-                    Obj("clock", "厨房钟", "Default/clock.png", "achieve/clock.png", 6),
-                    Obj("wash_sink", "水槽", "Default/wash sink.png", "achieve/wash sink.png", 7),
-                    Obj("tap", "水龙头", "Default/tap.png", "achieve/tap.png", 0),
-                    Obj("table", "厨房桌", "Default/table.png", "achieve/table.png", 1),
+                    Obj("cooker", "电饭煲", "Default/cooker.png", "achieve/cooker.png",
+                        Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.MetalPlastic, FeatureTexture.Smooth, FeatureSound.MetalMechanical)),
+                    Obj("tap", "水龙头", "Default/tap.png", "achieve/tap.png",
+                        Feature(FeatureColor.Silver, FeatureShape.Curved, FeatureMaterial.Metal, FeatureTexture.Reflective, FeatureSound.Ticking)),
+                    Obj("ice_box", "冰箱", "Default/ice box.png", "achieve/ice box.png",
+                        Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.Matte, FeatureSound.MetalMechanical)),
+                    Obj("case", "碗柜", "Default/case.png", "achieve/case.png",
+                        Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Rough, FeatureSound.WoodFriction)),
+                    Obj("table", "餐桌", "Default/table.png", "achieve/table.png",
+                        Feature(FeatureColor.DarkBrown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Worn, FeatureSound.WoodFriction)),
+                    Obj("window", "窗户", "Default/window.png", "achieve/window.png",
+                        Feature(FeatureColor.Transparent, FeatureShape.Square, FeatureMaterial.Glass, FeatureTexture.Smooth, FeatureSound.GlassClink)),
+                    Obj("clock", "钟表", "Default/clock.png", "achieve/clock.png",
+                        Feature(FeatureColor.Gold, FeatureShape.Round, FeatureMaterial.Metal, FeatureTexture.Scaled, FeatureSound.Ticking)),
+                    Obj("wash_sink", "水槽", "Default/wash sink.png", "achieve/wash sink.png",
+                        Feature(FeatureColor.Silver, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.Wet, FeatureSound.Ticking)),
                 });
         }
 
@@ -186,12 +219,18 @@ namespace Ciga.AnchorHorror.EditorTools
                 "untility room bg.png", new Vector2(0f, -3.5f),
                 new[]
                 {
-                    Obj("mirror", "杂物间镜子", "Default/mirror.png", "Active/mirror.png", 2),
-                    Obj("chair", "杂物间椅子", "Default/chair.png", "Active/chair.png", 3),
-                    Obj("clock", "杂物间钟", "Default/clock.png", "Active/clock.png", 6),
-                    Obj("box", "纸箱", "Default/box.png", "Active/box.png", 7),
-                    Obj("cooker", "杂物锅具", "Default/cooker.png", "Active/cooker.png", 4),
-                    Obj("toy", "玩具", "Default/toy.png", "Active/toy.png", 5),
+                    Obj("cooker", "旧电饭煲", "Default/cooker.png", "Active/cooker.png",
+                        Feature(FeatureColor.Beige, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.PaintPeeled, FeatureSound.MetalMechanical)),
+                    Obj("clock", "破钟", "Default/clock.png", "Active/clock.png",
+                        Feature(FeatureColor.Black, FeatureShape.Round, FeatureMaterial.Metal, FeatureTexture.Cracked, FeatureSound.Ticking)),
+                    Obj("box", "纸箱", "Default/box.png", "Active/box.png",
+                        Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.Paper, FeatureTexture.Broken, FeatureSound.WoodFriction)),
+                    Obj("mirror", "镜子碎片", "Default/mirror.png", "Active/mirror.png",
+                        Feature(FeatureColor.Silver, FeatureShape.Irregular, FeatureMaterial.Glass, FeatureTexture.Fissure, FeatureSound.GlassClink)),
+                    Obj("toy", "坏玩具", "Default/toy.png", "Active/toy.png",
+                        Feature(FeatureColor.Colorful, FeatureShape.Irregular, FeatureMaterial.Plastic, FeatureTexture.Scratched, FeatureSound.PlasticClick)),
+                    Obj("chair", "折叠椅", "Default/chair.png", "Active/chair.png",
+                        Feature(FeatureColor.Black, FeatureShape.Irregular, FeatureMaterial.Metal, FeatureTexture.Scratched, FeatureSound.MetalMechanical)),
                 });
         }
 
@@ -200,11 +239,21 @@ namespace Ciga.AnchorHorror.EditorTools
             string displayName,
             string defaultRel,
             string activeRel,
-            int featureIndex,
+            FeatureSpec feature,
             string itemId = "chair_wood",
             bool visualOnly = false)
         {
-            return new ArtObjectSpec(id, displayName, defaultRel, activeRel, featureIndex, itemId, visualOnly);
+            return new ArtObjectSpec(id, displayName, defaultRel, activeRel, feature, itemId, visualOnly);
+        }
+
+        private static FeatureSpec Feature(
+            FeatureColor color,
+            FeatureShape shape,
+            FeatureMaterial material,
+            FeatureTexture texture,
+            FeatureSound sound)
+        {
+            return new FeatureSpec(color, shape, material, texture, sound);
         }
 
         private static LevelData BuildSceneLevel(SceneSpec spec, ItemDatabase db, LevelConfig levelCfg, float sceneWorldHeight)
@@ -230,9 +279,13 @@ namespace Ciga.AnchorHorror.EditorTools
             for (int i = 0; i < spec.Objects.Length; i++)
             {
                 var obj = spec.Objects[i];
-                string defaultSource = Path.Combine(srcRoot, obj.DefaultRel);
+                string defaultSource = string.IsNullOrEmpty(obj.DefaultRel)
+                    ? null
+                    : Path.Combine(srcRoot, obj.DefaultRel);
                 string defaultTarget = spec.Key + "_" + obj.Id + "_Default.png";
-                var defaultSprite = CopyImportArtSprite(defaultSource, sceneTargetDir, defaultTarget, ppu);
+                var defaultSprite = string.IsNullOrEmpty(defaultSource)
+                    ? null
+                    : CopyImportArtSprite(defaultSource, sceneTargetDir, defaultTarget, ppu);
 
                 Sprite activeSprite = null;
                 if (!string.IsNullOrEmpty(obj.ActiveRel))
@@ -250,9 +303,10 @@ namespace Ciga.AnchorHorror.EditorTools
                 e.FindPropertyRelative("_position").vector2Value = Vector2.zero;
                 e.FindPropertyRelative("_rotationZ").floatValue = 0f;
                 e.FindPropertyRelative("_scale").vector2Value = Vector2.one;
+                var feature = obj.VisualOnly ? NoneFeature : obj.Feature;
                 e.FindPropertyRelative("_overrideFeatures").boolValue = !obj.VisualOnly;
-                SetFeatureProperties(e, obj.FeatureIndex);
-                e.FindPropertyRelative("_overrideSprite").boolValue = true;
+                SetFeatureProperties(e, feature);
+                e.FindPropertyRelative("_overrideSprite").boolValue = defaultSprite != null;
                 e.FindPropertyRelative("_sprite").objectReferenceValue = defaultSprite;
                 e.FindPropertyRelative("_activeSprite").objectReferenceValue = activeSprite;
                 e.FindPropertyRelative("_alignWithBackground").boolValue = true;
@@ -267,38 +321,13 @@ namespace Ciga.AnchorHorror.EditorTools
             return level;
         }
 
-        private static void SetFeatureProperties(SerializedProperty e, int featureIndex)
+        private static void SetFeatureProperties(SerializedProperty e, FeatureSpec feature)
         {
-            e.FindPropertyRelative("_color").enumValueIndex = 0;
-            e.FindPropertyRelative("_shape").enumValueIndex = 0;
-            e.FindPropertyRelative("_material").enumValueIndex = 0;
-            e.FindPropertyRelative("_texture").enumValueIndex = 0;
-            e.FindPropertyRelative("_sound").enumValueIndex = 0;
-
-            if (featureIndex < 0 || featureIndex >= Features8.Length)
-            {
-                return;
-            }
-
-            var feature = Features8[featureIndex];
-            switch (feature.dim)
-            {
-                case FeatureDimension.Color:
-                    e.FindPropertyRelative("_color").enumValueIndex = feature.val;
-                    break;
-                case FeatureDimension.Shape:
-                    e.FindPropertyRelative("_shape").enumValueIndex = feature.val;
-                    break;
-                case FeatureDimension.Material:
-                    e.FindPropertyRelative("_material").enumValueIndex = feature.val;
-                    break;
-                case FeatureDimension.Texture:
-                    e.FindPropertyRelative("_texture").enumValueIndex = feature.val;
-                    break;
-                case FeatureDimension.Sound:
-                    e.FindPropertyRelative("_sound").enumValueIndex = feature.val;
-                    break;
-            }
+            e.FindPropertyRelative("_color").enumValueIndex = (int)feature.Color;
+            e.FindPropertyRelative("_shape").enumValueIndex = (int)feature.Shape;
+            e.FindPropertyRelative("_material").enumValueIndex = (int)feature.Material;
+            e.FindPropertyRelative("_texture").enumValueIndex = (int)feature.Texture;
+            e.FindPropertyRelative("_sound").enumValueIndex = (int)feature.Sound;
         }
 
         private static LevelSequence BuildSequence(
@@ -605,6 +634,29 @@ namespace Ciga.AnchorHorror.EditorTools
             }
         }
 
+        private readonly struct FeatureSpec
+        {
+            public FeatureSpec(
+                FeatureColor color,
+                FeatureShape shape,
+                FeatureMaterial material,
+                FeatureTexture texture,
+                FeatureSound sound)
+            {
+                Color = color;
+                Shape = shape;
+                Material = material;
+                Texture = texture;
+                Sound = sound;
+            }
+
+            public FeatureColor Color { get; }
+            public FeatureShape Shape { get; }
+            public FeatureMaterial Material { get; }
+            public FeatureTexture Texture { get; }
+            public FeatureSound Sound { get; }
+        }
+
         private sealed class SceneSpec
         {
             public SceneSpec(
@@ -645,7 +697,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 string displayName,
                 string defaultRel,
                 string activeRel,
-                int featureIndex,
+                FeatureSpec feature,
                 string itemId,
                 bool visualOnly)
             {
@@ -653,7 +705,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 DisplayName = displayName;
                 DefaultRel = defaultRel;
                 ActiveRel = activeRel;
-                FeatureIndex = featureIndex;
+                Feature = feature;
                 ItemId = itemId;
                 VisualOnly = visualOnly;
             }
@@ -662,7 +714,7 @@ namespace Ciga.AnchorHorror.EditorTools
             public string DisplayName { get; }
             public string DefaultRel { get; }
             public string ActiveRel { get; }
-            public int FeatureIndex { get; }
+            public FeatureSpec Feature { get; }
             public string ItemId { get; }
             public bool VisualOnly { get; }
         }

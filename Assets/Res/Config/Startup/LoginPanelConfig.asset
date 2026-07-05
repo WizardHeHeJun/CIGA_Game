@@ -17,4 +17,4 @@ MonoBehaviour:
   _enterButtonSprite: {fileID: 0}
   _uiFont: {fileID: 11400000, guid: e689f08eb2cd5c84db71c90d81384d98, type: 2}
   _enterButtonText: "\u8FDB\u5165\u6E38\u620F"
-  _subtitle: 
+  _subtitle: "旧室 / OldRoom"
