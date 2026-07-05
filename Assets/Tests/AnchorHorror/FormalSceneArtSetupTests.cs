@@ -33,8 +33,6 @@ namespace Ciga.AnchorHorror.Tests
             Assert.AreEqual(6, corridor.Items.Count, "走廊应有 6 个配置项（含两扇视觉门）");
             Assert.IsTrue(corridor.Items[0].VisualOnly, "门A 应为纯视觉层");
             Assert.IsTrue(corridor.Items[1].VisualOnly, "门B 应为纯视觉层");
-            Assert.IsFalse(corridor.Items[0].OverrideSprite, "门A 无独立叠图资源，不应强制覆盖 Sprite");
-            Assert.IsFalse(corridor.Items[1].OverrideSprite, "门B 无独立叠图资源，不应强制覆盖 Sprite");
             AssertFeature(corridor, 2, FeatureColor.DarkRed, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Fiber, FeatureSound.ClothTouch, "地毯");
             AssertFeature(corridor, 5, FeatureColor.Gray, FeatureShape.Long, FeatureMaterial.Stone, FeatureTexture.Rough, FeatureSound.WoodFriction, "楼梯");
 

@@ -306,7 +306,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 var feature = obj.VisualOnly ? NoneFeature : obj.Feature;
                 e.FindPropertyRelative("_overrideFeatures").boolValue = !obj.VisualOnly;
                 SetFeatureProperties(e, feature);
-                e.FindPropertyRelative("_overrideSprite").boolValue = true;
+                e.FindPropertyRelative("_overrideSprite").boolValue = defaultSprite != null;
                 e.FindPropertyRelative("_sprite").objectReferenceValue = defaultSprite;
                 e.FindPropertyRelative("_activeSprite").objectReferenceValue = activeSprite;
                 e.FindPropertyRelative("_alignWithBackground").boolValue = true;

@@ -24,7 +24,7 @@ MonoBehaviour:
     _material: 0
     _texture: 0
     _sound: 0
-    _overrideSprite: 1
+    _overrideSprite: 0
     _sprite: {fileID: 0}
     _activeSprite: {fileID: 0}
     _alignWithBackground: 1
@@ -43,7 +43,7 @@ MonoBehaviour:
     _material: 0
     _texture: 0
     _sound: 0
-    _overrideSprite: 1
+    _overrideSprite: 0
     _sprite: {fileID: 0}
     _activeSprite: {fileID: 0}
     _alignWithBackground: 1
