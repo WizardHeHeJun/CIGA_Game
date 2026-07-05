@@ -600,10 +600,14 @@ namespace Ciga.AnchorHorror.EditorTools
             img.sprite = sprite;
             img.type = Image.Type.Simple;
             img.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
-            img.raycastTarget = sprite != null && sprite.texture != null && sprite.texture.isReadable;
-            if (img.raycastTarget)
+            img.raycastTarget = true;
+            if (sprite != null && sprite.texture != null && sprite.texture.isReadable)
             {
                 img.alphaHitTestMinimumThreshold = 0.1f;
+            }
+            else if (sprite == null)
+            {
+                img.raycastTarget = false;
             }
 
             var btn = rt.gameObject.AddComponent<Button>();

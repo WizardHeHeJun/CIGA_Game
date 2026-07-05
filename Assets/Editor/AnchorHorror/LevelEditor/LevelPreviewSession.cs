@@ -72,7 +72,7 @@ namespace Ciga.AnchorHorror.EditorTools
                     continue;
                 }
 
-                var go = ItemFactory.Create(def, placed, fallback, _root.transform);
+                var go = ItemFactory.Create(def, placed, fallback, _root.transform, default);
                 go.hideFlags = HideFlags.DontSaveInBuild;
                 AttachItemRef(go, def.Id);
                 Undo.RegisterCreatedObjectUndo(go, $"预览物品 {def.DisplayName}");
@@ -98,7 +98,7 @@ namespace Ciga.AnchorHorror.EditorTools
             // position/scale 由下方直接设 transform 决定，无需反射注入 placed（去掉反射脆弱性）。
             var placed = new PlacedItem();
             Sprite fallback = _currentLevel?.ItemDatabase?.FallbackSprite;
-            var go = ItemFactory.Create(def, placed, fallback, _root.transform);
+            var go = ItemFactory.Create(def, placed, fallback, _root.transform, default);
 
             // 直接以世界坐标落点 + 定义默认缩放（预览根不在原点时也准确）。
             go.transform.position = worldPos;

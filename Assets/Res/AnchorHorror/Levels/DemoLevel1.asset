@@ -31,6 +31,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: lamp_metal
     _position: {x: -1, y: 1.5}
     _rotationZ: 0
@@ -48,6 +50,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: book_paper
     _position: {x: 1, y: 1.5}
     _rotationZ: 0
@@ -65,6 +69,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: cup_glass
     _position: {x: 3, y: 1.5}
     _rotationZ: 0
@@ -82,6 +88,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: clock_metal
     _position: {x: -3, y: -0.5}
     _rotationZ: 0
@@ -99,6 +107,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: cloth_red
     _position: {x: -1, y: -0.5}
     _rotationZ: 0
@@ -116,6 +126,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: box_wood
     _position: {x: 1, y: -0.5}
     _rotationZ: 0
@@ -133,6 +145,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: bottle_plastic
     _position: {x: 3, y: -0.5}
     _rotationZ: 0
@@ -150,6 +164,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 0, y: 0}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   _itemDatabase: {fileID: 11400000, guid: 80bc23451957f8a4097bab598ecb7d1c, type: 2}
   _levelConfig: {fileID: 11400000, guid: 2dd6847d9e164e0438400537b6edd76a, type: 2}
   _playerSpawn: {x: 0, y: -3.5}

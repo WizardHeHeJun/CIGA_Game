@@ -22,6 +22,8 @@ namespace Ciga.AiBridge
                 if (_api == null)
                     _api = ScriptableObject.CreateInstance<TestRunnerApi>();
 
+                CleanupInitTestScenes();
+
                 // 先写一个 running 占位
                 File.WriteAllText(resultPath,
                     "{\"status\":\"running\",\"mode\":\"" + tm + "\"}", Encoding.UTF8);
@@ -34,6 +36,36 @@ namespace Ciga.AiBridge
             {
                 try { File.WriteAllText(resultPath, "{\"status\":\"error\",\"message\":\"" + e.Message.Replace("\"", "'") + "\"}", Encoding.UTF8); } catch { }
                 ack?.Invoke(false);
+            }
+        }
+
+        private static void CleanupInitTestScenes()
+        {
+            string[] sceneGuids = AssetDatabase.FindAssets("InitTestScene t:Scene", new[] { "Assets" });
+            bool deletedAny = false;
+            for (int i = 0; i < sceneGuids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(sceneGuids[i]);
+                if (string.IsNullOrEmpty(path))
+                {
+                    continue;
+                }
+
+                string fileName = Path.GetFileName(path);
+                if (!fileName.StartsWith("InitTestScene", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (AssetDatabase.DeleteAsset(path))
+                {
+                    deletedAny = true;
+                }
+            }
+
+            if (deletedAny)
+            {
+                AssetDatabase.Refresh();
             }
         }
 

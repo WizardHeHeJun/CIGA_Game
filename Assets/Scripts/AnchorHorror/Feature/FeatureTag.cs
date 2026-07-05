@@ -29,9 +29,13 @@ namespace Ciga.AnchorHorror
         private readonly List<FeatureUnit> _features = new List<FeatureUnit>(8);
         private UnityEngine.Color _baseColor = UnityEngine.Color.white;
         private bool _highlighted;
+        private string _runtimeKey;
 
         /// <summary>关卡中已交互（命中或不命中）的物品置 true，之后不可再交互。见设计决策 B。</summary>
         public bool Consumed { get; set; }
+
+        /// <summary>该实例的稳定运行时键；用于跨房间重建恢复已交互状态。</summary>
+        public string RuntimeKey => _runtimeKey;
 
         /// <summary>生成半（FeatureTag.Generated.cs）实现：逐维度把当前枚举值装配进 buffer。</summary>
         partial void BuildFeaturesGenerated(List<FeatureUnit> buffer);
@@ -79,6 +83,12 @@ namespace Ciga.AnchorHorror
                     _renderer.sprite = _defaultSprite;
                 }
             }
+        }
+
+        /// <summary>运行时写入稳定实例键，供跨房间重建恢复消费态。</summary>
+        public void ConfigureRuntimeKey(string runtimeKey)
+        {
+            _runtimeKey = runtimeKey ?? string.Empty;
         }
 
         /// <summary>背包/记忆面板展示用 Sprite：优先静默图，避免把整场景 Active overlay 放进背包。</summary>

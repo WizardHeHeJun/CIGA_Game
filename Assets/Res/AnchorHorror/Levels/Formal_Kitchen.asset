@@ -31,6 +31,8 @@ MonoBehaviour:
     _colliderOffset: {x: 1.4594908, y: 3.5178242}
     _colliderSize: {x: 1.6430557, y: 1.4986112}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -48,6 +50,8 @@ MonoBehaviour:
     _colliderOffset: {x: -6.7708335, y: 1.600926}
     _colliderSize: {x: 5.765741, y: 5.9342594}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -65,6 +69,8 @@ MonoBehaviour:
     _colliderOffset: {x: -7.297454, y: -2.68125}
     _colliderSize: {x: 4.399537, y: 5.5069447}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -82,6 +88,8 @@ MonoBehaviour:
     _colliderOffset: {x: 3.0784724, y: 5.431713}
     _colliderSize: {x: 4.5680556, y: 2.1365743}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -99,6 +107,8 @@ MonoBehaviour:
     _colliderOffset: {x: 6.861111, y: 5.883102}
     _colliderSize: {x: 1.7574074, y: 1.2337964}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -116,6 +126,8 @@ MonoBehaviour:
     _colliderOffset: {x: 3.6020834, y: 3.1717594}
     _colliderSize: {x: 2.5699074, y: 1.287963}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -133,6 +145,8 @@ MonoBehaviour:
     _colliderOffset: {x: 3.6923614, y: 4.2310185}
     _colliderSize: {x: 0.55972224, y: 1.1675926}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -150,6 +164,8 @@ MonoBehaviour:
     _colliderOffset: {x: 0.7703704, y: -3.0935187}
     _colliderSize: {x: 10.0629635, y: 5.8740745}
     _visualOnly: 0
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
   _itemDatabase: {fileID: 11400000, guid: 80bc23451957f8a4097bab598ecb7d1c, type: 2}
   _levelConfig: {fileID: 11400000, guid: 2dd6847d9e164e0438400537b6edd76a, type: 2}
   _playerSpawn: {x: 0, y: -3.5}

@@ -43,12 +43,13 @@ namespace Ciga.AnchorHorror
     [CreateAssetMenu(fileName = "LevelSequence", menuName = "Ciga/AnchorHorror/LevelSequence")]
     public class LevelSequence : ScriptableObject
     {
-        /// <summary>门的生成配置：出生坐标、精灵、交互提示文案。</summary>
+        /// <summary>门的生成配置：出生坐标、默认/高亮精灵、交互提示文案。</summary>
         [Serializable]
         public class DoorSetting
         {
             [SerializeField] private Vector2 _spawn;
             [SerializeField] private Sprite _sprite;
+            [SerializeField] private Sprite _activeSprite;
             [SerializeField] private string _prompt = "按 E 进入下一关";
 
             /// <summary>门的世界坐标出生点。</summary>
@@ -56,6 +57,9 @@ namespace Ciga.AnchorHorror
 
             /// <summary>门的精灵图（可为 null，届时 SpriteRenderer 保持空白）。</summary>
             public Sprite Sprite => _sprite;
+
+            /// <summary>门可交互高亮时切换到的图片；为空则退回颜色高亮。</summary>
+            public Sprite ActiveSprite => _activeSprite;
 
             /// <summary>靠近门时的提示文案。</summary>
             public string Prompt => _prompt;
