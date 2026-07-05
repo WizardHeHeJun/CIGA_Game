@@ -27,7 +27,7 @@ namespace Ciga.Startup
         [SerializeField] private TMP_FontAsset _uiFont;
 
         [Tooltip("主标题文字")]
-        [SerializeField] private string _titleText = "锚点解谜";
+        [SerializeField] private string _titleText = "旧室";
 
         [Tooltip("开始按钮图（留空则纯色按钮）")]
         [SerializeField] private Sprite _startButtonSprite;

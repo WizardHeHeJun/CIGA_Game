@@ -33,7 +33,7 @@ namespace Ciga.Startup
         [SerializeField] private string _enterButtonText = "进入游戏";
 
         [Tooltip("副标题 / 版本说明（留空则隐藏）")]
-        [SerializeField] private string _subtitle;
+        [SerializeField] private string _subtitle = "旧室 / OldRoom";
 
         public Sprite Background => _background;
         public Sprite Logo => _logo;

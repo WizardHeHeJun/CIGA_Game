@@ -18,18 +18,56 @@ MonoBehaviour:
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
-    _overrideFeatures: 1
-    _color: 1
+    _overrideFeatures: 0
+    _color: 0
     _shape: 0
     _material: 0
     _texture: 0
     _sound: 0
     _overrideSprite: 1
-    _sprite: {fileID: 21300000, guid: 53215033e130c4d4c883e3ee9b04d729, type: 3}
-    _activeSprite: {fileID: 21300000, guid: d5c229a718390d040a65528987b79aea, type: 3}
+    _sprite: {fileID: 0}
+    _activeSprite: {fileID: 0}
     _alignWithBackground: 1
-    _colliderOffset: {x: 1.9344846, y: 3.1460133}
-    _colliderSize: {x: 3.5652616, y: 5.6251907}
+    _colliderOffset: {x: 0, y: 0}
+    _colliderSize: {x: 1, y: 1}
+    _visualOnly: 1
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 0
+    _color: 0
+    _shape: 0
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 0}
+    _activeSprite: {fileID: 0}
+    _alignWithBackground: 1
+    _colliderOffset: {x: 0, y: 0}
+    _colliderSize: {x: 1, y: 1}
+    _visualOnly: 1
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 12
+    _shape: 3
+    _material: 4
+    _texture: 10
+    _sound: 1
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 1fcc0f701817b434683e1db0d3612d72, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 61306dd264f6cff4ba210e1dd7bceeb3, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: -1.020061, y: 0.22117828}
+    _colliderSize: {x: 3.0700865, y: 12.557644}
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
@@ -38,11 +76,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 2
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
+    _color: 13
+    _shape: 1
+    _material: 10
+    _texture: 3
+    _sound: 3
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: 229e59478d7be674da99fea9e93f579e, type: 3}
     _activeSprite: {fileID: 21300000, guid: 3df45a51fe75c5746a0faddc8b3b2cde, type: 3}
@@ -57,11 +95,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 3
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
+    _color: 14
+    _shape: 5
+    _material: 2
+    _texture: 1
+    _sound: 6
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: 5a0c69c1da0ecab4da84289f7004febc, type: 3}
     _activeSprite: {fileID: 21300000, guid: 2651be744a141ff4e9b341bbfd130f8c, type: 3}
@@ -76,17 +114,17 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 0
-    _shape: 1
-    _material: 0
-    _texture: 0
-    _sound: 0
+    _color: 15
+    _shape: 3
+    _material: 8
+    _texture: 2
+    _sound: 2
     _overrideSprite: 1
-    _sprite: {fileID: 21300000, guid: 1fcc0f701817b434683e1db0d3612d72, type: 3}
-    _activeSprite: {fileID: 21300000, guid: 61306dd264f6cff4ba210e1dd7bceeb3, type: 3}
+    _sprite: {fileID: 21300000, guid: 53215033e130c4d4c883e3ee9b04d729, type: 3}
+    _activeSprite: {fileID: 21300000, guid: d5c229a718390d040a65528987b79aea, type: 3}
     _alignWithBackground: 1
-    _colliderOffset: {x: -1.020061, y: 0.22117828}
-    _colliderSize: {x: 3.0700865, y: 12.557644}
+    _colliderOffset: {x: 1.9344846, y: 3.1460133}
+    _colliderSize: {x: 3.5652616, y: 5.6251907}
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 

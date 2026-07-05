@@ -19,11 +19,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 0
-    _shape: 2
-    _material: 0
-    _texture: 0
-    _sound: 0
+    _color: 5
+    _shape: 1
+    _material: 6
+    _texture: 1
+    _sound: 5
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: 3c5a661a1465ac74694772c477e934e4, type: 3}
     _activeSprite: {fileID: 21300000, guid: 1875edabd7b86c144a61847021ae3523, type: 3}
@@ -38,11 +38,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 0
-    _shape: 0
-    _material: 1
-    _texture: 0
-    _sound: 0
+    _color: 5
+    _shape: 1
+    _material: 2
+    _texture: 4
+    _sound: 6
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: 265323c817166e74a999854748617b89, type: 3}
     _activeSprite: {fileID: 21300000, guid: 980c3acae5859a740b9873b8d939a42e, type: 3}
@@ -57,11 +57,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 0
-    _shape: 0
-    _material: 2
-    _texture: 0
-    _sound: 0
+    _color: 18
+    _shape: 2
+    _material: 3
+    _texture: 8
+    _sound: 4
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: bc4fefbe04930ab4594c7c39ad517786, type: 3}
     _activeSprite: {fileID: 21300000, guid: 2cf8ec3af4c70e947a9ca1f4cb050c40, type: 3}
@@ -76,11 +76,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 0
-    _shape: 0
-    _material: 0
+    _color: 5
+    _shape: 2
+    _material: 6
     _texture: 1
-    _sound: 0
+    _sound: 5
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: b47f646265878f048bb88b1932fe44e4, type: 3}
     _activeSprite: {fileID: 21300000, guid: 5b021ee23beae21459a8ba303511b362, type: 3}
@@ -95,11 +95,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 1
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
+    _color: 2
+    _shape: 3
+    _material: 4
+    _texture: 6
+    _sound: 1
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: adafc0835d70e2c4ea85172cd002bf55, type: 3}
     _activeSprite: {fileID: 21300000, guid: cf93b3e161ba7024fa712d5650ceb6a3, type: 3}
@@ -114,11 +114,11 @@ MonoBehaviour:
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 1
-    _color: 2
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
+    _color: 6
+    _shape: 1
+    _material: 2
+    _texture: 12
+    _sound: 5
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: 2dc5237b09ef6f0429870cb6ae6ba2fd, type: 3}
     _activeSprite: {fileID: 21300000, guid: 92a0f564f17a0c94e858b87d47e41c22, type: 3}
