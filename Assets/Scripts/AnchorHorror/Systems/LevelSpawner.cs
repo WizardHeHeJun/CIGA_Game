@@ -63,8 +63,7 @@ namespace Ciga.AnchorHorror
                 }
 
                 var go = ItemFactory.Create(def, placed, fallback, levelRoot);
-                var tag = go.GetComponent<FeatureTag>();
-                if (tag != null)
+                if (go.TryGetComponent<FeatureTag>(out var tag))
                 {
                     result.Add(tag);
                 }

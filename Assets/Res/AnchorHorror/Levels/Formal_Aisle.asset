@@ -1,0 +1,121 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7b8e3d1badb918498e4984666ae8be7, type: 3}
+  m_Name: Formal_Aisle
+  m_EditorClassIdentifier: 
+  _levelName: "\u6B63\u5F0F\u5173\u53612\xB7\u8D70\u5ECA"
+  _items:
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 1
+    _shape: 0
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 53215033e130c4d4c883e3ee9b04d729, type: 3}
+    _activeSprite: {fileID: 21300000, guid: d5c229a718390d040a65528987b79aea, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: 1.9344846, y: 3.1460133}
+    _colliderSize: {x: 3.5652616, y: 5.6251907}
+    _visualOnly: 0
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 2
+    _shape: 0
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 229e59478d7be674da99fea9e93f579e, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 3df45a51fe75c5746a0faddc8b3b2cde, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: -6.6848655, y: 0.5777044}
+    _colliderSize: {x: 1.5779585, y: 1.9146776}
+    _visualOnly: 0
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 3
+    _shape: 0
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 5a0c69c1da0ecab4da84289f7004febc, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 2651be744a141ff4e9b341bbfd130f8c, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: -3.9581008, y: -1.4987304}
+    _colliderSize: {x: 0.7328594, y: 1.2214322}
+    _visualOnly: 0
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 1
+    _color: 0
+    _shape: 1
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 1fcc0f701817b434683e1db0d3612d72, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 61306dd264f6cff4ba210e1dd7bceeb3, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: -1.020061, y: 0.22117828}
+    _colliderSize: {x: 3.0700865, y: 12.557644}
+    _visualOnly: 0
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 0
+    _color: 0
+    _shape: 0
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 4e4d78549b517d34ea0bbaebc077e2ee, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 72bb88ef58c76d34dadbf1d3c413ce58, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: -6.816912, y: -3.4860337}
+    _colliderSize: {x: 2.7663789, y: 3.9812088}
+    _visualOnly: 1
+  - _itemId: chair_wood
+    _position: {x: 0, y: 0}
+    _rotationZ: 0
+    _scale: {x: 1, y: 1}
+    _overrideFeatures: 0
+    _color: 0
+    _shape: 0
+    _material: 0
+    _texture: 0
+    _sound: 0
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: ee4d690334f3e6e43a3f7d71dd8b9311, type: 3}
+    _activeSprite: {fileID: 21300000, guid: af8fb20ea92cd7f4599b478795815a28, type: 3}
+    _alignWithBackground: 1
+    _colliderOffset: {x: 5.3280854, y: 0.079228036}
+    _colliderSize: {x: 2.6805487, y: 7.1767397}
+    _visualOnly: 1
+  _itemDatabase: {fileID: 11400000, guid: 80bc23451957f8a4097bab598ecb7d1c, type: 2}
+  _levelConfig: {fileID: 11400000, guid: 2dd6847d9e164e0438400537b6edd76a, type: 2}
+  _playerSpawn: {x: 0, y: -3.5}

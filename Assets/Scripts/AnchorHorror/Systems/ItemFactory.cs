@@ -11,9 +11,9 @@ namespace Ciga.AnchorHorror
     /// 纯装配工厂：将 ItemDefinition + PlacedItem 组合成带 SpriteRenderer / Collider2D / FeatureTag 的 GameObject。
     /// 编辑器预览（LevelPreviewSession）与运行时 Spawner（LevelSpawner）共用此路径，消除编辑↔运行漂移。
     /// 不引用任何 UnityEditor API，纯运行时代码。
-    /// 装配顺序（硬约束）：Collider2D → SpriteRenderer → FeatureTag → Configure。
+    /// 装配顺序（硬约束）：SpriteRenderer → Collider2D → FeatureTag → Configure。
     ///   原因：FeatureTag 带 [RequireComponent(Collider2D)]，且 Awake 里 GetComponent&lt;SpriteRenderer&gt;() 取基色；
-    ///   先挂碰撞体+渲染器，再挂 FeatureTag（Awake 随即跑），最后 Configure 覆盖默认枚举建的缓存。
+    ///   先挂渲染器+碰撞体，再挂 FeatureTag（Awake 随即跑），最后 Configure 覆盖默认枚举建的缓存。
     /// </summary>
     public static class ItemFactory
     {
