@@ -14,7 +14,7 @@ namespace Ciga.AnchorHorror
     /// <summary>
     /// 游戏总控：轻量单例 + 组合根 + 阶段状态机。
     /// 两关卡流程（ADR-1/2/3/4/5/6）：
-    ///   关卡1（InitRoom）：从 8 物品选 5 → LockSelection 抽 5 锚点 → 关卡1门可交互
+    ///   关卡1（InitRoom）：从 8 物品选 5 → LockSelection 抽 5 锚点 → 自动淡入进入关卡2
     ///   关卡2（HorrorLevel）：EnterLevel2 进入走廊 Hub → 180s 倒计时 + San 衰减双失败线 → 拾取满足 5 锚点 → Victory
     ///   走廊/房间切换（SwitchSubScene）：换物品摆放、背包/锚点/倒计时/相位全保留
     /// </summary>
@@ -23,6 +23,7 @@ namespace Ciga.AnchorHorror
     {
         private const int Level2FirstEntryIndex = 1;
         private const int Level2MaxRoomCount = 4;
+        private const float Level2AutoTransitionSeconds = 3f;
 
         public static GameManager Instance { get; private set; }
 
@@ -70,9 +71,6 @@ namespace Ciga.AnchorHorror
 
         // 拾取反馈"新命中"缓冲（复用避免每次拾取分配，SC-B4）
         private readonly List<FeatureUnit> _pickupHitBuffer = new List<FeatureUnit>();
-
-        // 关卡1 门引用（LockSelection 后开启可交互）
-        private LevelDoor _level1Door;
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.Boot;
         public AnchorSystem Anchor { get; private set; }
@@ -229,7 +227,6 @@ namespace Ciga.AnchorHorror
 
             _transitioning = false;
             SelectionLocked = false;
-            _level1Door = null;
             Anchor.Reset();
 
             // 首屏起始压黑，建完房间后淡入（#1）——避免淡入前先闪一帧空场景/未布置场景。
@@ -259,7 +256,6 @@ namespace Ciga.AnchorHorror
                 _levelRoot = new GameObject("__LevelRoot");
                 ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（关卡1=卧室）
                 LevelSpawner.Spawn(_levelData, _levelRoot.transform);
-                SpawnLevelDoor(); // 建关卡1门（EnterLevel2，initially locked）
             }
             else
             {
@@ -298,6 +294,7 @@ namespace Ciga.AnchorHorror
             if (_backpack.Count >= _config.Level1SelectCap)
             {
                 LockSelection();
+                EnterLevel2();
             }
         }
 
@@ -315,8 +312,7 @@ namespace Ciga.AnchorHorror
             Anchor.ExtractTargetsFromSelection(_backpack.Items);
             SelectionLocked = true;
 
-            // 开启关卡1门可交互（门 CanInteract 判 SelectionLocked，此处无需额外调用——状态已更新）
-            // _level1Door 引用保留供将来需要显式刷新表现时用
+            // 选满后由 SelectInLevel1 直接调用 EnterLevel2，不再等待玩家走门。
         }
 
         // ──────────────────────────────────────────────────────
@@ -435,7 +431,7 @@ namespace Ciga.AnchorHorror
             {
                 _whisperSource.Play();
             }
-            yield return Fade(1f);
+            yield return Fade(1f, Level2AutoTransitionSeconds * 0.5f);
 
             // 清背包，设关卡2容量，启倒计时（SC-3，陷阱 6）
             _backpack.Clear();

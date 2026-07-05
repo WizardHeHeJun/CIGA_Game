@@ -52,6 +52,11 @@ namespace Ciga.AnchorHorror
             if (sprite != null)
             {
                 _renderer.sprite = sprite;
+                _defaultSprite = sprite;
+            }
+            else if (_defaultSprite == null)
+            {
+                _defaultSprite = _renderer.sprite;
             }
 
             _renderer.color = _normalColor;
@@ -156,7 +161,24 @@ namespace Ciga.AnchorHorror
         {
         }
 
-        /// <summary>切换高亮：改 SpriteRenderer 颜色。</summary>
+        /// <summary>运行时配置门的默认/高亮图片。高亮图为空时继续使用颜色高亮降级。</summary>
+        public void ConfigureSprites(Sprite defaultSprite, Sprite activeSprite)
+        {
+            _defaultSprite = defaultSprite;
+            _activeSprite = activeSprite;
+
+            if (_renderer == null)
+            {
+                _renderer = GetComponent<SpriteRenderer>();
+            }
+
+            if (_renderer != null && !_highlighted && _defaultSprite != null)
+            {
+                _renderer.sprite = _defaultSprite;
+            }
+        }
+
+        /// <summary>切换高亮：优先切 Active/Default Sprite，缺高亮图时退回改 SpriteRenderer 颜色。</summary>
         public void SetHighlight(bool on)
         {
             if (_highlighted == on || _renderer == null)
@@ -165,6 +187,13 @@ namespace Ciga.AnchorHorror
             }
 
             _highlighted = on;
+            if (_activeSprite != null)
+            {
+                _renderer.sprite = on ? _activeSprite : _defaultSprite;
+                _renderer.color = _normalColor;
+                return;
+            }
+
             _renderer.color = on ? _highlightColor : _normalColor;
         }
 
