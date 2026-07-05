@@ -16,7 +16,7 @@ namespace Ciga.Startup
     /// 「开始」→ LoadScene(Bootstrap)；「结束」→ Application.Quit；
     /// 「操作指引」→ 场景内全屏引导页 overlay（打开后前 3 秒忽略点击，之后点屏幕任意处返回）。
     /// 文字已烙进美术，故运行时隐藏旧的 Title/Logo/按钮文案标签。
-    /// 运行时自建操作指引图层与引导页，不改场景 YAML、不重跑生成器。
+    /// 操作指引按钮与引导页：生成器接线则直接用；留空则运行时自建（兼容旧场景）。
     /// </summary>
     public class MainMenuPanel : UIPanel
     {
@@ -35,11 +35,13 @@ namespace Ciga.Startup
         [SerializeField] private Button _quitButton;
         [SerializeField] private TMP_Text _quitButtonLabel;
 
-        // 运行时自建，不序列化
-        private Button _guideButton;
-        private GameObject _guideRoot;
+        [Header("操作指引（生成器接线；留空则运行时自建）")]
+        [SerializeField] private Button _guideButton;
+        [SerializeField] private GameObject _guideRoot;
+        [SerializeField] private Image _guideImage;
+        [SerializeField] private TMP_Text _guideHint;
+
         private CanvasGroup _guideCanvasGroup;
-        private TMP_Text _guideHint;
         private bool _guideShowing;
         private float _guideUnlockTime;
         private bool _guideReturnHintShown;
@@ -60,6 +62,13 @@ namespace Ciga.Startup
             {
                 _quitButton.onClick.AddListener(OnQuitClicked);
             }
+
+            // 已接线的操作指引按钮在此挂监听；运行时自建的按钮由 EnsureGuideButton 首次补挂。
+            // 之后每轮启用重新挂上，与 OnDisable 成对，避免残留订阅导致状态与 UI 不同步。
+            if (_guideButton != null)
+            {
+                _guideButton.onClick.AddListener(OnGuideClicked);
+            }
         }
 
         private void OnDisable()
@@ -72,6 +81,11 @@ namespace Ciga.Startup
             if (_quitButton != null)
             {
                 _quitButton.onClick.RemoveListener(OnQuitClicked);
+            }
+
+            if (_guideButton != null)
+            {
+                _guideButton.onClick.RemoveListener(OnGuideClicked);
             }
         }
 
@@ -108,17 +122,17 @@ namespace Ciga.Startup
 
             ApplyBackground();
 
-            // 文字已烙进美术 → 隐藏叠加的 Logo / 标题 / 按钮文案标签
+            // 文字已烙进美术 → 隐藏叠加的 Logo / 标题 / 按钮文案标签（新场景已不生成它们，留空即跳过）
             HideIfPresent(_logoImage != null ? _logoImage.gameObject : null);
             HideIfPresent(_titleLabel != null ? _titleLabel.gameObject : null);
             HideIfPresent(_startButtonLabel != null ? _startButtonLabel.gameObject : null);
             HideIfPresent(_quitButtonLabel != null ? _quitButtonLabel.gameObject : null);
 
-            // 开始 / 结束：把生成器建的小按钮就地改造成全屏 alpha 命中图层
+            // 开始 / 结束：把按钮改造成全屏 alpha 命中图层（小按钮或已是全屏都幂等）
             RetrofitFullScreenButton(_startButton, _config.StartButtonSprite, "StartButtonSprite");
             RetrofitFullScreenButton(_quitButton, _config.QuitButtonSprite, "QuitButtonSprite");
 
-            // 操作指引：运行时新建全屏图层 + 引导页
+            // 操作指引：已接线则配置、留空则自建
             EnsureGuideButton();
             EnsureGuidePanel();
         }
@@ -144,7 +158,7 @@ namespace Ciga.Startup
             }
         }
 
-        /// <summary>把小按钮拉伸铺满、换全屏图层 sprite、开 alpha 命中、关按钮变色过渡。图为空则保留原样并告警。</summary>
+        /// <summary>把按钮拉伸铺满、换全屏图层 sprite、开 alpha 命中、关按钮变色过渡。图为空则保留原样并告警。</summary>
         private void RetrofitFullScreenButton(Button btn, Sprite sprite, string fieldKey)
         {
             if (btn == null)
@@ -169,77 +183,143 @@ namespace Ciga.Startup
                 img.color = Color.white;
                 img.type = Image.Type.Simple;
                 img.raycastTarget = true;
-                TrySetAlphaHit(img, fieldKey);
+                if (!TrySetAlphaHit(img, fieldKey))
+                {
+                    // 无法笔触命中 → 关掉全屏层 raycast，避免整块遮挡其它按钮（宁可该按钮暂不可点也不锁死全菜单）
+                    img.raycastTarget = false;
+                }
+
                 btn.targetGraphic = img;
             }
 
             // 全屏图层若用默认 Color Tint 过渡，点击/悬停会给整张 1920x1080 染色闪烁
             btn.transition = Selectable.Transition.None;
+
+            EnsureScaleFeedback(btn, sprite);
         }
 
+        /// <summary>确保按钮挂了悬浮放大/按下缩小反馈：生成器已烙则跳过；否则运行时补挂并按笔触中心设 pivot。</summary>
+        private void EnsureScaleFeedback(Button btn, Sprite sprite)
+        {
+            if (btn == null || btn.GetComponent<UIPressScaleFeedback>() != null)
+            {
+                return;
+            }
+
+            var rt = btn.transform as RectTransform;
+            if (rt != null && sprite != null)
+            {
+                rt.pivot = UIPressScaleFeedback.OpaqueCenterNormalized(sprite); // 缩放绕笔触中心，避免漂移
+            }
+
+            btn.gameObject.AddComponent<UIPressScaleFeedback>();
+        }
+
+        /// <summary>操作指引按钮：已接线则配置外观；留空则运行时自建全屏图层。</summary>
         private void EnsureGuideButton()
         {
-            if (_guideButton != null)
+            bool justBuilt = false;
+            if (_guideButton == null)
             {
-                return;
+                if (_config.GuideButtonSprite == null)
+                {
+                    PlaceholderWarnOnce("GuideButtonSprite");
+                    return;
+                }
+
+                var parent = Root != null ? Root.transform : transform;
+                var go = new GameObject("GuideButton(runtime)", typeof(RectTransform));
+                go.transform.SetParent(parent, false);
+                _guideButton = go.AddComponent<Button>();
+                justBuilt = true;
             }
 
-            if (_config.GuideButtonSprite == null)
+            StretchFull(_guideButton.transform as RectTransform);
+
+            var img = (_guideButton.targetGraphic as Image) ?? _guideButton.GetComponent<Image>();
+            if (img == null)
             {
-                PlaceholderWarnOnce("GuideButtonSprite");
-                return;
+                img = _guideButton.gameObject.AddComponent<Image>();
             }
 
-            var parent = Root != null ? Root.transform : transform;
-            var go = new GameObject("GuideButton(runtime)", typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            StretchFull(go.transform as RectTransform);
+            if (_config.GuideButtonSprite != null)
+            {
+                img.sprite = _config.GuideButtonSprite;
+                img.color = Color.white;
+            }
 
-            var img = go.AddComponent<Image>();
-            img.sprite = _config.GuideButtonSprite;
-            img.color = Color.white;
             img.type = Image.Type.Simple;
             img.raycastTarget = true;
-            TrySetAlphaHit(img, "GuideButtonSprite");
+            if (!TrySetAlphaHit(img, "GuideButtonSprite"))
+            {
+                img.raycastTarget = false;
+            }
 
-            _guideButton = go.AddComponent<Button>();
             _guideButton.transition = Selectable.Transition.None;
             _guideButton.targetGraphic = img;
-            _guideButton.onClick.AddListener(OnGuideClicked);
+
+            if (justBuilt)
+            {
+                // 自建按钮首次 OnEnable 时尚不存在，这里补挂一次；之后由 OnEnable/OnDisable 成对管理
+                _guideButton.onClick.AddListener(OnGuideClicked);
+            }
+
+            EnsureScaleFeedback(_guideButton, _config.GuideButtonSprite);
         }
 
+        /// <summary>引导页：已接线则配置；留空则运行时自建。默认隐藏。</summary>
         private void EnsureGuidePanel()
         {
-            if (_guideRoot != null)
+            if (_guideRoot == null)
+            {
+                BuildGuidePanel();
+            }
+
+            if (_guideRoot == null)
             {
                 return;
             }
 
+            _guideCanvasGroup = _guideRoot.GetComponent<CanvasGroup>();
+            if (_guideCanvasGroup == null)
+            {
+                _guideCanvasGroup = _guideRoot.AddComponent<CanvasGroup>();
+            }
+
+            if (_guideImage != null)
+            {
+                if (_config.GuidePageImage != null)
+                {
+                    _guideImage.sprite = _config.GuidePageImage;
+                    _guideImage.color = Color.white;
+                }
+                else
+                {
+                    // 引导图待补 → 深色占位底
+                    _guideImage.sprite = null;
+                    _guideImage.color = new Color(0.05f, 0.05f, 0.08f, 0.96f);
+                    PlaceholderWarnOnce("GuidePageImage");
+                }
+
+                _guideImage.raycastTarget = true;
+            }
+
+            _guideRoot.SetActive(false);
+        }
+
+        private void BuildGuidePanel()
+        {
             var parent = Root != null ? Root.transform : transform;
             _guideRoot = new GameObject("GuidePanel(runtime)", typeof(RectTransform));
             _guideRoot.transform.SetParent(parent, false);
             StretchFull(_guideRoot.transform as RectTransform);
-            _guideCanvasGroup = _guideRoot.AddComponent<CanvasGroup>();
 
             // 图片层（全屏），同时充当点击捕获层
             var imgGo = new GameObject("GuideImage", typeof(RectTransform));
             imgGo.transform.SetParent(_guideRoot.transform, false);
             StretchFull(imgGo.transform as RectTransform);
-            var img = imgGo.AddComponent<Image>();
-            img.type = Image.Type.Simple;
-            img.raycastTarget = true;
-            if (_config.GuidePageImage != null)
-            {
-                img.sprite = _config.GuidePageImage;
-                img.color = Color.white;
-            }
-            else
-            {
-                // 引导图待补 → 深色占位底
-                img.sprite = null;
-                img.color = new Color(0.05f, 0.05f, 0.08f, 0.96f);
-                PlaceholderWarnOnce("GuidePageImage");
-            }
+            _guideImage = imgGo.AddComponent<Image>();
+            _guideImage.type = Image.Type.Simple;
 
             // 提示文字（底部居中）
             var hintGo = new GameObject("GuideHint", typeof(RectTransform));
@@ -254,8 +334,6 @@ namespace Ciga.Startup
             _guideHint.fontSize = 36f;
             _guideHint.color = new Color(1f, 1f, 1f, 0.85f);
             _guideHint.raycastTarget = false;
-
-            _guideRoot.SetActive(false);
         }
 
         private void OnGuideClicked()
@@ -300,24 +378,28 @@ namespace Ciga.Startup
             }
         }
 
-        /// <summary>开 alpha 命中前先判纹理可读，不可读则降级不设阈值（否则运行时抛异常）。</summary>
-        private void TrySetAlphaHit(Image img, string fieldKey)
+        /// <summary>
+        /// 开 alpha 命中：只有毛笔笔触（非透明）可点、透明处穿透到下层按钮。
+        /// 前置是纹理 Read/Write Enabled，否则赋值会抛异常。返回是否成功启用（调用方据此决定降级）。
+        /// </summary>
+        private bool TrySetAlphaHit(Image img, string fieldKey)
         {
             if (img == null || img.sprite == null)
             {
-                return;
+                return false;
             }
 
             var tex = img.sprite.texture;
             if (tex != null && tex.isReadable)
             {
                 img.alphaHitTestMinimumThreshold = AlphaHitThreshold;
+                return true;
             }
-            else
-            {
-                // 纹理未开 Read/Write → 退化为整块可点，功能受损但不崩
-                PlaceholderWarnOnce("alphaHitReadable:" + fieldKey);
-            }
+
+            // 纹理未开 Read/Write：无法按笔触命中；若仍全屏 raycast 会整块遮挡下层按钮 → 由调用方关掉 raycast。
+            Debug.LogError($"[MainMenuPanel] 按钮图 '{fieldKey}' 纹理未开 Read/Write Enabled，无法 alpha 命中；" +
+                           "已关闭该全屏层 raycast 以免遮挡其它按钮。请在导入设置勾选 Read/Write Enabled。", this);
+            return false;
         }
 
         private static void HideIfPresent(GameObject go)

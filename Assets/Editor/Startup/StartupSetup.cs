@@ -6,6 +6,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Ciga.Startup;
+using Ciga.UI;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -192,88 +193,92 @@ namespace Ciga.Startup.EditorTools
             panelBg.color = new Color(0.06f, 0.06f, 0.10f, 1f);
             panelBg.raycastTarget = false;
 
-            // 背景图层
+            // 背景全屏图层（sprite 烙进场景 → 编辑器即所见；运行时 MainMenuPanel 再按 config 覆盖一次）
             var bgNode = NewUiNode(panelRoot, "Background");
             StretchFull(bgNode);
             var bgImg = bgNode.gameObject.AddComponent<Image>();
-            bgImg.color = Color.white;
+            bgImg.sprite = mainCfg.Background;
+            bgImg.color = mainCfg.Background != null ? Color.white : new Color(1f, 1f, 1f, 0f);
             bgImg.raycastTarget = false;
 
-            // Logo 图（顶部居中）
-            var logoNode = NewUiNode(panelRoot, "Logo");
-            logoNode.anchorMin = new Vector2(0.5f, 0.7f);
-            logoNode.anchorMax = new Vector2(0.5f, 0.7f);
-            logoNode.pivot = new Vector2(0.5f, 0.5f);
-            logoNode.sizeDelta = new Vector2(400f, 120f);
-            logoNode.anchoredPosition = Vector2.zero;
-            var logoImg = logoNode.gameObject.AddComponent<Image>();
-            logoImg.color = new Color(1f, 1f, 1f, 0f);
-            logoImg.raycastTarget = false;
+            // 三张全屏按钮图层：开始 / 操作指引 / 结束（文字已烙进美术，无 TMP 标签；alpha 命中让笔触外透明处穿透）
+            var startBtn = BuildFullScreenButtonLayer(panelRoot, "StartButton", mainCfg.StartButtonSprite);
+            var guideBtn = BuildFullScreenButtonLayer(panelRoot, "GuideButton", mainCfg.GuideButtonSprite);
+            var quitBtn = BuildFullScreenButtonLayer(panelRoot, "QuitButton", mainCfg.QuitButtonSprite);
 
-            // 标题文字
-            var titleNode = NewUiNode(panelRoot, "Title");
-            titleNode.anchorMin = new Vector2(0f, 0.55f);
-            titleNode.anchorMax = new Vector2(1f, 0.55f);
-            titleNode.pivot = new Vector2(0.5f, 0.5f);
-            titleNode.sizeDelta = new Vector2(0f, 90f);
-            titleNode.anchoredPosition = Vector2.zero;
-            var titleLabel = titleNode.gameObject.AddComponent<TextMeshProUGUI>();
-            titleLabel.text = "锚点解谜";
-            titleLabel.fontSize = 64f;
-            titleLabel.fontStyle = FontStyles.Bold;
-            titleLabel.alignment = TextAlignmentOptions.Center;
-            titleLabel.color = Color.white;
-            titleLabel.raycastTarget = false;
+            // 操作指引引导页 overlay（默认隐藏）：全屏图片层 + 底部提示文字，CanvasGroup 控显隐/拦截
+            var guideRoot = NewUiNode(panelRoot, "GuidePanel");
+            StretchFull(guideRoot);
+            guideRoot.gameObject.AddComponent<CanvasGroup>();
+            var guideImgNode = NewUiNode(guideRoot, "GuideImage");
+            StretchFull(guideImgNode);
+            var guideImg = guideImgNode.gameObject.AddComponent<Image>();
+            guideImg.type = Image.Type.Simple;
+            guideImg.raycastTarget = true; // 同时充当点击捕获层
+            if (mainCfg.GuidePageImage != null)
+            {
+                guideImg.sprite = mainCfg.GuidePageImage;
+                guideImg.color = Color.white;
+            }
+            else
+            {
+                guideImg.color = new Color(0.05f, 0.05f, 0.08f, 0.96f); // 引导图待补 → 深色占位
+            }
 
-            // 开始按钮
-            var startBtnNode = NewUiNode(panelRoot, "StartButton");
-            startBtnNode.anchorMin = new Vector2(0.5f, 0.40f);
-            startBtnNode.anchorMax = new Vector2(0.5f, 0.40f);
-            startBtnNode.pivot = new Vector2(0.5f, 0.5f);
-            startBtnNode.sizeDelta = new Vector2(240f, 64f);
-            startBtnNode.anchoredPosition = Vector2.zero;
-            var startBtnBg = startBtnNode.gameObject.AddComponent<Image>();
-            startBtnBg.color = new Color(0.25f, 0.55f, 0.35f, 1f);
-            var startBtn = startBtnNode.gameObject.AddComponent<Button>();
-            var startLabelNode = NewUiNode(startBtnNode, "Label");
-            StretchFull(startLabelNode);
-            var startLabel = startLabelNode.gameObject.AddComponent<TextMeshProUGUI>();
-            startLabel.text = "开始游戏";
-            startLabel.fontSize = 28f;
-            startLabel.alignment = TextAlignmentOptions.Center;
-            startLabel.color = Color.white;
-            startLabel.raycastTarget = false;
+            var guideHintNode = NewUiNode(guideRoot, "GuideHint");
+            guideHintNode.anchorMin = new Vector2(0.5f, 0.08f);
+            guideHintNode.anchorMax = new Vector2(0.5f, 0.08f);
+            guideHintNode.pivot = new Vector2(0.5f, 0.5f);
+            guideHintNode.sizeDelta = new Vector2(1400f, 90f);
+            guideHintNode.anchoredPosition = Vector2.zero;
+            var guideHint = guideHintNode.gameObject.AddComponent<TextMeshProUGUI>();
+            guideHint.text = string.Empty;
+            guideHint.fontSize = 36f;
+            guideHint.alignment = TextAlignmentOptions.Center;
+            guideHint.color = new Color(1f, 1f, 1f, 0.85f);
+            guideHint.raycastTarget = false;
 
-            // 退出按钮
-            var quitBtnNode = NewUiNode(panelRoot, "QuitButton");
-            quitBtnNode.anchorMin = new Vector2(0.5f, 0.30f);
-            quitBtnNode.anchorMax = new Vector2(0.5f, 0.30f);
-            quitBtnNode.pivot = new Vector2(0.5f, 0.5f);
-            quitBtnNode.sizeDelta = new Vector2(240f, 64f);
-            quitBtnNode.anchoredPosition = Vector2.zero;
-            var quitBtnBg = quitBtnNode.gameObject.AddComponent<Image>();
-            quitBtnBg.color = new Color(0.55f, 0.25f, 0.25f, 1f);
-            var quitBtn = quitBtnNode.gameObject.AddComponent<Button>();
-            var quitLabelNode = NewUiNode(quitBtnNode, "Label");
-            StretchFull(quitLabelNode);
-            var quitLabel = quitLabelNode.gameObject.AddComponent<TextMeshProUGUI>();
-            quitLabel.text = "退出";
-            quitLabel.fontSize = 28f;
-            quitLabel.alignment = TextAlignmentOptions.Center;
-            quitLabel.color = Color.white;
-            quitLabel.raycastTarget = false;
+            guideRoot.gameObject.SetActive(false);
 
-            // 挂 MainMenuPanel 并接线
+            // 挂 MainMenuPanel 并接线（旧 Logo/Title/按钮文案标签不再创建，MainMenuPanel 对空引用判空跳过）
             var mainPanel = panelRoot.gameObject.AddComponent<MainMenuPanel>();
             WireObj(mainPanel, "_root", panelRoot.gameObject);
             WireObj(mainPanel, "_config", mainCfg);
             WireObj(mainPanel, "_backgroundImage", bgImg);
-            WireObj(mainPanel, "_logoImage", logoImg);
-            WireObj(mainPanel, "_titleLabel", titleLabel);
             WireObj(mainPanel, "_startButton", startBtn);
-            WireObj(mainPanel, "_startButtonLabel", startLabel);
             WireObj(mainPanel, "_quitButton", quitBtn);
-            WireObj(mainPanel, "_quitButtonLabel", quitLabel);
+            WireObj(mainPanel, "_guideButton", guideBtn);
+            WireObj(mainPanel, "_guideRoot", guideRoot.gameObject);
+            WireObj(mainPanel, "_guideImage", guideImg);
+            WireObj(mainPanel, "_guideHint", guideHint);
+        }
+
+        // 全屏按钮图层：Image(全屏铺满 + sprite + alpha 命中) + Button(无 Tint 过渡)。sprite 为空则透明 + 关 raycast。
+        private static Button BuildFullScreenButtonLayer(Transform parent, string name, Sprite sprite)
+        {
+            var node = NewUiNode(parent, name);
+            StretchFull(node);
+            node.pivot = UIPressScaleFeedback.OpaqueCenterNormalized(sprite); // 缩放反馈绕笔触中心 → 就地放大/缩小
+            var img = node.gameObject.AddComponent<Image>();
+            img.sprite = sprite;
+            img.type = Image.Type.Simple;
+            img.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            img.raycastTarget = true;
+            if (sprite != null && sprite.texture != null && sprite.texture.isReadable)
+            {
+                img.alphaHitTestMinimumThreshold = 0.1f; // 只有毛笔笔触可点、透明处穿透到下层按钮
+            }
+            else
+            {
+                // 纹理不可读 → 无法笔触命中，关 raycast 避免整块遮挡（须在导入设置勾 Read/Write Enabled）
+                img.raycastTarget = false;
+            }
+
+            var btn = node.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = img;
+            node.gameObject.AddComponent<UIPressScaleFeedback>(); // 悬浮放大 / 按下缩小 反馈
+            return btn;
         }
 
         // Build Settings：顺序 Login(0) GameMain(1) Bootstrap(2) HorrorLevel(3)；剔除失效项、去重。
