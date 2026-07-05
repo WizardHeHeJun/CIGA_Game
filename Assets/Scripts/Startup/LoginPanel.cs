@@ -95,6 +95,9 @@ namespace Ciga.Startup
                 }
             }
 
+            ApplyFont(_enterButtonLabel);
+            ApplyFont(_subtitleLabel);
+
             if (_enterButtonLabel != null)
             {
                 _enterButtonLabel.text = !string.IsNullOrEmpty(_config.EnterButtonText)
@@ -111,6 +114,14 @@ namespace Ciga.Startup
                 bool hasSubtitle = !string.IsNullOrEmpty(_config.Subtitle);
                 _subtitleLabel.text = hasSubtitle ? _config.Subtitle : string.Empty;
                 _subtitleLabel.gameObject.SetActive(hasSubtitle);
+            }
+        }
+
+        private void ApplyFont(TMP_Text label)
+        {
+            if (label != null && _config.UiFont != null)
+            {
+                label.font = _config.UiFont;
             }
         }
 

@@ -312,6 +312,8 @@ namespace Ciga.Startup
                 _guideImage.raycastTarget = true;
             }
 
+            ApplyFont(_guideHint);
+
             if (_guideHint != null && _guideHintBreathe == null)
             {
                 _guideHintBreathe = _guideHint.GetComponent<UITextBreathe>()
@@ -348,11 +350,11 @@ namespace Ciga.Startup
             var hrt = (RectTransform)hintGo.transform;
             hrt.anchorMin = new Vector2(0.5f, 0.08f);
             hrt.anchorMax = new Vector2(0.5f, 0.08f);
-            hrt.sizeDelta = new Vector2(1400f, 90f);
+            hrt.sizeDelta = new Vector2(1400f, 120f);
             hrt.anchoredPosition = Vector2.zero;
             _guideHint = hintGo.AddComponent<TextMeshProUGUI>();
             _guideHint.alignment = TextAlignmentOptions.Center;
-            _guideHint.fontSize = 36f;
+            _guideHint.fontSize = 56f;
             _guideHint.color = new Color(1f, 1f, 1f, 0.85f);
             _guideHint.raycastTarget = false;
         }
@@ -413,6 +415,14 @@ namespace Ciga.Startup
                         _guideHintBreathe.Stop();
                     }
                 }
+            }
+        }
+
+        private void ApplyFont(TMP_Text label)
+        {
+            if (label != null && _config.UiFont != null)
+            {
+                label.font = _config.UiFont;
             }
         }
 

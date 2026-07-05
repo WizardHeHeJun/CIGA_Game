@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
+using Ciga.AnchorHorror.EditorTools;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
@@ -133,6 +134,28 @@ namespace Ciga.AiBridge
                         AssetDatabase.Refresh();
                         CompilationPipeline.RequestScriptCompilation();
                         return "{\"requested\":true,\"isCompiling\":" + Lower(EditorApplication.isCompiling) + "}";
+                    });
+                    break;
+
+                case "/anchor/wire-formal":
+                    RunOnMain(ctx, () =>
+                    {
+                        bool ok = TwoLevelFlowDemoSetup.TryWireFormalSequence(out string message);
+                        return "{\"ok\":" + Lower(ok) + ",\"message\":\"" + Escape(message) + "\"}";
+                    });
+                    break;
+
+                case "/anchor/wire-formal-compile":
+                    RunOnMain(ctx, () =>
+                    {
+                        bool ok = TwoLevelFlowDemoSetup.TryWireFormalSequence(out string message);
+                        if (ok)
+                        {
+                            AssetDatabase.Refresh();
+                            CompilationPipeline.RequestScriptCompilation();
+                        }
+
+                        return "{\"ok\":" + Lower(ok) + ",\"compileRequested\":" + Lower(ok) + ",\"message\":\"" + Escape(message) + "\"}";
                     });
                     break;
 

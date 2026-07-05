@@ -3,6 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using TMPro;
 using UnityEngine;
 
 namespace Ciga.Startup
@@ -28,6 +29,9 @@ namespace Ciga.Startup
         [SerializeField] private Color _barFillColor = new Color(0.8f, 0.8f, 0.9f, 1f);
 
         [Header("文案")]
+        [Tooltip("启动流 UI 统一字体（留空则使用 TMP 默认字体）")]
+        [SerializeField] private TMP_FontAsset _uiFont;
+
         [Tooltip("加载提示文字（留空则使用默认）")]
         [SerializeField] private string _hintText = "加载中…";
 
@@ -43,6 +47,7 @@ namespace Ciga.Startup
         public Sprite BarBackground => _barBackground;
         public Sprite BarFill => _barFill;
         public Color BarFillColor => _barFillColor;
+        public TMP_FontAsset UiFont => _uiFont;
         public string HintText => _hintText;
         public float MinDuration => _minDuration;
         public float FadeDuration => _fadeDuration;

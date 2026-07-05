@@ -16,5 +16,6 @@ MonoBehaviour:
   _barBackground: {fileID: 0}
   _barFill: {fileID: 0}
   _barFillColor: {r: 0.8, g: 0.8, b: 0.9, a: 1}
+  _uiFont: {fileID: 11400000, guid: e689f08eb2cd5c84db71c90d81384d98, type: 2}
   _hintText: "\u52A0\u8F7D\u4E2D\u2026"
   _minDuration: 1.5

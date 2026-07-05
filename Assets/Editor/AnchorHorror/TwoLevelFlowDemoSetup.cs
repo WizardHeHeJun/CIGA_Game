@@ -40,6 +40,7 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string BgDir = ResDir + "/Backgrounds";
         private const string BootstrapScene = ResDir + "/Bootstrap.unity";
         private const string SquareSpritePath = ResDir + "/WhiteSquare.png";
+        private const string FormalSequencePath = LevelsDir + "/Formal_Sequence.asset";
 
         // 8 种 distinct 特征（维度 + 枚举 int 值）
         // 每个特征以 (dimension, int value) 标记，用于 PlacedItem OverrideFeatures 填写
@@ -141,6 +142,38 @@ namespace Ciga.AnchorHorror.EditorTools
                 "一键重建完成",
                 "已重建 Bootstrap（相机跟随/教程图/结算配置/操作提示）+ 两关卡 Demo 数据并接线。\n从 GameMain 场景 Play 即可。",
                 "好");
+        }
+
+        /// <summary>安全接线正式关卡：只把 Formal_Sequence.asset 接到 Bootstrap，不生成/覆盖任何关卡数据。</summary>
+        [MenuItem("Ciga/AnchorHorror/接线正式关卡数据")]
+        public static void WireFormalSequenceMenu()
+        {
+            bool ok = TryWireFormalSequence(out string message);
+            EditorUtility.DisplayDialog(ok ? "接线完成" : "接线失败", message, "好");
+        }
+
+        /// <summary>接线正式关卡序列，供菜单 / AI Bridge 调用；不弹窗，便于自动化验证。</summary>
+        public static bool TryWireFormalSequence(out string message)
+        {
+            var sequence = AssetDatabase.LoadAssetAtPath<LevelSequence>(FormalSequencePath);
+            if (sequence == null)
+            {
+                message = $"请先创建正式关卡序列资产：\n{FormalSequencePath}\n\n此操作只负责接线，不会自动生成或覆盖正式关卡数据。";
+                Debug.LogWarning("[TwoLevelFlowDemoSetup] " + message);
+                return false;
+            }
+
+            bool wired = WireBootstrapScene(sequence, "正式关卡数据");
+            if (!wired)
+            {
+                message = $"正式关卡序列接线失败，请检查 Bootstrap 场景是否存在且包含 GameManager：\n{BootstrapScene}";
+                return false;
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            message = $"已将正式关卡序列接到 Bootstrap：\n{FormalSequencePath}\n\n未生成或覆盖任何关卡数据。";
+            return true;
         }
 
         /// <summary>幂等生成入口：建资产 + 接线到 Bootstrap。</summary>
@@ -378,12 +411,23 @@ namespace Ciga.AnchorHorror.EditorTools
         //  接线到 Bootstrap.unity
         // ──────────────────────────────────────────────────────────────
 
-        private static void WireBootstrapScene(LevelSequence sequence)
+        private static bool WireBootstrapScene(LevelSequence sequence)
         {
+            return WireBootstrapScene(sequence, "两关卡 Demo 数据");
+        }
+
+        private static bool WireBootstrapScene(LevelSequence sequence, string label)
+        {
+            if (sequence == null)
+            {
+                Debug.LogWarning($"[TwoLevelFlowDemoSetup] {label} 为空，跳过接线。");
+                return false;
+            }
+
             if (!File.Exists(BootstrapScene))
             {
                 Debug.LogWarning($"[TwoLevelFlowDemoSetup] 找不到 Bootstrap.unity：{BootstrapScene}，跳过接线。请先运行「生成可运行装配」。");
-                return;
+                return false;
             }
 
             // 确保当前活动场景有路径（防 Single 弹保存框）
@@ -410,7 +454,7 @@ namespace Ciga.AnchorHorror.EditorTools
                         prop.objectReferenceValue = sequence;
                         soGm.ApplyModifiedPropertiesWithoutUndo();
                         wired = true;
-                        Debug.Log("[TwoLevelFlowDemoSetup] GameManager._sequence 已接线。");
+                        Debug.Log($"[TwoLevelFlowDemoSetup] GameManager._sequence 已接线：{label}。");
                     }
                     else
                     {
@@ -437,6 +481,8 @@ namespace Ciga.AnchorHorror.EditorTools
             {
                 AssetDatabase.DeleteAsset(tempActive);
             }
+
+            return wired;
         }
 
         // ──────────────────────────────────────────────────────────────

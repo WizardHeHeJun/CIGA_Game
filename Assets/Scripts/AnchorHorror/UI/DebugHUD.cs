@@ -35,7 +35,7 @@ namespace Ciga.AnchorHorror
 
             if (_style == null)
             {
-                _style = new GUIStyle(GUI.skin.label) { fontSize = 16, richText = true };
+                _style = new GUIStyle(GUI.skin.label) { fontSize = 24, richText = true };
                 _style.normal.textColor = Color.white;
             }
 

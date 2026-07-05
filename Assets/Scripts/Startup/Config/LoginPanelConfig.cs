@@ -3,6 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using TMPro;
 using UnityEngine;
 
 namespace Ciga.Startup
@@ -25,6 +26,9 @@ namespace Ciga.Startup
         [SerializeField] private Sprite _enterButtonSprite;
 
         [Header("文案")]
+        [Tooltip("启动流 UI 统一字体（留空则使用 TMP 默认字体）")]
+        [SerializeField] private TMP_FontAsset _uiFont;
+
         [Tooltip("进入按钮文字")]
         [SerializeField] private string _enterButtonText = "进入游戏";
 
@@ -34,6 +38,7 @@ namespace Ciga.Startup
         public Sprite Background => _background;
         public Sprite Logo => _logo;
         public Sprite EnterButtonSprite => _enterButtonSprite;
+        public TMP_FontAsset UiFont => _uiFont;
         public string EnterButtonText => _enterButtonText;
         public string Subtitle => _subtitle;
     }

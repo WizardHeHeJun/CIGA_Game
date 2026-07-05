@@ -3,6 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-04
 // ------------------------------------------------------------
+using TMPro;
 using UnityEngine;
 
 namespace Ciga.Startup
@@ -22,6 +23,9 @@ namespace Ciga.Startup
         [SerializeField] private Sprite _logo;
 
         [Header("文案")]
+        [Tooltip("启动流 UI 统一字体（留空则使用 TMP 默认字体）")]
+        [SerializeField] private TMP_FontAsset _uiFont;
+
         [Tooltip("主标题文字")]
         [SerializeField] private string _titleText = "锚点解谜";
 
@@ -46,6 +50,7 @@ namespace Ciga.Startup
 
         public Sprite Background => _background;
         public Sprite Logo => _logo;
+        public TMP_FontAsset UiFont => _uiFont;
         public string TitleText => _titleText;
         public Sprite StartButtonSprite => _startButtonSprite;
         public string StartButtonText => _startButtonText;

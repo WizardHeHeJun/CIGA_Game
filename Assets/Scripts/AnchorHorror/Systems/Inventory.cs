@@ -90,6 +90,32 @@ namespace Ciga.AnchorHorror
             _items.Clear();
         }
 
+        /// <summary>取第一件覆盖指定锚点的背包物品；UI 用于在记忆石板上显示“是哪件物品满足了它”。</summary>
+        public bool TryGetCoveringItem(AnchorTarget target, out BackpackItem item)
+        {
+            item = null;
+            if (target == null)
+            {
+                return false;
+            }
+
+            var feature = target.Feature;
+            for (int i = 0; i < _items.Count; i++)
+            {
+                var features = _items[i].Features;
+                for (int f = 0; f < features.Count; f++)
+                {
+                    if (!features[f].IsNone && features[f] == feature)
+                    {
+                        item = _items[i];
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// 判定背包是否满足全部锚点目标（SC-5）：
         /// 每个 target，背包中至少存在一个物品含 target.Feature（RequiredCount 恒为 1）。
