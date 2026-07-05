@@ -36,6 +36,12 @@ namespace Ciga.AnchorHorror
         [SerializeField] private InteractionSystem _interaction;
         [SerializeField] private PlayerController2D _player;
 
+        [Tooltip("镜头跟随组件（CameraRig 上）。留空则 Awake 自动 FindObjectOfType 兜底。")]
+        [SerializeField] private CameraFollow2D _cameraFollow;
+
+        [Tooltip("玩家精灵半身留白：边界内缩这么多，防止玩家贴边时半个身子露出背景外。")]
+        [SerializeField] private float _boundsPadding = 0.5f;
+
         [Header("过渡")]
         [SerializeField] private SpriteRenderer _transitionOverlay;
         [SerializeField] private AudioSource _whisperSource;
@@ -112,6 +118,12 @@ namespace Ciga.AnchorHorror
             if (_player == null || _interaction == null)
             {
                 Debug.LogWarning("[AnchorHorror] GameManager 未接 PlayerController2D / InteractionSystem，相关功能将静默失效。");
+            }
+
+            // 镜头跟随：未在 Inspector 接线时初始化期兜底查一次（CameraRig 是场景常驻对象，只 Awake 用一次）。
+            if (_cameraFollow == null)
+            {
+                _cameraFollow = FindObjectOfType<CameraFollow2D>();
             }
 
             if (_sequence == null)
@@ -240,6 +252,7 @@ namespace Ciga.AnchorHorror
                 }
 
                 _levelRoot = new GameObject("__LevelRoot");
+                ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（关卡1=卧室）
                 LevelSpawner.Spawn(_levelData, _levelRoot.transform);
                 SpawnLevelDoor(); // 建关卡1门（EnterLevel2，initially locked）
             }
@@ -439,6 +452,7 @@ namespace Ciga.AnchorHorror
             if (_levelData != null)
             {
                 _levelRoot = new GameObject("__LevelRoot");
+                ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（关卡2起始=走廊）
                 LevelSpawner.Spawn(_levelData, _levelRoot.transform);
                 SpawnLevelDoor(); // 子场景门（左右门线性来回）
                 MovePlayerToSpawn(_levelData.PlayerSpawn);
@@ -516,6 +530,7 @@ namespace Ciga.AnchorHorror
             if (_levelData != null)
             {
                 _levelRoot = new GameObject("__LevelRoot");
+                ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（切到的子场景）
                 LevelSpawner.Spawn(_levelData, _levelRoot.transform);
                 SpawnLevelDoor();
                 MovePlayerToSpawn(_levelData.PlayerSpawn);
@@ -643,6 +658,64 @@ namespace Ciga.AnchorHorror
             var door = doorGo.AddComponent<LevelDoor>();
             door.Configure(kind, sprite, prompt);
             return door;
+        }
+
+        /// <summary>
+        /// 按当前场景（entries[_levelIndex]）背景图，在 _levelRoot 下铺全屏背景（压最底层，中心对齐原点），
+        /// 并把其世界包围盒推给镜头跟随与玩家做边界 clamp（用户需求：场景比窗口大、镜头跟随、边界=背景大小）。
+        /// 无背景图时不铺背景，并关闭镜头/玩家边界（自由跟随，防沿用上一场景 clamp）。
+        /// 随 _levelRoot 销毁自动清除，切场景重建。
+        /// </summary>
+        private void ApplyBackgroundAndBounds()
+        {
+            if (_levelRoot == null)
+            {
+                return;
+            }
+
+            var bg = _sequence != null ? _sequence.GetBackground(_levelIndex) : null;
+            if (bg == null)
+            {
+                if (_cameraFollow != null)
+                {
+                    _cameraFollow.SetBounds(Vector2.zero, Vector2.zero); // 相等 → 关闭 clamp
+                }
+
+                if (_player != null)
+                {
+                    _player.ClearBounds();
+                }
+
+                return;
+            }
+
+            var bgGo = new GameObject("__Background");
+            bgGo.transform.SetParent(_levelRoot.transform, false);
+            bgGo.transform.localPosition = Vector3.zero;
+            var sr = bgGo.AddComponent<SpriteRenderer>();
+            sr.sprite = bg;
+            sr.sortingOrder = -100; // 物品(0)/玩家(10) 之下，铺最底层
+
+            // 缩放到目标世界高度（比窗口大一些）：房间大小由配置控制，跟图片导入 PPU/尺寸解耦。
+            float rawHeight = bg.bounds.size.y;
+            float scale = rawHeight > 0.0001f ? _config.SceneWorldHeight / rawHeight : 1f;
+            bgGo.transform.localScale = new Vector3(scale, scale, 1f);
+
+            // 世界包围盒（sprite pivot 居中 → 以原点为中心；乘缩放）：extents 为半尺寸。
+            Vector3 ext = bg.bounds.extents * scale;
+            var min = new Vector2(-ext.x, -ext.y);
+            var max = new Vector2(ext.x, ext.y);
+
+            if (_cameraFollow != null)
+            {
+                _cameraFollow.SetBounds(min, max);
+            }
+
+            if (_player != null)
+            {
+                float pad = Mathf.Max(0f, _boundsPadding); // 玩家半身留白，防贴边露出图外
+                _player.SetBounds(min + new Vector2(pad, pad), max - new Vector2(pad, pad));
+            }
         }
 
         private void SetPhase(GamePhase phase)

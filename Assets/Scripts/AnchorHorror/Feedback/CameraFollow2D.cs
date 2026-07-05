@@ -41,6 +41,17 @@ namespace Ciga.AnchorHorror
             _target = target;
         }
 
+        /// <summary>
+        /// 设置镜头边界（世界坐标）。GameManager 每次建关卡时按当前场景背景包围盒调用，
+        /// 使镜头到背景边缘停止跟随、不越界（用户需求：边界=背景大小）。
+        /// max 各分量 &gt; min 时生效；否则（如传相等值）关闭 clamp、自由跟随。
+        /// </summary>
+        public void SetBounds(Vector2 min, Vector2 max)
+        {
+            _minBounds = min;
+            _maxBounds = max;
+        }
+
         private void LateUpdate()
         {
             if (_target == null)

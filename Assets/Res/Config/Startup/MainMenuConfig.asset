@@ -20,4 +20,4 @@ MonoBehaviour:
   _quitButtonSprite: {fileID: 21300000, guid: 41f4e018be261fe43b130534fa83a640, type: 3}
   _quitButtonText: "\u9000\u51FA"
   _guideButtonSprite: {fileID: 21300000, guid: 0ed9d34bcea3a93449141cb051a28f01, type: 3}
-  _guidePageImage: {fileID: 0}
+  _guidePageImage: {fileID: 21300000, guid: d7ef69ed10344d7ca97fb3abeadf6d36, type: 3}

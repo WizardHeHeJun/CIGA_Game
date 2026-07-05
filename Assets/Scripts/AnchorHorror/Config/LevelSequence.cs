@@ -65,6 +65,9 @@ namespace Ciga.AnchorHorror
             [SerializeField] private LevelKind _kind = LevelKind.Level2Sub;
             [SerializeField] private DoorKind _doorKind = DoorKind.SwitchSubSceneNext;
 
+            [Tooltip("本场景的全屏背景图（比窗口大，镜头跟随玩家、边界=背景包围盒）。可为 null，届时无背景、镜头不设边界。")]
+            [SerializeField] private Sprite _background;
+
             /// <summary>本关的关卡数据资产。</summary>
             public LevelData Level => _level;
 
@@ -76,6 +79,9 @@ namespace Ciga.AnchorHorror
 
             /// <summary>本关门类型：进入关卡2 或 切换子场景。</summary>
             public DoorKind DoorKind => _doorKind;
+
+            /// <summary>本场景背景图（可为 null）。镜头边界由其世界包围盒决定。</summary>
+            public Sprite Background => _background;
         }
 
         [SerializeField] private List<Entry> _entries = new List<Entry>();
@@ -129,6 +135,17 @@ namespace Ciga.AnchorHorror
             }
 
             return _entries[index].DoorKind;
+        }
+
+        /// <summary>取第 index 关的背景图；越界或未配置返回 null（调用方判空降级为无背景/不设边界）。</summary>
+        public Sprite GetBackground(int index)
+        {
+            if (_entries == null || index < 0 || index >= _entries.Count)
+            {
+                return null;
+            }
+
+            return _entries[index].Background;
         }
     }
 }

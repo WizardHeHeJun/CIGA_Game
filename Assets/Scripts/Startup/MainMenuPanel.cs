@@ -45,6 +45,8 @@ namespace Ciga.Startup
         private bool _guideShowing;
         private float _guideUnlockTime;
         private bool _guideReturnHintShown;
+        private UITextBreathe _guideHintBreathe;
+        private UIFadePanel _guideFade;
 
         private void Start()
         {
@@ -103,6 +105,12 @@ namespace Ciga.Startup
                 if (_guideHint != null)
                 {
                     _guideHint.text = "点击屏幕任意处返回";
+                }
+
+                // 解锁后提示淡入 + 呼吸（不再一进来就直白显示）
+                if (_guideHintBreathe != null)
+                {
+                    _guideHintBreathe.Play();
                 }
             }
 
@@ -304,6 +312,19 @@ namespace Ciga.Startup
                 _guideImage.raycastTarget = true;
             }
 
+            if (_guideHint != null && _guideHintBreathe == null)
+            {
+                _guideHintBreathe = _guideHint.GetComponent<UITextBreathe>()
+                                    ?? _guideHint.gameObject.AddComponent<UITextBreathe>();
+                _guideHintBreathe.Stop();
+            }
+
+            // 引导页整体淡入淡出（手感对齐关卡切换，不再硬切）
+            if (_guideFade == null)
+            {
+                _guideFade = _guideRoot.GetComponent<UIFadePanel>() ?? _guideRoot.AddComponent<UIFadePanel>();
+            }
+
             _guideRoot.SetActive(false);
         }
 
@@ -345,12 +366,25 @@ namespace Ciga.Startup
             }
 
             _guideRoot.transform.SetAsLastSibling(); // 置于最上层
-            _guideRoot.SetActive(true);
             if (_guideCanvasGroup != null)
             {
-                _guideCanvasGroup.alpha = 1f;
                 _guideCanvasGroup.blocksRaycasts = true; // 挡住下方菜单按钮，避免误触
                 _guideCanvasGroup.interactable = true;
+            }
+
+            // 从透明淡入（手感对齐关卡切换，不再硬切）
+            if (_guideFade != null)
+            {
+                _guideFade.SetInstant(0f);
+                _guideFade.FadeIn();
+            }
+            else
+            {
+                _guideRoot.SetActive(true);
+                if (_guideCanvasGroup != null)
+                {
+                    _guideCanvasGroup.alpha = 1f;
+                }
             }
 
             _guideShowing = true;
@@ -359,21 +393,47 @@ namespace Ciga.Startup
             if (_guideHint != null)
             {
                 bool placeholder = _config != null && _config.GuidePageImage == null;
-                _guideHint.text = placeholder ? "操作指引（引导图待补）" : string.Empty;
+                if (placeholder)
+                {
+                    // 图缺失：静态显示占位提示（不呼吸）
+                    if (_guideHintBreathe != null)
+                    {
+                        _guideHintBreathe.Stop();
+                    }
+
+                    _guideHint.text = "操作指引（引导图待补）";
+                    _guideHint.alpha = 0.85f;
+                }
+                else
+                {
+                    // 正常：锁定期隐藏提示，解锁后由 Update 淡入 + 呼吸
+                    _guideHint.text = string.Empty;
+                    if (_guideHintBreathe != null)
+                    {
+                        _guideHintBreathe.Stop();
+                    }
+                }
             }
         }
 
         private void HideGuide()
         {
             _guideShowing = false;
-            if (_guideCanvasGroup != null)
-            {
-                _guideCanvasGroup.blocksRaycasts = false;
-                _guideCanvasGroup.interactable = false;
-            }
 
-            if (_guideRoot != null)
+            // 淡出后失活（手感对齐关卡切换，不再硬切）。淡出期间保持 blocksRaycasts=true
+            // 拦截点击、防止穿透到下方菜单按钮；失活时拦截随之自然解除（下次打开重新置 true）。
+            if (_guideFade != null)
             {
+                _guideFade.FadeOut(true);
+            }
+            else if (_guideRoot != null)
+            {
+                if (_guideCanvasGroup != null)
+                {
+                    _guideCanvasGroup.blocksRaycasts = false;
+                    _guideCanvasGroup.interactable = false;
+                }
+
                 _guideRoot.SetActive(false);
             }
         }

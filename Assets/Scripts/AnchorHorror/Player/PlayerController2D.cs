@@ -20,6 +20,11 @@ namespace Ciga.AnchorHorror
         private Vector2 _input;
         private float _speedMultiplier = 1f;
 
+        // 场景边界（世界坐标）：玩家不得走出背景范围（用户需求：边界=背景大小）。
+        private bool _hasBounds;
+        private Vector2 _minBounds;
+        private Vector2 _maxBounds;
+
         /// <summary>是否响应输入（默认关，进关卡时由 GameManager 打开）。</summary>
         public bool InputEnabled { get; set; }
 
@@ -54,13 +59,39 @@ namespace Ciga.AnchorHorror
             }
 
             Vector2 delta = _input * (_moveSpeed * _speedMultiplier * Time.fixedDeltaTime);
-            _rb.MovePosition(_rb.position + delta);
+            Vector2 target = _rb.position + delta;
+
+            // 边界内 clamp：到背景边缘停下，不走进图外虚空。
+            if (_hasBounds)
+            {
+                target.x = Mathf.Clamp(target.x, _minBounds.x, _maxBounds.x);
+                target.y = Mathf.Clamp(target.y, _minBounds.y, _maxBounds.y);
+            }
+
+            _rb.MovePosition(target);
         }
 
         /// <summary>设置移速倍率（1 = 正常，0.8 = -20%）。</summary>
         public void SetSpeedMultiplier(float multiplier)
         {
             _speedMultiplier = Mathf.Max(0f, multiplier);
+        }
+
+        /// <summary>
+        /// 设置移动边界（世界坐标，已含玩家半身留白）。GameManager 每次建关卡时按背景包围盒调用。
+        /// max 各分量 &gt; min 时生效；否则关闭边界（自由移动）。
+        /// </summary>
+        public void SetBounds(Vector2 min, Vector2 max)
+        {
+            _hasBounds = max.x > min.x && max.y > min.y;
+            _minBounds = min;
+            _maxBounds = max;
+        }
+
+        /// <summary>关闭移动边界（无背景的场景）。</summary>
+        public void ClearBounds()
+        {
+            _hasBounds = false;
         }
     }
 }
