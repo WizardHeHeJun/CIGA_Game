@@ -92,8 +92,9 @@ namespace Ciga.AnchorHorror
                     continue;
                 }
 
-                // 取 Collider 所属 Transform 来计算距离
-                float sqr = ((Vector2)_hits[i].transform.position - origin).sqrMagnitude;
+                // 用 Collider 最近点计算距离：整场景 overlay 物品的 Transform 在原点，不能用 transform.position 判近。
+                Vector2 point = _hits[i].ClosestPoint(origin);
+                float sqr = (point - origin).sqrMagnitude;
                 if (sqr < bestSqr)
                 {
                     bestSqr = sqr;

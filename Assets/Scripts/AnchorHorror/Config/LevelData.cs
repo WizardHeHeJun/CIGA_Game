@@ -32,6 +32,21 @@ namespace Ciga.AnchorHorror
         [SerializeField] private bool _overrideSprite;
         [SerializeField] private Sprite _sprite;
 
+        [Tooltip("靠近高亮时切换到的图片；为空则退回颜色高亮。")]
+        [SerializeField] private Sprite _activeSprite;
+
+        [Tooltip("为 true 时，该 Sprite 使用与背景同画布的整场景坐标：位置固定原点、缩放固定 1。")]
+        [SerializeField] private bool _alignWithBackground;
+
+        [Tooltip("交互碰撞框局部偏移；整场景 overlay 图由生成器按 alpha bbox 计算。")]
+        [SerializeField] private Vector2 _colliderOffset;
+
+        [Tooltip("交互碰撞框局部大小；<=0 时由 Sprite bounds 兜底。")]
+        [SerializeField] private Vector2 _colliderSize;
+
+        [Tooltip("仅渲染不交互（用于门/环境叠图等视觉层）。")]
+        [SerializeField] private bool _visualOnly;
+
         /// <summary>对应 ItemDefinition.Id。</summary>
         public string ItemId => _itemId;
 
@@ -67,6 +82,21 @@ namespace Ciga.AnchorHorror
 
         /// <summary>覆盖图片（仅 OverrideSprite=true 时生效）。</summary>
         public Sprite Sprite => _sprite;
+
+        /// <summary>靠近高亮时切换到的图片；为空则退回颜色高亮。</summary>
+        public Sprite ActiveSprite => _activeSprite;
+
+        /// <summary>该 Sprite 是否与背景同画布对齐（位置原点、缩放 1）。</summary>
+        public bool AlignWithBackground => _alignWithBackground;
+
+        /// <summary>交互碰撞框局部偏移。</summary>
+        public Vector2 ColliderOffset => _colliderOffset;
+
+        /// <summary>交互碰撞框局部大小；<=0 时由 Sprite bounds 兜底。</summary>
+        public Vector2 ColliderSize => _colliderSize;
+
+        /// <summary>仅渲染不交互（无 FeatureTag / Collider）。</summary>
+        public bool VisualOnly => _visualOnly;
     }
 
     /// <summary>

@@ -119,7 +119,7 @@ namespace Ciga.AnchorHorror
         /// <summary>
         /// 关卡1 锁定时调用（ADR-4，陷阱 2）：从已选物品特征去重取 distinct，
         /// 抽 TargetCount(5) 个目标锚点，RequiredCount 恒为 1，不依赖 registry。
-        /// 切子场景时绝不调用（SC-2，陷阱 3）。
+        /// 切走廊/房间时绝不调用（SC-2，陷阱 3）。
         /// </summary>
         public void ExtractTargetsFromSelection(IReadOnlyList<BackpackItem> selected)
         {

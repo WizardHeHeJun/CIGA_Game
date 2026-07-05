@@ -10,8 +10,8 @@ using UnityEngine;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 关卡类型：关卡1（选择阶段）或关卡2 子场景（拾取阶段）。
-    /// entries[0]=Level1Select，entries[1..N]=Level2Sub（ADR-1）。
+    /// 关卡类型：关卡1（选择阶段）或关卡2场景（拾取阶段）。
+    /// entries[0]=Level1Select，entries[1]=走廊 Hub，entries[2..5]=四个房间（ADR-1）。
     /// </summary>
     public enum LevelKind
     {
@@ -20,14 +20,19 @@ namespace Ciga.AnchorHorror
     }
 
     /// <summary>
-    /// 门类型：进入关卡2 或切换子场景（ADR-1）。
-    /// EnterLevel2 仅 entries[0] 使用；SwitchSubScene 用于 entries[1..N]。
+    /// 门类型：进入关卡2、走廊四门进入房间、房间返回走廊（ADR-1）。
+    /// EnterLevel2 仅 entries[0] 使用；SwitchSubScene* 仅为旧线性流程资产兼容，不再生成。
     /// </summary>
     public enum DoorKind
     {
         EnterLevel2,
-        SwitchSubScenePrev,   // 左门：返回上一子场景
-        SwitchSubSceneNext,   // 右门：前往下一子场景
+        SwitchSubScenePrev,   // 旧线性流程兼容：左门返回上一子场景（不再生成）
+        SwitchSubSceneNext,   // 旧线性流程兼容：右门前往下一子场景（不再生成）
+        EnterRoom1,
+        EnterRoom2,
+        EnterRoom3,
+        EnterRoom4,
+        ReturnToCorridor,
     }
 
     /// <summary>
@@ -63,7 +68,7 @@ namespace Ciga.AnchorHorror
             [SerializeField] private LevelData _level;
             [SerializeField] private DoorSetting _door = new DoorSetting();
             [SerializeField] private LevelKind _kind = LevelKind.Level2Sub;
-            [SerializeField] private DoorKind _doorKind = DoorKind.SwitchSubSceneNext;
+            [SerializeField] private DoorKind _doorKind = DoorKind.ReturnToCorridor;
 
             [Tooltip("本场景的全屏背景图（比窗口大，镜头跟随玩家、边界=背景包围盒）。可为 null，届时无背景、镜头不设边界。")]
             [SerializeField] private Sprite _background;
@@ -74,10 +79,10 @@ namespace Ciga.AnchorHorror
             /// <summary>本关通关后出现的门配置（末关无门，可忽略）。</summary>
             public DoorSetting Door => _door;
 
-            /// <summary>关卡类型：关卡1选择 或 关卡2子场景。</summary>
+            /// <summary>关卡类型：关卡1选择 或 关卡2走廊/房间。</summary>
             public LevelKind Kind => _kind;
 
-            /// <summary>本关门类型：进入关卡2 或 切换子场景。</summary>
+            /// <summary>本关门类型：进入关卡2 或 走廊/房间切换。</summary>
             public DoorKind DoorKind => _doorKind;
 
             /// <summary>本场景背景图（可为 null）。镜头边界由其世界包围盒决定。</summary>
@@ -125,13 +130,13 @@ namespace Ciga.AnchorHorror
             return _entries[index].Kind;
         }
 
-        /// <summary>取第 index 关的门类型；越界返回 SwitchSubScene 并写日志。</summary>
+        /// <summary>取第 index 关的门类型；越界返回 ReturnToCorridor 并写日志。</summary>
         public DoorKind GetDoorKind(int index)
         {
             if (_entries == null || index < 0 || index >= _entries.Count)
             {
-                Debug.LogWarning($"[LevelSequence] GetDoorKind({index}) 越界（共 {Count} 关），返回 SwitchSubSceneNext。");
-                return DoorKind.SwitchSubSceneNext;
+                Debug.LogWarning($"[LevelSequence] GetDoorKind({index}) 越界（共 {Count} 关），返回 ReturnToCorridor。");
+                return DoorKind.ReturnToCorridor;
             }
 
             return _entries[index].DoorKind;

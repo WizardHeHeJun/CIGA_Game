@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading;
-using Ciga.AnchorHorror.EditorTools;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
@@ -140,7 +140,7 @@ namespace Ciga.AiBridge
                 case "/anchor/wire-formal":
                     RunOnMain(ctx, () =>
                     {
-                        bool ok = TwoLevelFlowDemoSetup.TryWireFormalSequence(out string message);
+                        bool ok = TryWireFormalSequence(out string message);
                         return "{\"ok\":" + Lower(ok) + ",\"message\":\"" + Escape(message) + "\"}";
                     });
                     break;
@@ -148,7 +148,7 @@ namespace Ciga.AiBridge
                 case "/anchor/wire-formal-compile":
                     RunOnMain(ctx, () =>
                     {
-                        bool ok = TwoLevelFlowDemoSetup.TryWireFormalSequence(out string message);
+                        bool ok = TryWireFormalSequence(out string message);
                         if (ok)
                         {
                             AssetDatabase.Refresh();
@@ -372,6 +372,24 @@ namespace Ciga.AiBridge
 
         // ---------- 工具 ----------
         private static void Json(HttpListenerContext ctx, string body) => TryWrite(ctx, 200, body);
+
+        private static bool TryWireFormalSequence(out string message)
+        {
+            const string typeName = "Ciga.AnchorHorror.EditorTools.TwoLevelFlowDemoSetup, Ciga.AnchorHorror.EditorTools";
+            var type = Type.GetType(typeName);
+            var method = type?.GetMethod("TryWireFormalSequence", BindingFlags.Public | BindingFlags.Static);
+            if (method == null)
+            {
+                message = "找不到正式关卡接线方法，请确认 Ciga.AnchorHorror.EditorTools 程序集已编译。";
+                Debug.LogWarning("[AiBridge] " + message);
+                return false;
+            }
+
+            object[] args = { null };
+            bool ok = (bool)method.Invoke(null, args);
+            message = args[0] as string ?? string.Empty;
+            return ok;
+        }
 
         private static void TryWrite(HttpListenerContext ctx, int code, string body)
         {

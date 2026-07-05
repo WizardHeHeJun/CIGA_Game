@@ -10,10 +10,9 @@ namespace Ciga.AnchorHorror
 {
     /// <summary>
     /// 关卡门：由 GameManager 代码建于 _levelRoot 下。
-    /// 三种类型（DoorKind）：
     ///   EnterLevel2        —— 关卡1门，InitRoom && SelectionLocked 后可交互，触发 EnterLevel2()
-    ///   SwitchSubScenePrev —— 子场景左门，HorrorLevel 可交互，触发 SwitchSubScene(-1)
-    ///   SwitchSubSceneNext —— 子场景右门，HorrorLevel 可交互，触发 SwitchSubScene(+1)
+    ///   EnterRoom1..4      —— 走廊四门，HorrorLevel 可交互，切到对应房间
+    ///   ReturnToCorridor   —— 房间返回门，HorrorLevel 可交互，切回走廊
     /// 门上方世界空间显示提示文案（仅可交互时），引导玩家走向门（#2）。随 _levelRoot 销毁清除（ADR-1/5）。
     /// </summary>
     [DisallowMultipleComponent]
@@ -24,8 +23,10 @@ namespace Ciga.AnchorHorror
         [SerializeField] private SpriteRenderer _renderer;
         [SerializeField] private Color _normalColor = new Color(0.6f, 0.8f, 1f, 1f);
         [SerializeField] private Color _highlightColor = new Color(1f, 1f, 0.6f, 1f);
+        [SerializeField] private Sprite _defaultSprite;
+        [SerializeField] private Sprite _activeSprite;
 
-        private DoorKind _doorKind = DoorKind.SwitchSubSceneNext;
+        private DoorKind _doorKind = DoorKind.EnterRoom1;
         private bool _highlighted;
         private string _prompt;
         private TextMeshPro _promptText;
@@ -78,7 +79,7 @@ namespace Ciga.AnchorHorror
 
         /// <summary>
         /// EnterLevel2：InitRoom 且 SelectionLocked（选满5并已抽锚点）时可交互（SC-1/3）。
-        /// SwitchSubScenePrev/Next：HorrorLevel 时可交互（SC-4，#3）。
+        /// EnterRoom1..4 / ReturnToCorridor：HorrorLevel 时可交互（SC-4，#3）。
         /// </summary>
         public bool CanInteract(GamePhase phase)
         {
@@ -89,6 +90,11 @@ namespace Ciga.AnchorHorror
                            GameManager.Instance != null &&
                            GameManager.Instance.SelectionLocked;
 
+                case DoorKind.EnterRoom1:
+                case DoorKind.EnterRoom2:
+                case DoorKind.EnterRoom3:
+                case DoorKind.EnterRoom4:
+                case DoorKind.ReturnToCorridor:
                 case DoorKind.SwitchSubScenePrev:
                 case DoorKind.SwitchSubSceneNext:
                     return phase == GamePhase.HorrorLevel;
@@ -99,7 +105,7 @@ namespace Ciga.AnchorHorror
         }
 
         /// <summary>
-        /// EnterLevel2 → gm.EnterLevel2()；Prev → gm.SwitchSubScene(-1)；Next → gm.SwitchSubScene(+1)（ADR-5，#3）。
+        /// EnterLevel2 → gm.EnterLevel2()；走廊门 → 对应房间；房间门 → 返回走廊（ADR-5，#3）。
         /// </summary>
         public void Interact()
         {
@@ -115,12 +121,32 @@ namespace Ciga.AnchorHorror
                     gm.EnterLevel2();
                     break;
 
+                case DoorKind.EnterRoom1:
+                    gm.EnterLevel2Room(0);
+                    break;
+
+                case DoorKind.EnterRoom2:
+                    gm.EnterLevel2Room(1);
+                    break;
+
+                case DoorKind.EnterRoom3:
+                    gm.EnterLevel2Room(2);
+                    break;
+
+                case DoorKind.EnterRoom4:
+                    gm.EnterLevel2Room(3);
+                    break;
+
+                case DoorKind.ReturnToCorridor:
+                    gm.ReturnToLevel2Corridor();
+                    break;
+
                 case DoorKind.SwitchSubScenePrev:
-                    gm.SwitchSubScene(-1);
+                    gm.SwitchSubSceneRelative(-1);
                     break;
 
                 case DoorKind.SwitchSubSceneNext:
-                    gm.SwitchSubScene(1);
+                    gm.SwitchSubSceneRelative(1);
                     break;
             }
         }

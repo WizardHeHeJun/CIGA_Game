@@ -52,8 +52,8 @@ namespace Ciga.AnchorHorror
         [SerializeField] private float _fadeHold = 0.08f; // 切场景时全黑停顿时长（秒），让"切画面"读得清
 
         [Header("场景背景")]
-        [Tooltip("每个场景背景缩放到的世界高度（单位）。比窗口大一些即可，镜头跟随玩家、边界=背景包围盒。ortho=5 时视口高 10，15≈1.5×。")]
-        [SerializeField] private float _sceneWorldHeight = 15f;
+        [Tooltip("每个场景背景缩放到的世界高度（单位）。比窗口大一些即可，镜头跟随玩家、边界=背景包围盒。ortho=5 时视口高 10，13≈1.3×。")]
+        [SerializeField] private float _sceneWorldHeight = 13f;
 
         public int Level1SelectCap => _level1SelectCap;
         public int Level2BackpackCap => _level2BackpackCap;

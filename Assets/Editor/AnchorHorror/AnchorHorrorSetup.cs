@@ -41,6 +41,7 @@ namespace Ciga.AnchorHorror.EditorTools
         // 关卡2 HUD 美术：从 acts/ 原始美术拷入 Assets 并导为 Sprite（全屏叠加层，按 1920x1080 定位）
         private const string InGameUiDir = "Assets/Res/UI/InGame";
         private static readonly string[] UiSrcParts = { "acts", "ciga美术资产", "ciga美术资产", "ui" };
+        private static readonly string[] Menu2SrcParts = { "acts", "ciga美术资产", "ciga美术资产", "Menu2" };
 
         // 玩家行走美术：从 acts/ 原始拆分图拷入 Assets 并导为 Sprite（世界空间 SpriteRenderer 使用）
         private const string PlayerWalkDir = SoDir + "/Player/Walking";
@@ -79,6 +80,10 @@ namespace Ciga.AnchorHorror.EditorTools
         private static Sprite _settingsSprite;
         private static Sprite _previousPageSprite;
         private static Sprite _nextPageSprite;
+        private static Sprite _settingsPopupSprite;
+        private static Sprite _settingsHomeSprite;
+        private static Sprite _settingsRestartSprite;
+        private static Sprite _settingsQuitSprite;
 
         // 游戏主字体（汉仪新蒂莲花体），设为 TMP 默认字体；缺失时为 null（沿用默认）
         private static TMPro.TMP_FontAsset _gameFont;
@@ -175,10 +180,12 @@ namespace Ciga.AnchorHorror.EditorTools
             // --- 玩家 ---
             var player = new GameObject("Player");
             player.transform.position = Vector3.zero;
+            player.transform.localScale = Vector3.one * 1.35f;
             var rb = player.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            player.AddComponent<BoxCollider2D>();
+            var playerCollider = player.AddComponent<BoxCollider2D>();
+            playerCollider.size = Vector2.one / 1.35f;
             var sr = player.AddComponent<SpriteRenderer>();
             sr.sprite = _playerDownIdle != null ? _playerDownIdle : _squareSprite;
             sr.color = Color.white;
@@ -225,26 +232,6 @@ namespace Ciga.AnchorHorror.EditorTools
             tsr.color = new Color(0f, 0f, 0f, 0f);
             tsr.sortingOrder = 2000;
 
-            // --- 世界空间操作提示（TMP，借 CJK fallback 显中文，兼作可见性验证）---
-            var hint = new GameObject("HintText");
-            hint.transform.position = new Vector3(0f, -4.3f, 0f);
-            var htmp = hint.AddComponent<TextMeshPro>();
-            htmp.text = "WASD 移动    E 拾取/选择    R 检视(听声音/看信息)    Tab 记忆面板";
-            htmp.fontSize = 3.2f;
-            htmp.alignment = TextAlignmentOptions.Center;
-            htmp.color = new Color(1f, 1f, 1f, 0.72f);
-            if (_gameFont != null)
-            {
-                htmp.font = _gameFont;
-            }
-
-            var hmr = hint.GetComponent<MeshRenderer>();
-            if (hmr != null)
-            {
-                hmr.sortingLayerName = "Default";
-                hmr.sortingOrder = 1500;
-            }
-
             // --- 接线（私有 [SerializeField] 用 SerializedObject）---
             WireObj(gm, "_config", cfg);
             WireObj(gm, "_database", db);
@@ -256,6 +243,7 @@ namespace Ciga.AnchorHorror.EditorTools
 
             WireObj(interaction, "_player", player.transform);
             WireObj(hud, "_sanity", sanity);
+            WireBool(hud, "_visible", false);
             WireObj(feedback, "_player", pc);
             WireObj(feedback, "_config", cfg);
             WireObj(feedback, "_darkOverlay", osr);
@@ -325,14 +313,15 @@ namespace Ciga.AnchorHorror.EditorTools
             };
             var anchorLabels = new TMP_Text[ovalCenters.Length];
             var coveredIcons = new Image[ovalCenters.Length];
+            var anchoredLabels = new TMP_Text[ovalCenters.Length];
             for (int i = 0; i < ovalCenters.Length; i++)
             {
                 var iconRt = NewUiNode(memRoot, "CoveredItemIcon" + i);
                 iconRt.anchorMin = Vector2.zero;
                 iconRt.anchorMax = Vector2.zero;
                 iconRt.pivot = new Vector2(0.5f, 0.5f);
-                iconRt.anchoredPosition = new Vector2(ovalCenters[i].x - 104f, 1080f - ovalCenters[i].y);
-                iconRt.sizeDelta = new Vector2(82f, 82f);
+                iconRt.anchoredPosition = new Vector2(ovalCenters[i].x - 86f, 1080f - ovalCenters[i].y);
+                iconRt.sizeDelta = new Vector2(58f, 58f);
                 var icon = iconRt.gameObject.AddComponent<Image>();
                 icon.raycastTarget = false;
                 icon.preserveAspect = true;
@@ -348,6 +337,18 @@ namespace Ciga.AnchorHorror.EditorTools
                 lrt.anchoredPosition = new Vector2(ovalCenters[i].x + 28f, 1080f - ovalCenters[i].y); // 顶左像素 → 画布底左
                 lrt.sizeDelta = new Vector2(240f, 86f);
                 anchorLabels[i] = lbl;
+
+                var anchored = CreateText(memRoot, "AnchoredLabel" + i, 38f, TextAlignmentOptions.Center);
+                anchored.fontStyle = FontStyles.Bold;
+                anchored.color = new Color(1f, 0.78f, 0.24f, 1f);
+                anchored.enabled = false;
+                var art = (RectTransform)anchored.transform;
+                art.anchorMin = Vector2.zero;
+                art.anchorMax = Vector2.zero;
+                art.pivot = new Vector2(0.5f, 0.5f);
+                art.anchoredPosition = new Vector2(ovalCenters[i].x + 28f, 1080f - ovalCenters[i].y);
+                art.sizeDelta = new Vector2(240f, 86f);
+                anchoredLabels[i] = anchored;
             }
 
             memRoot.gameObject.SetActive(false);
@@ -382,6 +383,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(memory, "_root", memRoot.gameObject);
             WireObjArray(memory, "_anchorLabels", anchorLabels);
             WireObjArray(memory, "_coveredItemIcons", coveredIcons);
+            WireObjArray(memory, "_anchoredLabels", anchoredLabels);
             WireObj(result, "_root", resultRoot.gameObject);
             WireObj(result, "_title", title);
             WireObj(result, "_hint", hint);
@@ -391,17 +393,17 @@ namespace Ciga.AnchorHorror.EditorTools
             countdownRoot.anchorMin = new Vector2(0.5f, 1f);
             countdownRoot.anchorMax = new Vector2(0.5f, 1f);
             countdownRoot.pivot = new Vector2(0.5f, 1f);
-            countdownRoot.anchoredPosition = new Vector2(0f, -26f);
-            countdownRoot.sizeDelta = new Vector2(320f, 110f);
+            countdownRoot.anchoredPosition = new Vector2(-2f, -20f);
+            countdownRoot.sizeDelta = new Vector2(126f, 66f);
             var countdownBg = countdownRoot.gameObject.AddComponent<Image>();
-            countdownBg.color = new Color(0f, 0f, 0f, 0.55f);
+            countdownBg.color = new Color(0f, 0f, 0f, 0f);
             countdownBg.raycastTarget = false;
 
-            var countdownText = CreateText(countdownRoot, "CountdownText", 68f, TextAlignmentOptions.Center);
+            var countdownText = CreateText(countdownRoot, "CountdownText", 40f, TextAlignmentOptions.Center);
             var countdownTextRt = (RectTransform)countdownText.transform;
             StretchFull(countdownTextRt);
-            countdownTextRt.offsetMin = new Vector2(12f, 8f);
-            countdownTextRt.offsetMax = new Vector2(-12f, -8f);
+            countdownTextRt.offsetMin = new Vector2(10f, 6f);
+            countdownTextRt.offsetMax = new Vector2(-10f, -6f);
             countdownText.text = "03:00";
             countdownRoot.gameObject.SetActive(false); // 初始隐藏，HorrorLevel 相位才显示
 
@@ -534,7 +536,7 @@ namespace Ciga.AnchorHorror.EditorTools
             AddFullScreenImage(bagRoot, "Bag", _bagSprite);
 
             // 4 槽中心（顶左像素，实测 Bag.PNG）：x≈1745，y=264/426/618/774
-            float[] slotTopY = { 264f, 426f, 618f, 774f };
+            float[] slotTopY = { 286f, 448f, 610f, 772f };
             var slots = new Image[slotTopY.Length];
             for (int i = 0; i < slotTopY.Length; i++)
             {
@@ -542,8 +544,8 @@ namespace Ciga.AnchorHorror.EditorTools
                 srt.anchorMin = Vector2.zero;
                 srt.anchorMax = Vector2.zero;
                 srt.pivot = new Vector2(0.5f, 0.5f);
-                srt.anchoredPosition = new Vector2(1745f, 1080f - slotTopY[i]); // 顶左像素 → 画布底左
-                srt.sizeDelta = new Vector2(110f, 110f);
+                srt.anchoredPosition = new Vector2(1715f, 1080f - slotTopY[i]); // 顶左像素 → 画布底左
+                srt.sizeDelta = new Vector2(76f, 76f);
                 var img = srt.gameObject.AddComponent<Image>();
                 img.raycastTarget = false;
                 img.preserveAspect = true;
@@ -558,7 +560,7 @@ namespace Ciga.AnchorHorror.EditorTools
             ort.anchorMin = Vector2.zero;
             ort.anchorMax = Vector2.zero;
             ort.pivot = new Vector2(0.5f, 0.5f);
-            ort.anchoredPosition = new Vector2(1745f, 1080f - 872f);
+            ort.anchoredPosition = new Vector2(1715f, 1080f - 872f);
             ort.sizeDelta = new Vector2(180f, 72f);
             overflow.enabled = false;
 
@@ -606,6 +608,7 @@ namespace Ciga.AnchorHorror.EditorTools
 
             var btn = rt.gameObject.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
             btn.targetGraphic = img;
             rt.gameObject.AddComponent<UIPressScaleFeedback>();
             return btn;
@@ -646,35 +649,18 @@ namespace Ciga.AnchorHorror.EditorTools
             var root = NewUiNode(parent, "SettingsPopupRoot");
             StretchFull(root);
 
+            // 遮罩层负责挡住下方玩法点击；菜单底图和图标按钮都按全屏图层叠加。
             var dim = root.gameObject.AddComponent<Image>();
             dim.color = new Color(0f, 0f, 0f, 0.58f);
             dim.raycastTarget = true;
 
             var panel = NewUiNode(root, "SettingsPanel");
-            panel.anchorMin = new Vector2(0.5f, 0.5f);
-            panel.anchorMax = new Vector2(0.5f, 0.5f);
-            panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.anchoredPosition = Vector2.zero;
-            panel.sizeDelta = new Vector2(540f, 440f);
-            var panelImg = panel.gameObject.AddComponent<Image>();
-            panelImg.color = new Color(0.12f, 0.1f, 0.09f, 0.92f);
-            panelImg.raycastTarget = false;
+            StretchFull(panel);
+            AddFullScreenImage(panel, "Menu2Background", _settingsPopupSprite);
 
-            var title = CreateText(panel, "SettingsTitle", 48f, TextAlignmentOptions.Center);
-            title.text = "暂停";
-            title.fontStyle = FontStyles.Bold;
-            title.color = new Color(1f, 0.86f, 0.56f, 1f);
-            var titleRt = (RectTransform)title.transform;
-            titleRt.anchorMin = new Vector2(0f, 1f);
-            titleRt.anchorMax = new Vector2(1f, 1f);
-            titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.anchoredPosition = new Vector2(0f, -34f);
-            titleRt.sizeDelta = new Vector2(0f, 72f);
-
-            CreateTextButton(panel, "ResumeButton", "继续游戏", new Vector2(0.5f, 0.5f), new Vector2(0f, 100f), new Vector2(320f, 62f), 34f);
-            CreateTextButton(panel, "SettingsRestartButton", "重新开始", new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(320f, 62f), 34f);
-            CreateTextButton(panel, "SettingsHomeButton", "回到标题", new Vector2(0.5f, 0.5f), new Vector2(0f, -60f), new Vector2(320f, 62f), 34f);
-            CreateTextButton(panel, "SettingsQuitButton", "退出游戏", new Vector2(0.5f, 0.5f), new Vector2(0f, -140f), new Vector2(320f, 62f), 34f);
+            AddFullScreenImageButton(panel, "SettingsHomeButton", _settingsHomeSprite);
+            AddFullScreenImageButton(panel, "SettingsRestartButton", _settingsRestartSprite);
+            AddFullScreenImageButton(panel, "SettingsQuitButton", _settingsQuitSprite);
 
             return root;
         }
@@ -832,6 +818,14 @@ namespace Ciga.AnchorHorror.EditorTools
             _eyesSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "eyes.PNG"), "Eyes.png");
             _sanFrameSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "san frame.PNG"), "SanFrame.png");
             _sanFillSprite = EnsureSanFillSprite(System.IO.Path.Combine(uiSrc, "Night page", "san.PNG"));
+
+            string menu2Src = System.IO.Path.Combine(
+                System.IO.Directory.GetParent(Application.dataPath).FullName,
+                System.IO.Path.Combine(Menu2SrcParts));
+            _settingsPopupSprite = CopyImportUiSprite(System.IO.Path.Combine(menu2Src, "menu (2).PNG"), "SettingsMenu2.png");
+            _settingsHomeSprite = CopyImportUiSprite(System.IO.Path.Combine(menu2Src, "mainpage2 (2).PNG"), "SettingsMainPage2.png", true);
+            _settingsRestartSprite = CopyImportUiSprite(System.IO.Path.Combine(menu2Src, "tryagain.PNG"), "SettingsTryAgain.png", true);
+            _settingsQuitSprite = CopyImportUiSprite(System.IO.Path.Combine(menu2Src, "quit2.PNG"), "SettingsQuit2.png", true);
         }
 
         private static Sprite CopyImportUiSprite(string sourceAbs, string targetFile, bool readable = false)
@@ -883,6 +877,12 @@ namespace Ciga.AnchorHorror.EditorTools
             if (importer.mipmapEnabled)
             {
                 importer.mipmapEnabled = false;
+                dirty = true;
+            }
+
+            if (!importer.alphaIsTransparency)
+            {
+                importer.alphaIsTransparency = true;
                 dirty = true;
             }
 
@@ -1534,6 +1534,17 @@ namespace Ciga.AnchorHorror.EditorTools
             if (p != null)
             {
                 p.stringValue = value;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        private static void WireBool(Component c, string prop, bool value)
+        {
+            var so = new SerializedObject(c);
+            var p = so.FindProperty(prop);
+            if (p != null)
+            {
+                p.boolValue = value;
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
         }

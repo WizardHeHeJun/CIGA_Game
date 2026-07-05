@@ -33,8 +33,11 @@ namespace Ciga.AnchorHorror.PlayTests
         private GlobalConfig _cfg;
         private LevelSequence _sequence;
         private LevelData _level1Data;
-        private LevelData _sub1Data;
-        private LevelData _sub2Data;
+        private LevelData _corridorData;
+        private LevelData _room1Data;
+        private LevelData _room2Data;
+        private LevelData _room3Data;
+        private LevelData _room4Data;
         private ItemDatabase _itemDb;
         private GameManager _gm;
 
@@ -55,8 +58,11 @@ namespace Ciga.AnchorHorror.PlayTests
             if (_cfg != null) { Object.DestroyImmediate(_cfg); }
             if (_sequence != null) { Object.DestroyImmediate(_sequence); }
             if (_level1Data != null) { Object.DestroyImmediate(_level1Data); }
-            if (_sub1Data != null) { Object.DestroyImmediate(_sub1Data); }
-            if (_sub2Data != null) { Object.DestroyImmediate(_sub2Data); }
+            if (_corridorData != null) { Object.DestroyImmediate(_corridorData); }
+            if (_room1Data != null) { Object.DestroyImmediate(_room1Data); }
+            if (_room2Data != null) { Object.DestroyImmediate(_room2Data); }
+            if (_room3Data != null) { Object.DestroyImmediate(_room3Data); }
+            if (_room4Data != null) { Object.DestroyImmediate(_room4Data); }
             if (_itemDb != null) { Object.DestroyImmediate(_itemDb); }
         }
 
@@ -65,8 +71,8 @@ namespace Ciga.AnchorHorror.PlayTests
         /// <summary>
         /// 构建可用的 GameManager，注入代码生成的 LevelSequence+数据：
         ///   entries[0] = Level1（8物品，8种不同 non-None 特征）
-        ///   entries[1] = Sub1（8物品，覆盖8种特征）
-        ///   entries[2] = Sub2（8物品，覆盖8种特征）
+        ///   entries[1] = Corridor（走廊 Hub）
+        ///   entries[2..5] = Room1..4（四房间）
         /// 返回 GameManager，已激活（Awake+Start 已跑）。
         /// </summary>
         private IEnumerator BuildGameManager()
@@ -107,11 +113,15 @@ namespace Ciga.AnchorHorror.PlayTests
             //         或直接填 items 列表为空 → LevelSpawner 静默跳过，然后手动挂物品到 _levelRoot
             //   选方案：items 列表为空 → Spawner 不生成，测试里手动建 FeatureTag 并模拟 SelectInLevel1
             _level1Data = BuildLevelData("TestLevel1", _itemDb);
-            _sub1Data = BuildLevelData("TestSub1", _itemDb);
-            _sub2Data = BuildLevelData("TestSub2", _itemDb);
+            _corridorData = BuildLevelData("TestCorridor", _itemDb);
+            _room1Data = BuildLevelData("TestRoom1", _itemDb);
+            _room2Data = BuildLevelData("TestRoom2", _itemDb);
+            _room3Data = BuildLevelData("TestRoom3", _itemDb);
+            _room4Data = BuildLevelData("TestRoom4", _itemDb);
 
-            // --- 4. LevelSequence（3 entries：L1 + Sub1 + Sub2）--------------------
-            _sequence = BuildLevelSequence(_level1Data, _sub1Data, _sub2Data);
+            // --- 4. LevelSequence（6 entries：L1 + Corridor + Room1..4）-------------
+            _sequence = BuildLevelSequence(
+                _level1Data, _corridorData, _room1Data, _room2Data, _room3Data, _room4Data);
 
             // --- 5. 构建 GameManager GameObject（先 SetActive(false) 再接线）-------
             _root = new GameObject("FlowTest_Root");
@@ -281,7 +291,7 @@ namespace Ciga.AnchorHorror.PlayTests
             Debug.Log($"[FLOWTEST] SC-3 EnterLevel2 PASS: Phase={_gm.CurrentPhase}, BackpackCount={_gm.Backpack.Count}, RemainingTime={_gm.RemainingTime:F1}");
         }
 
-        // ── SC-4：子场景切换保留背包/锚点/倒计时/相位 ───────────────────────
+        // ── SC-4：走廊/房间切换保留背包/锚点/倒计时/相位 ───────────────────────
 
         [UnityTest]
         public IEnumerator SC4_SwitchSubScene_PreservesBackpackAnchorAndTimer()
@@ -309,8 +319,8 @@ namespace Ciga.AnchorHorror.PlayTests
             _gm.PickupInLevel2(testItem);
             int backpackCountBeforeSwitch = _gm.Backpack.Count;
 
-            // 调 SwitchSubScene（前往下一个）
-            _gm.SwitchSubScene(1);
+            // 调 SwitchSubScene：从走廊 entry[1] 进入房间1 entry[2]
+            _gm.SwitchSubScene(2);
 
             // 等切换完成，最多2秒
             deadline = Time.realtimeSinceStartup + 2f;
@@ -324,11 +334,11 @@ namespace Ciga.AnchorHorror.PlayTests
 
             // 验证：相位不变
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase,
-                "SC-4: 切换子场景后相位仍应为 HorrorLevel");
+                "SC-4: 切换走廊/房间后相位仍应为 HorrorLevel");
 
             // 验证：锚点集合未变（同一批特征）
             Assert.AreEqual(targetsBeforeSwitch.Count, _gm.Anchor.Targets.Count,
-                "SC-4: 切换子场景后锚点数量不变");
+                "SC-4: 切换走廊/房间后锚点数量不变");
             var targetsAfterSwitch = new HashSet<FeatureUnit>();
             foreach (var t in _gm.Anchor.Targets) { targetsAfterSwitch.Add(t.Feature); }
             foreach (var f in targetsBeforeSwitch)
@@ -339,18 +349,18 @@ namespace Ciga.AnchorHorror.PlayTests
 
             // 验证：背包未清（保留拾取的物品）
             Assert.AreEqual(backpackCountBeforeSwitch, _gm.Backpack.Count,
-                "SC-4: 切换子场景后背包内容应保留");
+                "SC-4: 切换走廊/房间后背包内容应保留");
 
             // 验证：倒计时未重置（<=切换前时间，且不为180）
             Assert.LessOrEqual(_gm.RemainingTime, timeBeforeSwitch + 0.5f,
-                "SC-4: 切换子场景后倒计时应不增加（未重置）");
+                "SC-4: 切换走廊/房间后倒计时应不增加（未重置）");
             Assert.Less(_gm.RemainingTime, 180f - 0.001f,
-                "SC-4: 切换子场景后倒计时不应回到180");
+                "SC-4: 切换走廊/房间后倒计时不应回到180");
 
             Debug.Log($"[FLOWTEST] SC-4 SwitchSubScene保留状态 PASS: RemainingTime={_gm.RemainingTime:F1}, BackpackCount={_gm.Backpack.Count}, Targets={_gm.Anchor.Targets.Count}");
 
-            // 再切一次（返回上一个，测双向）
-            _gm.SwitchSubScene(-1);
+            // 再切一次：从房间返回走廊
+            _gm.SwitchSubScene(1);
             deadline = Time.realtimeSinceStartup + 2f;
             while (IsTransitioning(_gm) && Time.realtimeSinceStartup < deadline)
             {
@@ -361,7 +371,7 @@ namespace Ciga.AnchorHorror.PlayTests
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase,
                 "SC-4: 第二次切换后相位仍为 HorrorLevel");
 
-            Debug.Log("[FLOWTEST] SC-4 环状切换二次 PASS");
+            Debug.Log("[FLOWTEST] SC-4 房间返回走廊 PASS");
 
             if (testItem != null) { Object.DestroyImmediate(testItem.gameObject); }
         }
@@ -580,8 +590,14 @@ namespace Ciga.AnchorHorror.PlayTests
             return data;
         }
 
-        /// <summary>构造3-entry LevelSequence：entries[0]=L1，entries[1]=Sub1，entries[2]=Sub2。</summary>
-        private static LevelSequence BuildLevelSequence(LevelData l1, LevelData sub1, LevelData sub2)
+        /// <summary>构造6-entry LevelSequence：entries[0]=L1，entries[1]=Corridor，entries[2..5]=Room1..4。</summary>
+        private static LevelSequence BuildLevelSequence(
+            LevelData l1,
+            LevelData corridor,
+            LevelData room1,
+            LevelData room2,
+            LevelData room3,
+            LevelData room4)
         {
             var seq = ScriptableObject.CreateInstance<LevelSequence>();
 
@@ -595,10 +611,13 @@ namespace Ciga.AnchorHorror.PlayTests
 
             // Entry[0]: L1（EnterLevel2 door）
             entries.Add(MakeEntry(entryType, doorSettingType, l1, LevelKind.Level1Select, DoorKind.EnterLevel2));
-            // Entry[1]: Sub1（SwitchSubScene door）
-            entries.Add(MakeEntry(entryType, doorSettingType, sub1, LevelKind.Level2Sub, DoorKind.SwitchSubSceneNext));
-            // Entry[2]: Sub2（SwitchSubScene door）
-            entries.Add(MakeEntry(entryType, doorSettingType, sub2, LevelKind.Level2Sub, DoorKind.SwitchSubSceneNext));
+            // Entry[1]: Corridor（四扇房间门由 GameManager 程序化生成）
+            entries.Add(MakeEntry(entryType, doorSettingType, corridor, LevelKind.Level2Sub, DoorKind.EnterRoom1));
+            // Entry[2..5]: Rooms（ReturnToCorridor door）
+            entries.Add(MakeEntry(entryType, doorSettingType, room1, LevelKind.Level2Sub, DoorKind.ReturnToCorridor));
+            entries.Add(MakeEntry(entryType, doorSettingType, room2, LevelKind.Level2Sub, DoorKind.ReturnToCorridor));
+            entries.Add(MakeEntry(entryType, doorSettingType, room3, LevelKind.Level2Sub, DoorKind.ReturnToCorridor));
+            entries.Add(MakeEntry(entryType, doorSettingType, room4, LevelKind.Level2Sub, DoorKind.ReturnToCorridor));
 
             // _entries 是 List<LevelSequence.Entry>，需要把 object List 转成正确类型
             var listType = typeof(System.Collections.Generic.List<>).MakeGenericType(entryType);

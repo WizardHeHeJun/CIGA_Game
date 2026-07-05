@@ -9,22 +9,27 @@ using UnityEngine.EventSystems;
 namespace Ciga.UI
 {
     /// <summary>
-    /// UI 按钮悬浮放大 / 按下缩小 的缩放反馈：靠指针事件平滑改变 transform.localScale。
+    /// UI 按钮悬浮/选中放大、按下缩小 的缩放反馈：靠指针/选中事件平滑改变 transform.localScale。
     /// 全屏 alpha 命中按钮请把 RectTransform.pivot 设到笔触中心（见 OpaqueCenterNormalized），
     /// 缩放才会「就地」而非绕屏幕中心漂移。Button.transition 建议设 None，由本组件接管反馈。
     /// </summary>
     [DisallowMultipleComponent]
     public class UIPressScaleFeedback : MonoBehaviour,
-        IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+        IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler,
+        ISelectHandler, IDeselectHandler, ISubmitHandler
     {
-        [SerializeField] private float _hoverScale = 1.07f;   // 悬浮放大倍率
-        [SerializeField] private float _pressScale = 0.93f;   // 按下缩小倍率
-        [SerializeField] private float _speed = 14f;          // 平滑速度（越大越快贴合目标）
+        [SerializeField] private float _hoverScale = 1.07f;          // 悬浮/选中放大倍率
+        [SerializeField] private float _pressScale = 0.93f;          // 按下缩小倍率
+        [SerializeField] private float _speed = 14f;                 // 平滑速度（越大越快贴合目标）
+        [SerializeField] private float _submitPulseSeconds = 0.08f;  // 键盘确认时短暂缩小秒数
 
         private Vector3 _baseScale = Vector3.one;
         private float _target = 1f;
+        private float _submitPulseTimer;
         private bool _hovering;
         private bool _pressing;
+        private bool _selected;
+        private bool _selectedByPointer;
 
         private void Awake()
         {
@@ -35,18 +40,32 @@ namespace Ciga.UI
         {
             _hovering = false;
             _pressing = false;
+            _selected = false;
+            _selectedByPointer = false;
+            _submitPulseTimer = 0f;
             _target = 1f;
             transform.localScale = _baseScale;
         }
 
         private void OnDisable()
         {
+            _submitPulseTimer = 0f;
             // 复位，避免残留缩放（面板隐藏/重开时）
             transform.localScale = _baseScale;
         }
 
         private void Update()
         {
+            if (_submitPulseTimer > 0f)
+            {
+                _submitPulseTimer -= Time.unscaledDeltaTime;
+                if (_submitPulseTimer <= 0f)
+                {
+                    _submitPulseTimer = 0f;
+                    UpdateTarget();
+                }
+            }
+
             var goal = _baseScale * _target;
             if ((transform.localScale - goal).sqrMagnitude < 1e-8f)
             {
@@ -66,12 +85,24 @@ namespace Ciga.UI
         public void OnPointerEnter(PointerEventData eventData)
         {
             _hovering = true;
+            if (EventSystem.current != null)
+            {
+                _selectedByPointer = EventSystem.current.currentSelectedGameObject != gameObject;
+                EventSystem.current.SetSelectedGameObject(gameObject);
+            }
+
             UpdateTarget();
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
             _hovering = false;
+            if (_selectedByPointer && EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+
+            _selectedByPointer = false;
             UpdateTarget();
         }
 
@@ -87,10 +118,28 @@ namespace Ciga.UI
             UpdateTarget();
         }
 
+        public void OnSelect(BaseEventData eventData)
+        {
+            _selected = true;
+            UpdateTarget();
+        }
+
+        public void OnDeselect(BaseEventData eventData)
+        {
+            _selected = false;
+            UpdateTarget();
+        }
+
+        public void OnSubmit(BaseEventData eventData)
+        {
+            _submitPulseTimer = Mathf.Max(0f, _submitPulseSeconds);
+            UpdateTarget();
+        }
+
         private void UpdateTarget()
         {
-            // 按下优先于悬浮：按住时缩小，仅悬浮时放大，都没有则复原
-            _target = _pressing ? _pressScale : (_hovering ? _hoverScale : 1f);
+            // 按下 / 键盘确认 pulse 优先于悬浮与选中：按住或确认时缩小，悬浮/选中时放大，都没有则复原
+            _target = _pressing || _submitPulseTimer > 0f ? _pressScale : (_hovering || _selected ? _hoverScale : 1f);
         }
 
         /// <summary>

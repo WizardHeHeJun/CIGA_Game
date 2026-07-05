@@ -4,8 +4,8 @@
 // Created: 2026-07-05
 // Desc   : 两关卡流程冒烟测试数据生成器。
 //          建 1 关卡1 LevelData（8 物品，每件各带 8 种 distinct 特征之一）+
-//          3 个关卡2 子场景 LevelData（三场景并集覆盖全部 8 种特征，保证可解）+
-//          LevelSequence（entry[0]=Level1Select + entry[1..3]=Level2Sub）。
+//          1 个走廊 Hub + 4 个关卡2房间 LevelData（四房间并集覆盖全部 8 种特征，保证可解）+
+//          LevelSequence（entry[0]=Level1Select + entry[1]=Corridor + entry[2..5]=Room）。
 //          幂等：已存在则覆盖重建（清空重填），别堆叠。
 //          菜单：Ciga/AnchorHorror/生成两关卡流程 Demo 数据
 // ------------------------------------------------------------
@@ -27,11 +27,13 @@ namespace Ciga.AnchorHorror.EditorTools
     ///   F8=Texture.Smooth
     ///
     /// 关卡1（entries[0]）：8 物品，物品 i 只带特征 F(i+1)，覆盖 8 种不重复。
-    /// 子场景1（entries[1]）：F1 F2 F4 F6 （4 种）
-    /// 子场景2（entries[2]）：F3 F5 F7 F8 （4 种）
-    /// 子场景3（entries[3]）：F1 F3 F4 F8 （冗余，三场景并集 = 全 8 种，保可解）
+    /// 走廊（entries[1]）：无物品，仅提供四扇门。
+    /// 房间1（entries[2]）：F1 F2
+    /// 房间2（entries[3]）：F3 F4
+    /// 房间3（entries[4]）：F5 F6
+    /// 房间4（entries[5]）：F7 F8
     ///
-    /// 三场景并集 = {Red,Blue,Green,Round,Square,Wood,Metal,Smooth} = F1..F8（可解证明见上）。
+    /// 四房间并集 = {Red,Blue,Green,Round,Square,Wood,Metal,Smooth} = F1..F8（可解证明见上）。
     /// </summary>
     public static class TwoLevelFlowDemoSetup
     {
@@ -71,40 +73,34 @@ namespace Ciga.AnchorHorror.EditorTools
             "bottle_plastic",// 带 F8=Texture.Smooth
         };
 
-        // 子场景物品数据：(itemId, featureIndex in Features8[])。5 个子场景，并集覆盖全 8 种特征（可解）。
-        // 子场景1：F1(Red), F2(Blue)
-        private static readonly (string id, int fi)[] Sub1Items =
+        private static readonly (string id, int fi)[] EmptyItems = new (string id, int fi)[0];
+
+        // 房间物品数据：(itemId, featureIndex in Features8[])。4 个房间，并集覆盖全 8 种特征（可解）。
+        // 房间1：F1(Red), F2(Blue)
+        private static readonly (string id, int fi)[] Room1Items =
         {
             ("chair_wood", 0), // F1=Color.Red
             ("lamp_metal", 1), // F2=Color.Blue
         };
 
-        // 子场景2：F3(Green), F4(Round)
-        private static readonly (string id, int fi)[] Sub2Items =
+        // 房间2：F3(Green), F4(Round)
+        private static readonly (string id, int fi)[] Room2Items =
         {
             ("book_paper", 2), // F3=Color.Green
             ("cup_glass",  3), // F4=Shape.Round
         };
 
-        // 子场景3：F5(Square), F6(Wood)
-        private static readonly (string id, int fi)[] Sub3Items =
+        // 房间3：F5(Square), F6(Wood)
+        private static readonly (string id, int fi)[] Room3Items =
         {
             ("clock_metal", 4), // F5=Shape.Square
             ("cloth_red",   5), // F6=Material.Wood
         };
 
-        // 子场景4：F7(Metal), F8(Smooth)
-        private static readonly (string id, int fi)[] Sub4Items =
+        // 房间4：F7(Metal), F8(Smooth)
+        private static readonly (string id, int fi)[] Room4Items =
         {
             ("box_wood",       6), // F7=Material.Metal
-            ("bottle_plastic", 7), // F8=Texture.Smooth
-        };
-
-        // 子场景5：F1(Red), F4(Round), F8(Smooth)（冗余，方便玩家来回找齐）
-        private static readonly (string id, int fi)[] Sub5Items =
-        {
-            ("chair_wood",     0), // F1=Color.Red
-            ("cup_glass",      3), // F4=Shape.Round
             ("bottle_plastic", 7), // F8=Texture.Smooth
         };
 
@@ -119,8 +115,8 @@ namespace Ciga.AnchorHorror.EditorTools
                     "两关卡流程 Demo 数据",
                     $"已生成/更新：\n" +
                     $"  关卡1 LevelData（8 物品，8 种 distinct 特征）\n" +
-                    $"  子场景1..5 LevelData\n" +
-                    $"  LevelSequence（entry[0..5]，含 6 张房间背景）\n" +
+                    $"  走廊 + 房间1..4 LevelData\n" +
+                    $"  LevelSequence（entry[0]=关卡1，entry[1]=走廊，entry[2..5]=房间）\n" +
                     $"  并已接线到 Bootstrap.unity。",
                     "好");
             }
@@ -191,27 +187,26 @@ namespace Ciga.AnchorHorror.EditorTools
             var levelCfg = AssetDatabase.LoadAssetAtPath<LevelConfig>(ResDir + "/LevelConfig.asset");
             var square = AssetDatabase.LoadAssetAtPath<Sprite>(SquareSpritePath);
 
-            // 1. 建 6 个 LevelData（关卡1 + 5 子场景）
+            // 1. 建 6 个 LevelData（关卡1 + 走廊 + 4 房间）
             var level1 = BuildLevel1Data(db, levelCfg);
-            var sub1   = BuildSubLevelData("DemoSub1", "关卡2-子场景1", db, levelCfg, Sub1Items);
-            var sub2   = BuildSubLevelData("DemoSub2", "关卡2-子场景2", db, levelCfg, Sub2Items);
-            var sub3   = BuildSubLevelData("DemoSub3", "关卡2-子场景3", db, levelCfg, Sub3Items);
-            var sub4   = BuildSubLevelData("DemoSub4", "关卡2-子场景4", db, levelCfg, Sub4Items);
-            var sub5   = BuildSubLevelData("DemoSub5", "关卡2-子场景5", db, levelCfg, Sub5Items);
+            var corridor = BuildSubLevelData("DemoCorridor", "关卡2-走廊", db, levelCfg, EmptyItems);
+            var room1 = BuildSubLevelData("DemoRoom1", "关卡2-房间1", db, levelCfg, Room1Items);
+            var room2 = BuildSubLevelData("DemoRoom2", "关卡2-房间2", db, levelCfg, Room2Items);
+            var room3 = BuildSubLevelData("DemoRoom3", "关卡2-房间3", db, levelCfg, Room3Items);
+            var room4 = BuildSubLevelData("DemoRoom4", "关卡2-房间4", db, levelCfg, Room4Items);
 
             // 2. 建 LevelSequence，并把 6 张房间背景接到 entry._background（数据驱动，重建自动复现）
-            //    映射：关卡1=卧室；子场景 1..5 = 起居室/浴室/走廊/厨房/杂物间。
-            //    注意关卡2从中间 entry[3] 进入，因此 entry[3] 接 Aisle（走廊）。
+            //    映射：关卡1=卧室；走廊=Aisle；房间1..4=起居室/浴室/厨房/杂物间。
             var backgrounds = new[]
             {
                 LoadBg("Bedroom"),
+                LoadBg("Aisle"),
                 LoadBg("LivingRoom"),
                 LoadBg("Bathroom"),
-                LoadBg("Aisle"),
                 LoadBg("Kitchen"),
                 LoadBg("Utility"),
             };
-            var seq = BuildLevelSequence(level1, new[] { sub1, sub2, sub3, sub4, sub5 }, square, backgrounds);
+            var seq = BuildLevelSequence(level1, corridor, new[] { room1, room2, room3, room4 }, square, backgrounds);
 
             // 3. 接线到 Bootstrap
             WireBootstrapScene(seq);
@@ -220,10 +215,12 @@ namespace Ciga.AnchorHorror.EditorTools
             Debug.Log(
                 "[TwoLevelFlowDemoSetup] 已生成两关卡流程 Demo 数据并接线到 Bootstrap.unity。\n" +
                 "8 种特征：Color.Red / Color.Blue / Color.Green / Shape.Round / Shape.Square / Material.Wood / Material.Metal / Texture.Smooth\n" +
-                "Sub1覆盖：Red Blue Round Wood\n" +
-                "Sub2覆盖：Green Square Metal Smooth\n" +
-                "Sub3覆盖：Red Green Round Smooth（冗余）\n" +
-                "三场景并集 = 全 8 种 → 可解。");
+                "Corridor：无物品，仅四门 Hub\n" +
+                "Room1覆盖：Red Blue\n" +
+                "Room2覆盖：Green Round\n" +
+                "Room3覆盖：Square Wood\n" +
+                "Room4覆盖：Metal Smooth\n" +
+                "四房间并集 = 全 8 种 → 可解。");
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -285,7 +282,7 @@ namespace Ciga.AnchorHorror.EditorTools
         }
 
         // ──────────────────────────────────────────────────────────────
-        //  关卡2 子场景 LevelData
+        //  关卡2 走廊 / 房间 LevelData
         // ──────────────────────────────────────────────────────────────
 
         private static LevelData BuildSubLevelData(
@@ -306,7 +303,7 @@ namespace Ciga.AnchorHorror.EditorTools
             // 玩家出生在下方中央
             so.FindProperty("_playerSpawn").vector2Value = new Vector2(0f, -3.5f);
 
-            // 子场景物品：4 个，1 行横排，间距 2.2
+            // 房间物品：1 行横排，间距 2.2；走廊传空数组则不生成物品。
             var items = so.FindProperty("_items");
             items.ClearArray();
 
@@ -345,7 +342,7 @@ namespace Ciga.AnchorHorror.EditorTools
         // ──────────────────────────────────────────────────────────────
 
         private static LevelSequence BuildLevelSequence(
-            LevelData level1, LevelData[] subs, Sprite square, Sprite[] backgrounds)
+            LevelData level1, LevelData corridor, LevelData[] rooms, Sprite square, Sprite[] backgrounds)
         {
             var path = LevelsDir + "/DemoTwoLevelFlow_Sequence.asset";
             var seq = LoadOrCreate<LevelSequence>(path);
@@ -361,16 +358,23 @@ namespace Ciga.AnchorHorror.EditorTools
                 doorPrompt: "按 E 进入第二关",
                 background: GetBackground(backgrounds, 0));
 
-            // entry[1..N]：5 个子场景，Level2Sub。左右门由 GameManager 按索引程序化生成（首场景无左门、末场景无右门），
-            // doorKind 字段对子场景不再被读取，仅占位。
-            for (int i = 0; i < subs.Length; i++)
+            // entry[1]：走廊 Hub。四扇进入房间的门由 GameManager 程序化生成。
+            AddEntry(entries, 1, corridor,
+                kind: LevelKind.Level2Sub, doorKind: DoorKind.EnterRoom1,
+                doorSpawn: Vector2.zero,
+                doorSprite: square,
+                doorPrompt: "按 E 进入房间",
+                background: GetBackground(backgrounds, 1));
+
+            // entry[2..5]：四个房间。每个房间仅生成返回走廊门，位置可由 DoorSetting 控制。
+            for (int i = 0; i < rooms.Length; i++)
             {
-                AddEntry(entries, i + 1, subs[i],
-                    kind: LevelKind.Level2Sub, doorKind: DoorKind.SwitchSubSceneNext,
-                    doorSpawn: new Vector2(6f, -3.5f),
+                AddEntry(entries, i + 2, rooms[i],
+                    kind: LevelKind.Level2Sub, doorKind: DoorKind.ReturnToCorridor,
+                    doorSpawn: new Vector2(0f, -3.5f),
                     doorSprite: square,
-                    doorPrompt: "按 E 切换场景",
-                    background: GetBackground(backgrounds, i + 1));
+                    doorPrompt: "按 E 返回走廊",
+                    background: GetBackground(backgrounds, i + 2));
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
