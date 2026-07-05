@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Ciga.AnchorHorror;
+using Ciga.UI;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -41,16 +42,43 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string InGameUiDir = "Assets/Res/UI/InGame";
         private static readonly string[] UiSrcParts = { "acts", "ciga美术资产", "ciga美术资产", "ui" };
 
+        // 玩家行走美术：从 acts/ 原始拆分图拷入 Assets 并导为 Sprite（世界空间 SpriteRenderer 使用）
+        private const string PlayerWalkDir = SoDir + "/Player/Walking";
+        private static readonly string[] WalkSrcParts = { "acts", "ciga美术资产", "ciga美术资产", "行走拆分", "行走拆分" };
+
+        // 玩家受击反馈美术：错误拾取后短暂覆盖行走图
+        private const string PlayerHitDir = SoDir + "/Player/HitFeedback";
+        private static readonly string[] HitSrcParts = { "acts", "ciga美术资产", "ciga美术资产", "受击反馈" };
+
         private static Sprite _squareSprite;
+        private static Sprite _playerDownIdle;
+        private static Sprite _playerDownWalk1;
+        private static Sprite _playerDownWalk2;
+        private static Sprite _playerUpIdle;
+        private static Sprite _playerUpWalk1;
+        private static Sprite _playerUpWalk2;
+        private static Sprite _playerLeftIdle;
+        private static Sprite _playerLeftWalk;
+        private static Sprite _playerRightIdle;
+        private static Sprite _playerRightWalk;
+        private static Sprite _playerHitDown;
+        private static Sprite _playerHitUp;
+        private static Sprite _playerHitLeft;
+        private static Sprite _playerHitRight;
 
         // 关卡2 HUD sprite（由 EnsureInGameHudSprites 填充；缺图为 null，运行时判空/透明降级）
         private static Sprite _frameSprite;
         private static Sprite _bagSprite;
         private static Sprite _memorySprite;
+        private static Sprite _anchoredSprite;
         private static Sprite _noCollectSprite;
         private static Sprite[] _collectedSprites;
         private static Sprite _sanFrameSprite;
         private static Sprite _sanFillSprite;
+        private static Sprite _eyesSprite;
+        private static Sprite _settingsSprite;
+        private static Sprite _previousPageSprite;
+        private static Sprite _nextPageSprite;
 
         // 游戏主字体（汉仪新蒂莲花体），设为 TMP 默认字体；缺失时为 null（沿用默认）
         private static TMPro.TMP_FontAsset _gameFont;
@@ -65,6 +93,8 @@ namespace Ciga.AnchorHorror.EditorTools
             var level = CreateOrLoad<LevelConfig>(SoDir + "/LevelConfig.asset");
             PopulateFeatureDatabase(db);               // 填中文特征名/关键词颜色（空库时）
             _squareSprite = GetOrCreateSquareSprite(); // 玩家/物品可见所需的方块 sprite
+            EnsurePlayerWalkSprites();                  // 玩家行走美术（上下左右站立/行走帧）拷入并导为 Sprite
+            EnsurePlayerHitSprites();                   // 玩家受击反馈美术（错误拾取后短暂覆盖）拷入并导为 Sprite
             EnsureInGameHudSprites();                   // 关卡2 HUD 美术（边框/背包/记忆石板/命中数/San 条）拷入并导为 Sprite
             EnsureTmpEssentials();                     // 保证 TMP 通用字体(LiberationSans)+着色器可用（浮字/面板文本）
             EnsureCjkFallback();                       // 中文字形回退（黑体动态字体加入 TMP 全局 fallback）
@@ -150,10 +180,11 @@ namespace Ciga.AnchorHorror.EditorTools
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             player.AddComponent<BoxCollider2D>();
             var sr = player.AddComponent<SpriteRenderer>();
-            sr.sprite = _squareSprite;
-            sr.color = Color.cyan;
+            sr.sprite = _playerDownIdle != null ? _playerDownIdle : _squareSprite;
+            sr.color = Color.white;
             sr.sortingOrder = 10; // 玩家压在物品之上
             var pc = player.AddComponent<PlayerController2D>();
+            var walkAnimator = player.AddComponent<PlayerWalkSpriteAnimator>();
             player.AddComponent<PlayerJitter2D>(); // 低 San 手抖（缩放微颤，_target 缺省用自身）
 
             // --- InitRoom 候选物品（散布，供收集）---
@@ -199,7 +230,7 @@ namespace Ciga.AnchorHorror.EditorTools
             hint.transform.position = new Vector3(0f, -4.3f, 0f);
             var htmp = hint.AddComponent<TextMeshPro>();
             htmp.text = "WASD 移动    E 拾取/选择    R 检视(听声音/看信息)    Tab 记忆面板";
-            htmp.fontSize = 2.2f;
+            htmp.fontSize = 3.2f;
             htmp.alignment = TextAlignmentOptions.Center;
             htmp.color = new Color(1f, 1f, 1f, 0.72f);
             if (_gameFont != null)
@@ -236,6 +267,10 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(shake, "_camera", camGo.transform);
             WireObj(camFollow, "_target", player.transform);
             WireObj(camFollow, "_cam", cam);
+            WireObj(walkAnimator, "_spriteRenderer", sr);
+            WireObj(walkAnimator, "_controller", pc);
+            WirePlayerWalkSprites(walkAnimator);
+            WirePlayerHitSprites(walkAnimator);
             WireObj(resultScreen, "_resultConfig", resultCfg);
             // MatchFeedback._font 留空：FloatingText 的 TextMeshPro 会自动用 TMP 默认字体(LiberationSans)
 
@@ -280,6 +315,7 @@ namespace Ciga.AnchorHorror.EditorTools
             memDim.color = new Color(0f, 0f, 0f, 0.55f);
             memDim.raycastTarget = false;
             AddFullScreenImage(memRoot, "MemoryTablet", _memorySprite);
+            AddFullScreenImage(memRoot, "AnchoredOverlay", _anchoredSprite);
 
             // 5 椭圆槽中心（顶左像素，实测 Memory.PNG）：TL TR C BL BR
             var ovalCenters = new[]
@@ -288,16 +324,29 @@ namespace Ciga.AnchorHorror.EditorTools
                 new Vector2(875f, 515f), new Vector2(600f, 640f), new Vector2(1120f, 640f),
             };
             var anchorLabels = new TMP_Text[ovalCenters.Length];
+            var coveredIcons = new Image[ovalCenters.Length];
             for (int i = 0; i < ovalCenters.Length; i++)
             {
-                var lbl = CreateText(memRoot, "AnchorLabel" + i, 34f, TextAlignmentOptions.Center);
+                var iconRt = NewUiNode(memRoot, "CoveredItemIcon" + i);
+                iconRt.anchorMin = Vector2.zero;
+                iconRt.anchorMax = Vector2.zero;
+                iconRt.pivot = new Vector2(0.5f, 0.5f);
+                iconRt.anchoredPosition = new Vector2(ovalCenters[i].x - 104f, 1080f - ovalCenters[i].y);
+                iconRt.sizeDelta = new Vector2(82f, 82f);
+                var icon = iconRt.gameObject.AddComponent<Image>();
+                icon.raycastTarget = false;
+                icon.preserveAspect = true;
+                icon.enabled = false;
+                coveredIcons[i] = icon;
+
+                var lbl = CreateText(memRoot, "AnchorLabel" + i, 40f, TextAlignmentOptions.Center);
                 lbl.fontStyle = FontStyles.Bold;
                 var lrt = (RectTransform)lbl.transform;
                 lrt.anchorMin = Vector2.zero;
                 lrt.anchorMax = Vector2.zero;
                 lrt.pivot = new Vector2(0.5f, 0.5f);
-                lrt.anchoredPosition = new Vector2(ovalCenters[i].x, 1080f - ovalCenters[i].y); // 顶左像素 → 画布底左
-                lrt.sizeDelta = new Vector2(240f, 70f);
+                lrt.anchoredPosition = new Vector2(ovalCenters[i].x + 28f, 1080f - ovalCenters[i].y); // 顶左像素 → 画布底左
+                lrt.sizeDelta = new Vector2(240f, 86f);
                 anchorLabels[i] = lbl;
             }
 
@@ -310,44 +359,45 @@ namespace Ciga.AnchorHorror.EditorTools
             dim.color = new Color(0f, 0f, 0f, 0.62f);
             dim.raycastTarget = false;
 
-            var title = CreateText(resultRoot, "ResultTitle", 96f, TextAlignmentOptions.Center);
+            var title = CreateText(resultRoot, "ResultTitle", 128f, TextAlignmentOptions.Center);
             title.fontStyle = FontStyles.Bold;
             title.text = "已 通 关";
             var titleRt = (RectTransform)title.transform;
             titleRt.anchorMin = new Vector2(0f, 0.5f);
             titleRt.anchorMax = new Vector2(1f, 0.5f);
             titleRt.pivot = new Vector2(0.5f, 0.5f);
-            titleRt.sizeDelta = new Vector2(0f, 180f);
+            titleRt.sizeDelta = new Vector2(0f, 220f);
             titleRt.anchoredPosition = new Vector2(0f, 80f);
 
-            var hint = CreateText(resultRoot, "ResultHint", 36f, TextAlignmentOptions.Center);
+            var hint = CreateText(resultRoot, "ResultHint", 54f, TextAlignmentOptions.Center);
             hint.text = "按 R 重新开始      按 Esc 返回主菜单";
             var hintRt = (RectTransform)hint.transform;
             hintRt.anchorMin = new Vector2(0f, 0.5f);
             hintRt.anchorMax = new Vector2(1f, 0.5f);
             hintRt.pivot = new Vector2(0.5f, 0.5f);
-            hintRt.sizeDelta = new Vector2(0f, 60f);
+            hintRt.sizeDelta = new Vector2(0f, 90f);
             hintRt.anchoredPosition = new Vector2(0f, -60f);
             resultRoot.gameObject.SetActive(false);
 
             WireObj(memory, "_root", memRoot.gameObject);
             WireObjArray(memory, "_anchorLabels", anchorLabels);
+            WireObjArray(memory, "_coveredItemIcons", coveredIcons);
             WireObj(result, "_root", resultRoot.gameObject);
             WireObj(result, "_title", title);
             WireObj(result, "_hint", hint);
 
-            // --- 倒计时面板：右上角固定，HorrorLevel 相位由 CountdownPanel 自动显/隐 ---
+            // --- 倒计时面板：顶部居中，HorrorLevel 相位由 CountdownPanel 自动显/隐 ---
             var countdownRoot = NewUiNode(canvas.transform, "CountdownRoot");
-            countdownRoot.anchorMin = new Vector2(1f, 1f);
-            countdownRoot.anchorMax = new Vector2(1f, 1f);
-            countdownRoot.pivot = new Vector2(1f, 1f);
-            countdownRoot.anchoredPosition = new Vector2(-40f, -40f);
-            countdownRoot.sizeDelta = new Vector2(260f, 80f);
+            countdownRoot.anchorMin = new Vector2(0.5f, 1f);
+            countdownRoot.anchorMax = new Vector2(0.5f, 1f);
+            countdownRoot.pivot = new Vector2(0.5f, 1f);
+            countdownRoot.anchoredPosition = new Vector2(0f, -26f);
+            countdownRoot.sizeDelta = new Vector2(320f, 110f);
             var countdownBg = countdownRoot.gameObject.AddComponent<Image>();
             countdownBg.color = new Color(0f, 0f, 0f, 0.55f);
             countdownBg.raycastTarget = false;
 
-            var countdownText = CreateText(countdownRoot, "CountdownText", 52f, TextAlignmentOptions.Center);
+            var countdownText = CreateText(countdownRoot, "CountdownText", 68f, TextAlignmentOptions.Center);
             var countdownTextRt = (RectTransform)countdownText.transform;
             StretchFull(countdownTextRt);
             countdownTextRt.offsetMin = new Vector2(12f, 8f);
@@ -381,16 +431,16 @@ namespace Ciga.AnchorHorror.EditorTools
                 tutorialImg.color = new Color(0.5f, 0.5f, 0.5f, 1f); // 缺美术资源时灰底占位
             }
 
-            var tutorialLabel = CreateText(tutorialImageRt, "TutorialLabel", 44f, TextAlignmentOptions.Center);
+            var tutorialLabel = CreateText(tutorialImageRt, "TutorialLabel", 64f, TextAlignmentOptions.Center);
             tutorialLabel.text = tutorialSprite != null ? string.Empty : "教程（占位）";
 
-            var tutorialPrompt = CreateText(tutorialRoot, "TutorialPrompt", 40f, TextAlignmentOptions.Center);
+            var tutorialPrompt = CreateText(tutorialRoot, "TutorialPrompt", 60f, TextAlignmentOptions.Center);
             tutorialPrompt.text = "按任意键继续";
             var tutorialPromptRt = (RectTransform)tutorialPrompt.transform;
             tutorialPromptRt.anchorMin = new Vector2(0f, 0f);
             tutorialPromptRt.anchorMax = new Vector2(1f, 0f);
             tutorialPromptRt.pivot = new Vector2(0.5f, 0f);
-            tutorialPromptRt.sizeDelta = new Vector2(0f, 80f);
+            tutorialPromptRt.sizeDelta = new Vector2(0f, 120f);
             tutorialPromptRt.anchoredPosition = new Vector2(0f, 120f);
             tutorialRoot.gameObject.SetActive(false); // Show() 时激活
 
@@ -403,7 +453,7 @@ namespace Ciga.AnchorHorror.EditorTools
         //  关卡2 HUD 构建（边框 / San 条 / 背包）——全屏叠加层，初始隐藏，各组件按 HorrorLevel 相位显隐
         // ────────────────────────────────────────────────────────────
 
-        // 边框（Frame）+ 顶部命中数（No Collect 底 + Collected1..5 叠加）。
+        // 边框（Night page Frame）+ 顶部命中数（No Collect 底 + Collected1..5 叠加）+ 二关快捷按钮。
         private static void BuildInGameHud(Transform canvas, InGameHudPanel inGameHud)
         {
             var hudRoot = NewUiNode(canvas, "InGameHudRoot");
@@ -420,9 +470,30 @@ namespace Ciga.AnchorHorror.EditorTools
                 collectedIcons[i] = img;
             }
 
+            var settingsButton = AddFullScreenImageButton(hudRoot, "SettingsButton", _settingsSprite);
+            var homeButton = CreateTextButton(hudRoot, "HomeButton", "主页", new Vector2(0f, 1f), new Vector2(96f, -74f), new Vector2(112f, 48f), 28f);
+            var restartButton = CreateTextButton(hudRoot, "RestartButton", "重开", new Vector2(0f, 1f), new Vector2(224f, -74f), new Vector2(112f, 48f), 28f);
+            var quitButton = CreateTextButton(hudRoot, "QuitButton", "退出", new Vector2(0f, 1f), new Vector2(352f, -74f), new Vector2(112f, 48f), 28f);
+
+            var settingsRoot = BuildSettingsPopup((RectTransform)canvas);
+            var resumeButton = settingsRoot.Find("SettingsPanel/ResumeButton") != null ? settingsRoot.Find("SettingsPanel/ResumeButton").GetComponent<Button>() : null;
+            var settingsRestartButton = settingsRoot.Find("SettingsPanel/SettingsRestartButton") != null ? settingsRoot.Find("SettingsPanel/SettingsRestartButton").GetComponent<Button>() : null;
+            var settingsHomeButton = settingsRoot.Find("SettingsPanel/SettingsHomeButton") != null ? settingsRoot.Find("SettingsPanel/SettingsHomeButton").GetComponent<Button>() : null;
+            var settingsQuitButton = settingsRoot.Find("SettingsPanel/SettingsQuitButton") != null ? settingsRoot.Find("SettingsPanel/SettingsQuitButton").GetComponent<Button>() : null;
+
             hudRoot.gameObject.SetActive(false);
+            settingsRoot.gameObject.SetActive(false);
             WireObj(inGameHud, "_root", hudRoot.gameObject);
             WireObjArray(inGameHud, "_collectedIcons", collectedIcons);
+            WireObj(inGameHud, "_settingsButton", settingsButton);
+            WireObj(inGameHud, "_homeButton", homeButton);
+            WireObj(inGameHud, "_restartButton", restartButton);
+            WireObj(inGameHud, "_quitButton", quitButton);
+            WireObj(inGameHud, "_settingsRoot", settingsRoot.gameObject);
+            WireObj(inGameHud, "_settingsResumeButton", resumeButton);
+            WireObj(inGameHud, "_settingsRestartButton", settingsRestartButton);
+            WireObj(inGameHud, "_settingsHomeButton", settingsHomeButton);
+            WireObj(inGameHud, "_settingsQuitButton", settingsQuitButton);
         }
 
         // San 条：san frame 外框（全屏）+ san 填充（裁剪图放到条形位置，Image.Filled 水平从左）。
@@ -431,6 +502,8 @@ namespace Ciga.AnchorHorror.EditorTools
             var sanRoot = NewUiNode(canvas, "SanBarRoot");
             StretchFull(sanRoot);
             AddFullScreenImage(sanRoot, "SanFrame", _sanFrameSprite);
+
+            AddFullScreenImage(sanRoot, "Eyes", _eyesSprite);
 
             // San 填充条形区域（画布底左原点）：x=254, y=30, 宽=1192, 高=38（实测 san.PNG 填充 bbox）
             var fillRt = NewUiNode(sanRoot, "SanFill");
@@ -478,7 +551,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 slots[i] = img;
             }
 
-            // 溢出角标 +N（4 槽下方）
+            // 溢出/页码角标（4 槽下方）
             var overflow = CreateText(bagRoot, "BackpackOverflow", 34f, TextAlignmentOptions.Center);
             overflow.color = new Color(1f, 0.9f, 0.6f);
             var ort = (RectTransform)overflow.transform;
@@ -486,13 +559,22 @@ namespace Ciga.AnchorHorror.EditorTools
             ort.anchorMax = Vector2.zero;
             ort.pivot = new Vector2(0.5f, 0.5f);
             ort.anchoredPosition = new Vector2(1745f, 1080f - 872f);
-            ort.sizeDelta = new Vector2(160f, 50f);
+            ort.sizeDelta = new Vector2(180f, 72f);
             overflow.enabled = false;
+
+            var pageUpButton = AddFullScreenImageButton(bagRoot, "BackpackPageUp", _previousPageSprite);
+            var pageDownButton = AddFullScreenImageButton(bagRoot, "BackpackPageDown", _nextPageSprite);
+            var pageUpImage = pageUpButton.targetGraphic as Image;
+            var pageDownImage = pageDownButton.targetGraphic as Image;
 
             bagRoot.gameObject.SetActive(false);
             WireObj(backpack, "_root", bagRoot.gameObject);
             WireObjArray(backpack, "_slots", slots);
             WireObj(backpack, "_overflow", overflow);
+            WireObj(backpack, "_pageUpButton", pageUpButton);
+            WireObj(backpack, "_pageDownButton", pageDownButton);
+            WireObj(backpack, "_pageUpImage", pageUpImage);
+            WireObj(backpack, "_pageDownImage", pageDownImage);
         }
 
         private static Image AddFullScreenImage(RectTransform parent, string name, Sprite sprite)
@@ -506,6 +588,219 @@ namespace Ciga.AnchorHorror.EditorTools
             return img;
         }
 
+        private static Button AddFullScreenImageButton(RectTransform parent, string name, Sprite sprite)
+        {
+            var rt = NewUiNode(parent, name);
+            StretchFull(rt);
+            rt.pivot = UIPressScaleFeedback.OpaqueCenterNormalized(sprite);
+
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = sprite;
+            img.type = Image.Type.Simple;
+            img.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            img.raycastTarget = sprite != null && sprite.texture != null && sprite.texture.isReadable;
+            if (img.raycastTarget)
+            {
+                img.alphaHitTestMinimumThreshold = 0.1f;
+            }
+
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = img;
+            rt.gameObject.AddComponent<UIPressScaleFeedback>();
+            return btn;
+        }
+
+        private static Button CreateTextButton(
+            RectTransform parent, string name, string text, Vector2 anchor, Vector2 position, Vector2 size, float fontSize)
+        {
+            var rt = NewUiNode(parent, name);
+            rt.anchorMin = anchor;
+            rt.anchorMax = anchor;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = position;
+            rt.sizeDelta = size;
+
+            var img = rt.gameObject.AddComponent<Image>();
+            img.color = new Color(0.06f, 0.05f, 0.045f, 0.72f);
+            img.raycastTarget = true;
+
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = img;
+            rt.gameObject.AddComponent<UIPressScaleFeedback>();
+
+            var label = CreateText(rt, "Label", fontSize, TextAlignmentOptions.Center);
+            label.text = text;
+            label.fontStyle = FontStyles.Bold;
+            label.color = new Color(1f, 0.9f, 0.68f, 1f);
+            var labelRt = (RectTransform)label.transform;
+            StretchFull(labelRt);
+            labelRt.offsetMin = new Vector2(4f, 2f);
+            labelRt.offsetMax = new Vector2(-4f, -2f);
+            return btn;
+        }
+
+        private static RectTransform BuildSettingsPopup(RectTransform parent)
+        {
+            var root = NewUiNode(parent, "SettingsPopupRoot");
+            StretchFull(root);
+
+            var dim = root.gameObject.AddComponent<Image>();
+            dim.color = new Color(0f, 0f, 0f, 0.58f);
+            dim.raycastTarget = true;
+
+            var panel = NewUiNode(root, "SettingsPanel");
+            panel.anchorMin = new Vector2(0.5f, 0.5f);
+            panel.anchorMax = new Vector2(0.5f, 0.5f);
+            panel.pivot = new Vector2(0.5f, 0.5f);
+            panel.anchoredPosition = Vector2.zero;
+            panel.sizeDelta = new Vector2(540f, 440f);
+            var panelImg = panel.gameObject.AddComponent<Image>();
+            panelImg.color = new Color(0.12f, 0.1f, 0.09f, 0.92f);
+            panelImg.raycastTarget = false;
+
+            var title = CreateText(panel, "SettingsTitle", 48f, TextAlignmentOptions.Center);
+            title.text = "暂停";
+            title.fontStyle = FontStyles.Bold;
+            title.color = new Color(1f, 0.86f, 0.56f, 1f);
+            var titleRt = (RectTransform)title.transform;
+            titleRt.anchorMin = new Vector2(0f, 1f);
+            titleRt.anchorMax = new Vector2(1f, 1f);
+            titleRt.pivot = new Vector2(0.5f, 1f);
+            titleRt.anchoredPosition = new Vector2(0f, -34f);
+            titleRt.sizeDelta = new Vector2(0f, 72f);
+
+            CreateTextButton(panel, "ResumeButton", "继续游戏", new Vector2(0.5f, 0.5f), new Vector2(0f, 100f), new Vector2(320f, 62f), 34f);
+            CreateTextButton(panel, "SettingsRestartButton", "重新开始", new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(320f, 62f), 34f);
+            CreateTextButton(panel, "SettingsHomeButton", "回到标题", new Vector2(0.5f, 0.5f), new Vector2(0f, -60f), new Vector2(320f, 62f), 34f);
+            CreateTextButton(panel, "SettingsQuitButton", "退出游戏", new Vector2(0.5f, 0.5f), new Vector2(0f, -140f), new Vector2(320f, 62f), 34f);
+
+            return root;
+        }
+
+        // ────────────────────────────────────────────────────────────
+        //  玩家行走美术导入（从 acts/ 拷入 Assets 并导为 Sprite；缺源图时保留方块降级）
+        // ────────────────────────────────────────────────────────────
+
+        private static void EnsurePlayerWalkSprites()
+        {
+            EnsureFolder(PlayerWalkDir);
+            string walkSrc = System.IO.Path.Combine(
+                System.IO.Directory.GetParent(Application.dataPath).FullName,
+                System.IO.Path.Combine(WalkSrcParts));
+
+            _playerDownIdle = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "向下静止.png"), PlayerWalkDir, "DownIdle.png", "行走");
+            _playerDownWalk1 = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "向下行走1.png"), PlayerWalkDir, "DownWalk1.png", "行走");
+            _playerDownWalk2 = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "向下行走2.png"), PlayerWalkDir, "DownWalk2.png", "行走");
+            _playerUpIdle = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "向上静止.png"), PlayerWalkDir, "UpIdle.png", "行走");
+            _playerUpWalk1 = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "向上行走1.png"), PlayerWalkDir, "UpWalk1.png", "行走");
+            _playerUpWalk2 = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "向上行走2.png"), PlayerWalkDir, "UpWalk2.png", "行走");
+            _playerLeftIdle = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "左.png"), PlayerWalkDir, "LeftIdle.png", "行走");
+            _playerLeftWalk = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "左行走.png"), PlayerWalkDir, "LeftWalk.png", "行走");
+            _playerRightIdle = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "右.png"), PlayerWalkDir, "RightIdle.png", "行走");
+            _playerRightWalk = CopyImportPlayerSprite(System.IO.Path.Combine(walkSrc, "右行走.png"), PlayerWalkDir, "RightWalk.png", "行走");
+        }
+
+        private static void EnsurePlayerHitSprites()
+        {
+            EnsureFolder(PlayerHitDir);
+            string hitSrc = System.IO.Path.Combine(
+                System.IO.Directory.GetParent(Application.dataPath).FullName,
+                System.IO.Path.Combine(HitSrcParts));
+
+            _playerHitDown = CopyImportPlayerSprite(System.IO.Path.Combine(hitSrc, "受击 下.png"), PlayerHitDir, "HitDown.png", "受击");
+            _playerHitUp = CopyImportPlayerSprite(System.IO.Path.Combine(hitSrc, "受击 上.png"), PlayerHitDir, "HitUp.png", "受击");
+            _playerHitLeft = CopyImportPlayerSprite(System.IO.Path.Combine(hitSrc, "受击 左.png"), PlayerHitDir, "HitLeft.png", "受击");
+            _playerHitRight = CopyImportPlayerSprite(System.IO.Path.Combine(hitSrc, "受击 右.png"), PlayerHitDir, "HitRight.png", "受击");
+        }
+
+        private static Sprite CopyImportPlayerSprite(string sourceAbs, string targetDir, string targetFile, string spriteKind)
+        {
+            string assetPath = targetDir + "/" + targetFile;
+            if (!System.IO.File.Exists(assetPath))
+            {
+                if (!System.IO.File.Exists(sourceAbs))
+                {
+                    Debug.LogWarning($"[AnchorHorror] 找不到玩家{spriteKind}美术源：{sourceAbs}（{targetFile} 将缺图，玩家使用降级图）。");
+                    return null;
+                }
+
+                System.IO.File.Copy(sourceAbs, assetPath, true);
+                AssetDatabase.ImportAsset(assetPath);
+            }
+
+            ConfigurePlayerSprite(assetPath);
+            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        }
+
+        private static void ConfigurePlayerSprite(string assetPath)
+        {
+            var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+            if (importer == null)
+            {
+                return;
+            }
+
+            bool dirty = false;
+            if (importer.textureType != TextureImporterType.Sprite)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                dirty = true;
+            }
+
+            if (importer.spriteImportMode != SpriteImportMode.Single)
+            {
+                importer.spriteImportMode = SpriteImportMode.Single;
+                dirty = true;
+            }
+
+            if (!Mathf.Approximately(importer.spritePixelsPerUnit, 300f))
+            {
+                importer.spritePixelsPerUnit = 300f;
+                dirty = true;
+            }
+
+            if (importer.mipmapEnabled)
+            {
+                importer.mipmapEnabled = false;
+                dirty = true;
+            }
+
+            if (!importer.alphaIsTransparency)
+            {
+                importer.alphaIsTransparency = true;
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void WirePlayerWalkSprites(PlayerWalkSpriteAnimator animator)
+        {
+            WireObj(animator, "_downIdle", _playerDownIdle);
+            WireObj(animator, "_downWalk1", _playerDownWalk1);
+            WireObj(animator, "_downWalk2", _playerDownWalk2);
+            WireObj(animator, "_upIdle", _playerUpIdle);
+            WireObj(animator, "_upWalk1", _playerUpWalk1);
+            WireObj(animator, "_upWalk2", _playerUpWalk2);
+            WireObj(animator, "_leftIdle", _playerLeftIdle);
+            WireObj(animator, "_leftWalk", _playerLeftWalk);
+            WireObj(animator, "_rightIdle", _playerRightIdle);
+            WireObj(animator, "_rightWalk", _playerRightWalk);
+        }
+
+        private static void WirePlayerHitSprites(PlayerWalkSpriteAnimator animator)
+        {
+            WireObj(animator, "_hitDown", _playerHitDown);
+            WireObj(animator, "_hitUp", _playerHitUp);
+            WireObj(animator, "_hitLeft", _playerHitLeft);
+            WireObj(animator, "_hitRight", _playerHitRight);
+        }
+
         // ────────────────────────────────────────────────────────────
         //  关卡2 HUD 美术导入（从 acts/ 拷入 Assets 并导为 Sprite；缺源图静默透明降级）
         // ────────────────────────────────────────────────────────────
@@ -517,9 +812,10 @@ namespace Ciga.AnchorHorror.EditorTools
                 System.IO.Directory.GetParent(Application.dataPath).FullName,
                 System.IO.Path.Combine(UiSrcParts));
 
-            _frameSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Previous Page", "Frame.PNG"), "Frame.png");
-            _bagSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Previous Page", "Bag.PNG"), "Bag.png");
+            _frameSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "frame.PNG"), "NightFrame.png");
+            _bagSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "bag.PNG"), "NightBag.png");
             _memorySprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Memory", "Memory.PNG"), "Memory.png");
+            _anchoredSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Memory", "Anchored.PNG"), "Anchored.png");
             _noCollectSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Memory", "No Collect.PNG"), "NoCollect.png");
 
             _collectedSprites = new Sprite[5];
@@ -530,11 +826,15 @@ namespace Ciga.AnchorHorror.EditorTools
                     "Collected" + (i + 1) + ".png");
             }
 
+            _settingsSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Previous Page", "Setting.PNG"), "Setting.png", true);
+            _previousPageSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "pre page.PNG"), "PrePage.png", true);
+            _nextPageSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "next page.PNG"), "NextPage.png", true);
+            _eyesSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "eyes.PNG"), "Eyes.png");
             _sanFrameSprite = CopyImportUiSprite(System.IO.Path.Combine(uiSrc, "Night page", "san frame.PNG"), "SanFrame.png");
             _sanFillSprite = EnsureSanFillSprite(System.IO.Path.Combine(uiSrc, "Night page", "san.PNG"));
         }
 
-        private static Sprite CopyImportUiSprite(string sourceAbs, string targetFile)
+        private static Sprite CopyImportUiSprite(string sourceAbs, string targetFile, bool readable = false)
         {
             string assetPath = InGameUiDir + "/" + targetFile;
             if (!System.IO.File.Exists(assetPath))
@@ -549,11 +849,11 @@ namespace Ciga.AnchorHorror.EditorTools
                 AssetDatabase.ImportAsset(assetPath);
             }
 
-            ConfigureUiSprite(assetPath);
+            ConfigureUiSprite(assetPath, readable);
             return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
         }
 
-        private static void ConfigureUiSprite(string assetPath)
+        private static void ConfigureUiSprite(string assetPath, bool readable = false)
         {
             var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (importer == null)
@@ -583,6 +883,12 @@ namespace Ciga.AnchorHorror.EditorTools
             if (importer.mipmapEnabled)
             {
                 importer.mipmapEnabled = false;
+                dirty = true;
+            }
+
+            if (readable && !importer.isReadable)
+            {
+                importer.isReadable = true;
                 dirty = true;
             }
 

@@ -19,6 +19,9 @@ namespace Ciga.AnchorHorror
         public static event Action<int> CandidateCollected;                        // (当前候选物品数)
         public static event Action<IReadOnlyList<AnchorTarget>> TargetsExtracted;  // 抽取完成的 5 个目标锚点
 
+        // ---- 背包 ----
+        public static event Action<Inventory> BackpackChanged;                     // 背包内容变化（关卡1选物 / 关卡2拾取）
+
         // ---- 匹配 ----
         public static event Action<FeatureTag, IReadOnlyList<FeatureUnit>> ItemMatched; // (物品, 本次命中的特征)
         public static event Action<FeatureTag> ItemMismatched;                          // 不匹配（已扣分并消耗）
@@ -43,6 +46,11 @@ namespace Ciga.AnchorHorror
         public static void RaiseTargetsExtracted(IReadOnlyList<AnchorTarget> targets)
         {
             TargetsExtracted?.Invoke(targets);
+        }
+
+        public static void RaiseBackpackChanged(Inventory backpack)
+        {
+            BackpackChanged?.Invoke(backpack);
         }
 
         public static void RaiseItemMatched(FeatureTag item, IReadOnlyList<FeatureUnit> hits)
@@ -93,6 +101,7 @@ namespace Ciga.AnchorHorror
         {
             CandidateCollected = null;
             TargetsExtracted = null;
+            BackpackChanged = null;
             ItemMatched = null;
             ItemMismatched = null;
             ItemInspected = null;

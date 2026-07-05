@@ -74,6 +74,11 @@ namespace Ciga.Startup
 
             if (_hintLabel != null)
             {
+                if (_config.UiFont != null)
+                {
+                    _hintLabel.font = _config.UiFont;
+                }
+
                 _hintLabel.text = !string.IsNullOrEmpty(_config.HintText) ? _config.HintText : "加载中…";
             }
         }
@@ -203,11 +208,11 @@ namespace Ciga.Startup
             hintRt.anchorMin = new Vector2(0f, 0.26f);
             hintRt.anchorMax = new Vector2(1f, 0.26f);
             hintRt.pivot = new Vector2(0.5f, 0f);
-            hintRt.sizeDelta = new Vector2(0f, 48f);
+            hintRt.sizeDelta = new Vector2(0f, 110f);
             hintRt.anchoredPosition = Vector2.zero;
             _hintLabel = hintGo.AddComponent<TextMeshProUGUI>();
             _hintLabel.text = "加载中…";
-            _hintLabel.fontSize = 28f;
+            _hintLabel.fontSize = 64f;
             _hintLabel.alignment = TextAlignmentOptions.Center;
             _hintLabel.color = Color.white;
             _hintLabel.raycastTarget = false;

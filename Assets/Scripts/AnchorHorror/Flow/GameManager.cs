@@ -234,6 +234,7 @@ namespace Ciga.AnchorHorror
             // 背包重置为关卡1容量
             _backpack.Clear();
             _backpack.Capacity = _config.Level1SelectCap;
+            EventBus.RaiseBackpackChanged(_backpack);
 
             _levelIndex = 0;
             _levelData = _sequence != null ? _sequence.GetLevel(0) : null;
@@ -288,6 +289,7 @@ namespace Ciga.AnchorHorror
             }
 
             item.Consumed = true;
+            EventBus.RaiseBackpackChanged(_backpack);
 
             if (_backpack.Count >= _config.Level1SelectCap)
             {
@@ -368,6 +370,7 @@ namespace Ciga.AnchorHorror
             }
 
             item.Consumed = true;
+            EventBus.RaiseBackpackChanged(_backpack);
 
             // 反馈（隐藏物品前触发，浮字/红闪取物品位置）：
             if (_pickupHitBuffer.Count > 0)
@@ -433,6 +436,7 @@ namespace Ciga.AnchorHorror
             // 清背包，设关卡2容量，启倒计时（SC-3，陷阱 6）
             _backpack.Clear();
             _backpack.Capacity = _config.Level2BackpackCap;
+            EventBus.RaiseBackpackChanged(_backpack);
             _remainingTime = _config.Level2TimeLimit;
 
             // 销毁关卡1根（各自销毁，不复用 BeginTransition——陷阱 4）

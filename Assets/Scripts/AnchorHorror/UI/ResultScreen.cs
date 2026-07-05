@@ -456,7 +456,7 @@ namespace Ciga.AnchorHorror
             StretchFull(textGo.transform as RectTransform);
             _creditsText = textGo.AddComponent<TextMeshProUGUI>();
             _creditsText.alignment = TextAlignmentOptions.Center;
-            _creditsText.fontSize = 42f;
+            _creditsText.fontSize = 58f;
             _creditsText.color = new Color(1f, 1f, 1f, 0.9f);
             _creditsText.raycastTarget = false;
             if (creditsSprite != null)
@@ -468,7 +468,7 @@ namespace Ciga.AnchorHorror
                 string body = _resultConfig != null && !string.IsNullOrEmpty(_resultConfig.CreditsText)
                     ? _resultConfig.CreditsText
                     : "制作组";
-                _creditsText.text = body + "\n\n<size=28>点击屏幕任意处返回</size>";
+                _creditsText.text = body + "\n\n<size=42>点击屏幕任意处返回</size>";
             }
 
             _creditsRoot.SetActive(false);

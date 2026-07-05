@@ -28,6 +28,12 @@ namespace Ciga.AnchorHorror
         /// <summary>是否响应输入（默认关，进关卡时由 GameManager 打开）。</summary>
         public bool InputEnabled { get; set; }
 
+        /// <summary>最近一帧移动输入（已归一化对角线），供表现层读取。</summary>
+        public Vector2 MoveInput => _input;
+
+        /// <summary>当前是否有移动输入。</summary>
+        public bool IsMoving => InputEnabled && _input.sqrMagnitude > 0.0001f;
+
         private void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();

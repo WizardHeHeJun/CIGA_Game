@@ -156,11 +156,11 @@ namespace Ciga.AnchorHorror
             go.transform.localPosition = new Vector3(0f, 1.4f, 0f);
             _promptText = go.AddComponent<TextMeshPro>();
             _promptText.text = _prompt;
-            _promptText.fontSize = 4f;
+            _promptText.fontSize = 5.5f;
             _promptText.alignment = TextAlignmentOptions.Center;
             _promptText.color = new Color(1f, 1f, 0.7f, 1f);
             _promptText.sortingOrder = 2000;
-            _promptText.rectTransform.sizeDelta = new Vector2(8f, 1.5f);
+            _promptText.rectTransform.sizeDelta = new Vector2(10f, 2.2f);
             go.SetActive(false);
         }
     }

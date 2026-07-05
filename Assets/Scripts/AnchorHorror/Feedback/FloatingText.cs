@@ -35,7 +35,7 @@ namespace Ciga.AnchorHorror
 
             _tmp.text = text;
             _tmp.color = color;
-            _tmp.fontSize = 4f;
+            _tmp.fontSize = 5.5f;
             _tmp.alignment = TextAlignmentOptions.Center;
 
             var mr = _tmp.GetComponent<MeshRenderer>();

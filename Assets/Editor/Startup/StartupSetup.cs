@@ -26,6 +26,7 @@ namespace Ciga.Startup.EditorTools
         private const string SoDir = "Assets/Res/Config/Startup";
         private const string LoginScenePath = "Assets/Res/Scene/Login.unity";
         private const string GameMainScenePath = "Assets/Res/Scene/GameMain.unity";
+        private const string StartupUiFontPath = "Assets/Res/AnchorHorror/HanyiLotus SDF.asset";
         private const string BootstrapScenePath = "Assets/Res/AnchorHorror/Bootstrap.unity";
         private const string HorrorScenePath = "Assets/Res/AnchorHorror/HorrorLevel.unity";
 
@@ -39,8 +40,10 @@ namespace Ciga.Startup.EditorTools
             var mainCfg = CreateOrLoad<MainMenuConfig>(SoDir + "/MainMenuConfig.asset");
             var loadingCfg = CreateOrLoad<LoadingConfig>(SoDir + "/LoadingConfig.asset");
 
-            // 2. 确认 TMP Essential Resources 已导入（CJK fallback 已由 AnchorHorrorSetup 配好，不重复配）
+            // 2. 确认 TMP Essential Resources 已导入，并给启动流文本挂统一游戏字体
             EnsureTmpEssentials();
+            var uiFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(StartupUiFontPath);
+            ConfigureStartupFont(loginCfg, mainCfg, loadingCfg, uiFont);
 
             // 3. 当前活动场景须有路径，防止 Single 模式弹保存框
             var active = SceneManager.GetActiveScene();
@@ -122,7 +125,7 @@ namespace Ciga.Startup.EditorTools
             btnNode.anchorMin = new Vector2(0.5f, 0.35f);
             btnNode.anchorMax = new Vector2(0.5f, 0.35f);
             btnNode.pivot = new Vector2(0.5f, 0.5f);
-            btnNode.sizeDelta = new Vector2(240f, 64f);
+            btnNode.sizeDelta = new Vector2(320f, 88f);
             btnNode.anchoredPosition = Vector2.zero;
             var btnBg = btnNode.gameObject.AddComponent<Image>();
             btnBg.color = new Color(0.25f, 0.45f, 0.85f, 1f);
@@ -132,8 +135,9 @@ namespace Ciga.Startup.EditorTools
             var btnLabelNode = NewUiNode(btnNode, "Label");
             StretchFull(btnLabelNode);
             var btnLabel = btnLabelNode.gameObject.AddComponent<TextMeshProUGUI>();
+            ApplyStartupFont(btnLabel, loginCfg.UiFont);
             btnLabel.text = "进入游戏";
-            btnLabel.fontSize = 28f;
+            btnLabel.fontSize = 48f;
             btnLabel.alignment = TextAlignmentOptions.Center;
             btnLabel.color = Color.white;
             btnLabel.raycastTarget = false;
@@ -143,11 +147,12 @@ namespace Ciga.Startup.EditorTools
             subtitleNode.anchorMin = new Vector2(0.5f, 0.28f);
             subtitleNode.anchorMax = new Vector2(0.5f, 0.28f);
             subtitleNode.pivot = new Vector2(0.5f, 0.5f);
-            subtitleNode.sizeDelta = new Vector2(600f, 36f);
+            subtitleNode.sizeDelta = new Vector2(800f, 64f);
             subtitleNode.anchoredPosition = Vector2.zero;
             var subtitleLabel = subtitleNode.gameObject.AddComponent<TextMeshProUGUI>();
+            ApplyStartupFont(subtitleLabel, loginCfg.UiFont);
             subtitleLabel.text = string.Empty;
-            subtitleLabel.fontSize = 22f;
+            subtitleLabel.fontSize = 38f;
             subtitleLabel.alignment = TextAlignmentOptions.Center;
             subtitleLabel.color = new Color(1f, 1f, 1f, 0.6f);
             subtitleLabel.raycastTarget = false;
@@ -229,11 +234,12 @@ namespace Ciga.Startup.EditorTools
             guideHintNode.anchorMin = new Vector2(0.5f, 0.08f);
             guideHintNode.anchorMax = new Vector2(0.5f, 0.08f);
             guideHintNode.pivot = new Vector2(0.5f, 0.5f);
-            guideHintNode.sizeDelta = new Vector2(1400f, 90f);
+            guideHintNode.sizeDelta = new Vector2(1400f, 120f);
             guideHintNode.anchoredPosition = Vector2.zero;
             var guideHint = guideHintNode.gameObject.AddComponent<TextMeshProUGUI>();
+            ApplyStartupFont(guideHint, mainCfg.UiFont);
             guideHint.text = string.Empty;
-            guideHint.fontSize = 36f;
+            guideHint.fontSize = 56f;
             guideHint.alignment = TextAlignmentOptions.Center;
             guideHint.color = new Color(1f, 1f, 1f, 0.85f);
             guideHint.raycastTarget = false;
@@ -403,9 +409,39 @@ namespace Ciga.Startup.EditorTools
                              "（CJK 中文 fallback 已由 AnchorHorrorSetup 配好，无需重复配置。）");
         }
 
+        private static void ConfigureStartupFont(LoginPanelConfig loginCfg, MainMenuConfig mainCfg, LoadingConfig loadingCfg, TMP_FontAsset uiFont)
+        {
+            if (uiFont == null)
+            {
+                Debug.LogWarning($"[StartupSetup] 找不到启动流 UI 字体：{StartupUiFontPath}。启动流文字将使用 TMP 默认字体。\n" +
+                                 "可先运行 Ciga/AnchorHorror/生成可运行装配 生成 HanyiLotus SDF 字体资产。");
+                return;
+            }
+
+            WireObj(new SerializedObject(loginCfg), "_uiFont", uiFont);
+            WireObj(new SerializedObject(mainCfg), "_uiFont", uiFont);
+            WireObj(new SerializedObject(loadingCfg), "_uiFont", uiFont);
+            EditorUtility.SetDirty(loginCfg);
+            EditorUtility.SetDirty(mainCfg);
+            EditorUtility.SetDirty(loadingCfg);
+        }
+
+        private static void ApplyStartupFont(TMP_Text label, TMP_FontAsset font)
+        {
+            if (label != null && font != null)
+            {
+                label.font = font;
+            }
+        }
+
         private static void WireObj(Component c, string prop, Object value)
         {
             var so = new SerializedObject(c);
+            WireObj(so, prop, value);
+        }
+
+        private static void WireObj(SerializedObject so, string prop, Object value)
+        {
             var p = so.FindProperty(prop);
             if (p != null)
             {
@@ -414,7 +450,8 @@ namespace Ciga.Startup.EditorTools
             }
             else
             {
-                Debug.LogWarning($"[StartupSetup] 接线失败：{c.GetType().Name} 无属性 '{prop}'", c);
+                var target = so.targetObject;
+                Debug.LogWarning($"[StartupSetup] 接线失败：{target.GetType().Name} 无属性 '{prop}'", target);
             }
         }
 
