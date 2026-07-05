@@ -12,6 +12,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -213,7 +214,8 @@ namespace Ciga.AnchorHorror.EditorTools
         }
 
         // 构建共享的 Screen Space Overlay Canvas，内含记忆面板、结算界面与倒计时面板（初始均隐藏），并接线到组件。
-        // 无按钮交互（Tab / R / Esc 走键盘），故不加 GraphicRaycaster / EventSystem。
+        // 结算界面的胜/负图层按钮需要点击，故加 GraphicRaycaster 并确保场景有 EventSystem
+        // （ResultScreen 运行时也会自愈补上，这里烘进场景使其无需自愈即可点击）。
         private static void BuildAndWireUi(Transform parent, MemoryPanel memory, ResultScreen result, CountdownPanel countdown, TutorialPanel tutorial)
         {
             var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
@@ -226,6 +228,13 @@ namespace Ciga.AnchorHorror.EditorTools
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>(); // 结算图层按钮需要射线命中
+
+            // 场景无 EventSystem 则建一个（uGUI 点击必需；用 StandaloneInputModule 走旧版 Input）
+            if (UnityEngine.Object.FindObjectOfType<EventSystem>() == null)
+            {
+                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            }
 
             // --- 记忆面板：居中的半透明暗色盒，内含 richText 内容 ---
             var memRoot = NewUiNode(canvas.transform, "MemoryPanelRoot");
@@ -377,9 +386,54 @@ namespace Ciga.AnchorHorror.EditorTools
             SetResultEntry(so.FindProperty("_fail"),
                 "失 败", new Color(1f, 0.3f, 0.3f), "按 R 重新开始      按 Esc 返回主菜单", true, true);
 
+            // 美术接线（Victory=win 全屏图 + 返回标题/制作组/退出；Fail=defeat 全屏图 + 重新开始/返回标题/退出）。
+            // 素材在 Assets/Res/UI/Result/，按钮图开 Read/Write 供 alpha 笔触命中。
+            const string dir = "Assets/Res/UI/Result/";
+            SetResultArt(so.FindProperty("_victory"), dir + "VictoryBackground.png",
+                new[] { dir + "VictoryMenuButton.png", dir + "CreditsButton.png", dir + "VictoryQuitButton.png" },
+                new[] { ResultAction.Menu, ResultAction.Credits, ResultAction.Quit });
+            SetResultArt(so.FindProperty("_fail"), dir + "DefeatBackground.png",
+                new[] { dir + "RestartButton.png", dir + "DefeatMenuButton.png", dir + "DefeatQuitButton.png" },
+                new[] { ResultAction.Restart, ResultAction.Menu, ResultAction.Quit });
+
+            var creditsText = so.FindProperty("_creditsText");
+            if (creditsText != null && string.IsNullOrEmpty(creditsText.stringValue))
+            {
+                creditsText.stringValue = "制作组（名单待补）";
+            }
+
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(rc);
             return rc;
+        }
+
+        /// <summary>为某结算态接线全屏背景图与图层按钮（图未导入时静默跳过该项，不清已有引用）。</summary>
+        private static void SetResultArt(SerializedProperty entry, string bgPath, string[] buttonPaths, ResultAction[] actions)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            var bg = AssetDatabase.LoadAssetAtPath<Sprite>(bgPath);
+            if (bg != null)
+            {
+                entry.FindPropertyRelative("_background").objectReferenceValue = bg;
+            }
+
+            var buttons = entry.FindPropertyRelative("_buttons");
+            buttons.arraySize = buttonPaths.Length;
+            for (int i = 0; i < buttonPaths.Length; i++)
+            {
+                var el = buttons.GetArrayElementAtIndex(i);
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(buttonPaths[i]);
+                if (sprite != null)
+                {
+                    el.FindPropertyRelative("_sprite").objectReferenceValue = sprite;
+                }
+
+                el.FindPropertyRelative("_action").enumValueIndex = (int)actions[i];
+            }
         }
 
         private static void SetResultEntry(

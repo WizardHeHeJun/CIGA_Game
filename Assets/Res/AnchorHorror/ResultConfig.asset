@@ -11,22 +11,44 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ee6566a7ec3d26143aa6530b997a1a10, type: 3}
   m_Name: ResultConfig
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   _subClear:
-    _title: "\u8FC7 \u5173"
+    _title: "过 关"
     _color: {r: 1, g: 0.84, b: 0.2, a: 1}
-    _hint: "\u8D70\u5230\u95E8\u6309 E \u524D\u5F80\u4E0B\u4E00\u5C42"
+    _hint: "走到门按 E 前往下一层"
     _respondsRestart: 0
     _respondsMenu: 0
+    _background: {fileID: 0}
+    _buttons: []
   _victory:
-    _title: "\u5DF2 \u901A \u5173"
+    _title: "已 通 关"
     _color: {r: 1, g: 0.84, b: 0.2, a: 1}
-    _hint: "\u6309 R \u91CD\u65B0\u5F00\u59CB      \u6309 Esc \u8FD4\u56DE\u4E3B\u83DC\u5355"
+    _hint: "按 R 重新开始      按 Esc 返回主菜单"
     _respondsRestart: 1
     _respondsMenu: 1
+    _background: {fileID: 21300000, guid: dae052bea78c44a5aff2ee6cc4ae40f9, type: 3}
+    _buttons:
+    - _sprite: {fileID: 21300000, guid: 9c42b75f4fe34ed59f1b51a8bf83dd8f, type: 3}
+      _action: 1
+    - _sprite: {fileID: 21300000, guid: bec7ec9f2fc74a3aabfa27231aa464f3, type: 3}
+      _action: 3
+    - _sprite: {fileID: 21300000, guid: 433b899814e641e79a6d665c03af79b1, type: 3}
+      _action: 2
   _fail:
-    _title: "\u5931 \u8D25"
+    _title: "失 败"
     _color: {r: 1, g: 0.3, b: 0.3, a: 1}
-    _hint: "\u6309 R \u91CD\u65B0\u5F00\u59CB      \u6309 Esc \u8FD4\u56DE\u4E3B\u83DC\u5355"
+    _hint: "按 R 重新开始      按 Esc 返回主菜单"
     _respondsRestart: 1
     _respondsMenu: 1
+    _background: {fileID: 21300000, guid: 468c1ce7a32540c7a3ad5e285cb0dd00, type: 3}
+    _buttons:
+    - _sprite: {fileID: 21300000, guid: 990d8580b1924e1ea2d58a8b9b3442f4, type: 3}
+      _action: 0
+    - _sprite: {fileID: 21300000, guid: 9775b50e770d445b8f4451fc37883b01, type: 3}
+      _action: 1
+    - _sprite: {fileID: 21300000, guid: 6d87a6978ae24e94a11797fa3d7ffd48, type: 3}
+      _action: 2
+  _creditsImage: {fileID: 21300000, guid: 62b58a0f397246cba91313c0a2a5adbe, type: 3}
+  _creditsText: "制作组（名单待补）"
+  _showCreditsIntroOnVictory: 1
+  _creditsIntroHoldSeconds: 2

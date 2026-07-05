@@ -740,6 +740,16 @@ namespace Ciga.AnchorHorror
             LoadSceneWithFade(SceneNames.GameMain);
         }
 
+        /// <summary>退出游戏（编辑器停止播放 / 打包 Application.Quit）。供结算界面「退出游戏」按钮调用。</summary>
+        public void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
         /// <summary>
         /// 带过渡地切换 Unity 场景（重开 / 返回菜单，#3）。
         ///   有 SceneLoader → 委托它：其 ScreenSpaceOverlay 加载遮罩(sortingOrder 1000)能盖住结算 UI(100)，
