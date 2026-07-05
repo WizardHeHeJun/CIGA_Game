@@ -47,6 +47,12 @@ namespace Ciga.AnchorHorror
         [Tooltip("仅渲染不交互（用于门/环境叠图等视觉层）。")]
         [SerializeField] private bool _visualOnly;
 
+        [Tooltip("该实例的稳定运行时键；为空时运行时会按关卡名+物品ID+位置兜底生成。")]
+        [SerializeField] private string _runtimeKey;
+
+        [Tooltip("仅 VisualOnly 物体使用：填写后会跟随对应实例键的已交互状态一起隐藏。")]
+        [SerializeField] private string _hideWhenConsumedOf;
+
         /// <summary>对应 ItemDefinition.Id。</summary>
         public string ItemId => _itemId;
 
