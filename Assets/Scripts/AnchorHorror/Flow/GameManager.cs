@@ -274,7 +274,7 @@ namespace Ciga.AnchorHorror
 
         /// <summary>
         /// 关卡1 拾取物品入背包（cap 5）。
-        /// 满 5 件自动调 LockSelection 抽锚点 + 开关卡1门（SC-1/2，陷阱 5）。
+        /// 满 5 件自动调 LockSelection 抽锚点 + EnterLevel2 触发自动淡入跳关（SC-1/2，陷阱 5）。
         /// </summary>
         public void SelectInLevel1(FeatureTag item)
         {
@@ -431,6 +431,8 @@ namespace Ciga.AnchorHorror
             {
                 _whisperSource.Play();
             }
+
+            // 关卡1 选满后自动跳转：黑屏 1.5s → 重建走廊 → 淡出 1.5s，总 3s 过渡（与配置 _fadeDuration 无关）
             yield return Fade(1f, Level2AutoTransitionSeconds * 0.5f);
 
             // 清背包，设关卡2容量，启倒计时（SC-3，陷阱 6）
@@ -448,8 +450,7 @@ namespace Ciga.AnchorHorror
             SetInputActive(true);
             SetPhase(GamePhase.HorrorLevel);
 
-            yield return HoldBlack();
-            yield return Fade(0f);
+            yield return Fade(0f, Level2AutoTransitionSeconds * 0.5f);
             _transitioning = false;
         }
 
@@ -584,7 +585,8 @@ namespace Ciga.AnchorHorror
 
         /// <summary>
         /// 在 _levelRoot 下代码建门。
-        /// 关卡1（entries[0]）建 EnterLevel2 门；走廊（entry[1]）建四扇房间门；房间（entries[2..5]）建返回走廊门。
+        /// 关卡1（entries[0]）：不再建门（选满自动跳关）。
+        /// 走廊（entry[1]）建四扇房间门；房间（entries[2..5]）建返回走廊门。
         /// </summary>
         private void SpawnLevelDoor()
         {
@@ -598,11 +600,7 @@ namespace Ciga.AnchorHorror
 
             if (_sequence.GetKind(_levelIndex) == LevelKind.Level1Select)
             {
-                // 关卡1门：进入关卡2（右侧）。CanInteract 仅 SelectionLocked 后为 true。
-                Vector2 pos = doorSetting != null ? doorSetting.Spawn : new Vector2(4f, -4f);
-                string prompt = doorSetting != null && !string.IsNullOrEmpty(doorSetting.Prompt)
-                    ? doorSetting.Prompt : "按 E 进入第二关";
-                _level1Door = SpawnDoor(DoorKind.EnterLevel2, pos, sprite, prompt);
+                // 关卡1 不再生成 EnterLevel2 门：选满 5 件自动淡入 3 秒跳关，不再需要门交互。
                 return;
             }
 
@@ -841,12 +839,17 @@ namespace Ciga.AnchorHorror
 
         private IEnumerator Fade(float targetAlpha)
         {
+            float duration = _config != null ? _config.FadeDuration : 0.8f;
+            yield return Fade(targetAlpha, duration);
+        }
+
+        private IEnumerator Fade(float targetAlpha, float duration)
+        {
             if (_transitionOverlay == null)
             {
                 yield break;
             }
 
-            float duration = _config != null ? _config.FadeDuration : 0.8f;
             var color = _transitionOverlay.color;
             float start = color.a;
             float t = 0f;

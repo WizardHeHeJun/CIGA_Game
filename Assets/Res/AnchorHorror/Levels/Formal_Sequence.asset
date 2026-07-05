@@ -11,53 +11,53 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 228dfe97480e11f47a1b00940ee86469, type: 3}
   m_Name: Formal_Sequence
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _entries:
-  - _level: {fileID: 11400000, guid: 027393567286a1f43953d8efc8feca4c, type: 2}
+  - _level: {fileID: 11400000, guid: 61514c5edef7b3949818d0a1d99a9066, type: 2}
     _door:
       _spawn: {x: 4, y: -4}
-      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
-      _prompt: "按 E 进入第二关"
+      _sprite: {fileID: 0}
+      _prompt: "\u9009\u6EE1\u540E\u81EA\u52A8\u8FDB\u5165\u7B2C\u4E8C\u5173"
     _kind: 0
     _doorKind: 0
-    _background: {fileID: 21300000, guid: 3ef941999a26cc74eb57f8f8a95770df, type: 3}
-  - _level: {fileID: 11400000, guid: aaf0f1cd03005b24c8df15f3f8d64689, type: 2}
+    _background: {fileID: 21300000, guid: 98466cd28b1cd7147a87ea6f71eb6c8d, type: 3}
+  - _level: {fileID: 11400000, guid: 049d0c660fadcad4d910fd32112229fa, type: 2}
     _door:
-      _spawn: {x: 6, y: -3.5}
-      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
-      _prompt: "按 E 切换场景"
+      _spawn: {x: 0, y: 0}
+      _sprite: {fileID: 0}
+      _prompt: "\u6309 E \u8FDB\u5165\u623F\u95F4"
     _kind: 1
-    _doorKind: 2
-    _background: {fileID: 21300000, guid: 7e06da31c9a56cc4a9fbec2288e4cd6a, type: 3}
-  - _level: {fileID: 11400000, guid: b4b8f54fde0ab3442959dc39adf266eb, type: 2}
+    _doorKind: 3
+    _background: {fileID: 21300000, guid: 87479605efd28de49805eb8fb3b10286, type: 3}
+  - _level: {fileID: 11400000, guid: a08271e902695cc44a94a5cd8878b0ec, type: 2}
     _door:
-      _spawn: {x: 6, y: -3.5}
-      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
-      _prompt: "按 E 切换场景"
+      _spawn: {x: 0, y: -3.5}
+      _sprite: {fileID: 0}
+      _prompt: "\u6309 E \u8FD4\u56DE\u8D70\u5ECA"
     _kind: 1
-    _doorKind: 2
-    _background: {fileID: 21300000, guid: 5aa27c5e3a7aadc4d888bf7b0a88d3f7, type: 3}
-  - _level: {fileID: 11400000, guid: e9df96bd518eaaa4e92bd1efdd027be3, type: 2}
+    _doorKind: 7
+    _background: {fileID: 21300000, guid: 2fc29e1c3ac89954f94f77e65ebbfa16, type: 3}
+  - _level: {fileID: 11400000, guid: ca202e93681cdc041994c9a20900cd7f, type: 2}
     _door:
-      _spawn: {x: 6, y: -3.5}
-      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
-      _prompt: "按 E 切换场景"
+      _spawn: {x: 0, y: -3.5}
+      _sprite: {fileID: 0}
+      _prompt: "\u6309 E \u8FD4\u56DE\u8D70\u5ECA"
     _kind: 1
-    _doorKind: 2
-    _background: {fileID: 21300000, guid: f9101899f886a7c479fa10290c6e407c, type: 3}
-  - _level: {fileID: 11400000, guid: 11e341ea4c3997e4e92d569184df810d, type: 2}
+    _doorKind: 7
+    _background: {fileID: 21300000, guid: ea56f1a7393f4fc4d80151218bd3a59c, type: 3}
+  - _level: {fileID: 11400000, guid: 45568bdcac8839d4cbb365da572f9bb2, type: 2}
     _door:
-      _spawn: {x: 6, y: -3.5}
-      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
-      _prompt: "按 E 切换场景"
+      _spawn: {x: 0, y: -3.5}
+      _sprite: {fileID: 0}
+      _prompt: "\u6309 E \u8FD4\u56DE\u8D70\u5ECA"
     _kind: 1
-    _doorKind: 2
-    _background: {fileID: 21300000, guid: 0d387d4bce5fcee43ad4f3a1d3359cb3, type: 3}
-  - _level: {fileID: 11400000, guid: c1e8d32f58b1c1e4c8894ed60a0649e2, type: 2}
+    _doorKind: 7
+    _background: {fileID: 21300000, guid: 8a0c4a9637b45cd46aedd9f488f5d023, type: 3}
+  - _level: {fileID: 11400000, guid: 6d4a06cf36dfa5f44afba1d3f4c4db00, type: 2}
     _door:
-      _spawn: {x: 6, y: -3.5}
-      _sprite: {fileID: 21300000, guid: 1d6562e3a78850a4b9968e82ad439ba8, type: 3}
-      _prompt: "按 E 切换场景"
+      _spawn: {x: 0, y: -3.5}
+      _sprite: {fileID: 0}
+      _prompt: "\u6309 E \u8FD4\u56DE\u8D70\u5ECA"
     _kind: 1
-    _doorKind: 2
-    _background: {fileID: 21300000, guid: 8e70df5bba701ce4e96a330e868c17b4, type: 3}
+    _doorKind: 7
+    _background: {fileID: 21300000, guid: bcaa1e4058f355e45936092f2902dde4, type: 3}

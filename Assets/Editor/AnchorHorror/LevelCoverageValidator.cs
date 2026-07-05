@@ -124,7 +124,7 @@ namespace Ciga.AnchorHorror.EditorTools
             for (int i = 0; i < items.Count; i++)
             {
                 var placed = items[i];
-                if (placed == null)
+                if (placed == null || placed.VisualOnly)
                 {
                     continue;
                 }

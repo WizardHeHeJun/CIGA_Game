@@ -26,6 +26,11 @@ MonoBehaviour:
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}
+    _activeSprite: {fileID: 0}
+    _alignWithBackground: 0
+    _colliderOffset: {x: 0, y: 0}
+    _colliderSize: {x: 0, y: 0}
+    _visualOnly: 0
   - _itemId: box_wood
     _position: {x: -1, y: 1.5}
     _rotationZ: 0
@@ -38,6 +43,11 @@ MonoBehaviour:
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}
+    _activeSprite: {fileID: 0}
+    _alignWithBackground: 0
+    _colliderOffset: {x: 0, y: 0}
+    _colliderSize: {x: 0, y: 0}
+    _visualOnly: 0
   - _itemId: lamp_metal
     _position: {x: 1, y: 1.5}
     _rotationZ: 0
@@ -50,6 +60,11 @@ MonoBehaviour:
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}
+    _activeSprite: {fileID: 0}
+    _alignWithBackground: 0
+    _colliderOffset: {x: 0, y: 0}
+    _colliderSize: {x: 0, y: 0}
+    _visualOnly: 0
   - _itemId: clock_metal
     _position: {x: 3, y: 1.5}
     _rotationZ: 0
@@ -62,6 +77,11 @@ MonoBehaviour:
     _sound: 0
     _overrideSprite: 0
     _sprite: {fileID: 0}
+    _activeSprite: {fileID: 0}
+    _alignWithBackground: 0
+    _colliderOffset: {x: 0, y: 0}
+    _colliderSize: {x: 0, y: 0}
+    _visualOnly: 0
   _itemDatabase: {fileID: 11400000, guid: 80bc23451957f8a4097bab598ecb7d1c, type: 2}
   _levelConfig: {fileID: 11400000, guid: 2dd6847d9e164e0438400537b6edd76a, type: 2}
   _playerSpawn: {x: 0, y: -3.5}

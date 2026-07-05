@@ -50,6 +50,8 @@ namespace Ciga.AnchorHorror.PlayTests
             // 重置单例（自动属性 backing field），防止跨测试污染
             var backingField = typeof(GameManager).GetField("<Instance>k__BackingField",
                 BindingFlags.NonPublic | BindingFlags.Static);
+            var instance = backingField != null ? backingField.GetValue(null) as GameManager : null;
+            if (instance != null && instance.gameObject != _root) { Object.DestroyImmediate(instance.gameObject); }
             if (backingField != null) { backingField.SetValue(null, null); }
 
             if (_root != null) { Object.DestroyImmediate(_root); }
@@ -194,17 +196,10 @@ namespace Ciga.AnchorHorror.PlayTests
             // ── 选第5件：触发 LockSelection ──
             _gm.SelectInLevel1(items[4]);
             Assert.IsTrue(_gm.SelectionLocked, "SC-1: 选满5件后 SelectionLocked 应为 true");
-            Assert.AreEqual(5, _gm.Backpack.Count, "SC-1: 选满后背包应有5件");
+            Assert.AreEqual(GamePhase.Transition, _gm.CurrentPhase,
+                "SC-1: 选满5件后应立即进入 Transition，自动淡入切关");
 
-            Debug.Log("[FLOWTEST] SC-1 选满5件锁定 PASS");
-
-            // ── 尝试选第6件：背包已满，CanInteract 封锁 ──
-            Assert.IsFalse(items[5].CanInteract(GamePhase.InitRoom),
-                "SC-1: 背包满(count>=cap)后第6件物品 CanInteract 应为 false");
-            _gm.SelectInLevel1(items[5]); // 即使强行调也不应入包
-            Assert.AreEqual(5, _gm.Backpack.Count, "SC-1: 强行 SelectInLevel1 第6件后背包仍应为5");
-
-            Debug.Log("[FLOWTEST] SC-1 第6件封锁 PASS");
+            Debug.Log("[FLOWTEST] SC-1 选满5件锁定并自动切关 PASS");
 
             // ── SC-2：锚点验证 ──
             var targets = _gm.Anchor.Targets;
@@ -237,21 +232,6 @@ namespace Ciga.AnchorHorror.PlayTests
 
             Debug.Log("[FLOWTEST] SC-2 5个distinct锚点验证 PASS");
 
-            // ── SC-1: 门可交互性（LevelDoor.CanInteract 依赖 SelectionLocked） ──
-            // 建测试门验证逻辑
-            var doorGo = new GameObject("TestDoor_L1");
-            doorGo.AddComponent<BoxCollider2D>();
-            doorGo.AddComponent<SpriteRenderer>();
-            var door = doorGo.AddComponent<LevelDoor>();
-            door.Configure(DoorKind.EnterLevel2, null, "test");
-
-            Assert.IsTrue(door.CanInteract(GamePhase.InitRoom),
-                "SC-1: SelectionLocked=true 后 EnterLevel2 门应可交互");
-
-            Object.DestroyImmediate(doorGo);
-
-            Debug.Log("[FLOWTEST] SC-1 关卡1门可交互 PASS");
-
             // 清理物品
             for (int i = 0; i < 8; i++)
             {
@@ -266,21 +246,12 @@ namespace Ciga.AnchorHorror.PlayTests
         {
             yield return BuildGameManager();
 
-            // 先走完关卡1选择流程
+            // 先走完关卡1选择流程；选满后会自动 EnterLevel2
             yield return SelectFiveItemsInLevel1();
-
-            // 调 EnterLevel2（异步，含Fade协程；_transitionOverlay=null，Fade立即完成）
-            _gm.EnterLevel2();
-
-            // 等待相位变为 HorrorLevel，最多等2秒
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
-            {
-                yield return null;
-            }
+            yield return WaitForHorrorLevel("SC-3: 自动 EnterLevel2");
 
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase,
-                "SC-3: EnterLevel2 后应进入 HorrorLevel（2秒内）");
+                "SC-3: 选满自动 EnterLevel2 后应进入 HorrorLevel（2秒内）");
             Assert.AreEqual(0, _gm.Backpack.Count,
                 "SC-3: 进关卡2后背包应清空（Count==0）");
             Assert.AreEqual(8, _gm.Backpack.Capacity,
@@ -299,13 +270,9 @@ namespace Ciga.AnchorHorror.PlayTests
             yield return BuildGameManager();
             yield return SelectFiveItemsInLevel1();
 
-            // 进关卡2
-            _gm.EnterLevel2();
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
-            {
-                yield return null;
-            }
+            // 选满后自动进关卡2
+            yield return WaitForHorrorLevel("SC-4 前置：自动 EnterLevel2");
+            float deadline;
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase, "SC-4 前置：应在 HorrorLevel");
 
             // 记录切换前状态
@@ -383,13 +350,7 @@ namespace Ciga.AnchorHorror.PlayTests
         {
             yield return BuildGameManager();
             yield return SelectFiveItemsInLevel1();
-
-            _gm.EnterLevel2();
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
-            {
-                yield return null;
-            }
+            yield return WaitForHorrorLevel("SC-5 前置：自动 EnterLevel2");
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase, "SC-5 前置：应在 HorrorLevel");
 
             // 取所有5个目标特征，构造包含该特征的物品并拾取
@@ -428,14 +389,10 @@ namespace Ciga.AnchorHorror.PlayTests
         {
             yield return BuildGameManager();
             yield return SelectFiveItemsInLevel1();
-
-            _gm.EnterLevel2();
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
-            {
-                yield return null;
-            }
+            yield return WaitForHorrorLevel("SC-6a 前置：自动 EnterLevel2");
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase, "SC-6a 前置：应在 HorrorLevel");
+
+            float deadline;
 
             // 反射设 _remainingTime = 0.05f，下一帧 Update 就会触发 Fail
             SetPrivate(_gm, "_remainingTime", 0.05f);
@@ -462,13 +419,7 @@ namespace Ciga.AnchorHorror.PlayTests
         {
             yield return BuildGameManager();
             yield return SelectFiveItemsInLevel1();
-
-            _gm.EnterLevel2();
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
-            {
-                yield return null;
-            }
+            yield return WaitForHorrorLevel("SC-6b 前置：自动 EnterLevel2");
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase, "SC-6b 前置：应在 HorrorLevel");
 
             // 直接调 Fail（模拟 San 归0触发路径）
@@ -494,13 +445,7 @@ namespace Ciga.AnchorHorror.PlayTests
         {
             yield return BuildGameManager();
             yield return SelectFiveItemsInLevel1();
-
-            _gm.EnterLevel2();
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
-            {
-                yield return null;
-            }
+            yield return WaitForHorrorLevel("SC-6c 前置：自动 EnterLevel2");
             Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase, "SC-6c 前置：应在 HorrorLevel");
 
             // 获取 SanitySystem 并直接降到0
@@ -517,6 +462,17 @@ namespace Ciga.AnchorHorror.PlayTests
         }
 
         // ── 辅助方法 ──────────────────────────────────────────────────────────
+
+        private IEnumerator WaitForHorrorLevel(string context)
+        {
+            float deadline = Time.realtimeSinceStartup + 2f;
+            while (_gm.CurrentPhase != GamePhase.HorrorLevel && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.AreEqual(GamePhase.HorrorLevel, _gm.CurrentPhase, context);
+        }
 
         /// <summary>选满5个物品完成关卡1流程（用于其他测试的前置步骤）。</summary>
         private IEnumerator SelectFiveItemsInLevel1()
@@ -539,6 +495,8 @@ namespace Ciga.AnchorHorror.PlayTests
             }
 
             Assert.IsTrue(_gm.SelectionLocked, "前置：SelectFiveItemsInLevel1 后应已锁定");
+            Assert.IsTrue(_gm.CurrentPhase == GamePhase.Transition || _gm.CurrentPhase == GamePhase.HorrorLevel,
+                "前置：SelectFiveItemsInLevel1 后应已开始自动切关");
         }
 
         /// <summary>构造只含1个 non-None 特征的 FeatureTag（用于测试注入）。</summary>
