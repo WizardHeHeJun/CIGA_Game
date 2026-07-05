@@ -3,7 +3,7 @@
 #   rowType: @dim=维度声明  @val=取值  #=注释
 #   valueId: 每维度显式整数 ID，>=1，连续无空洞；0 保留给 None（生成器自动注入，禁止在表里显式写 0）
 #   enumMember/dimKey: 英文 PascalCase（代码标识符，禁中文）；displayNameZh: 中文（仅游戏内展示）
-#   旧枚举成员一律沿用现有 (int) 值（ID 兼容，勿改）；colorHex 仅 Color 维度用；audioGuid 仅 Sound 维度用（GUID 或 Audio/xxx.wav 相对路径，空则回退暖音）
+#   旧枚举成员一律沿用现有 (int) 值（ID 兼容，勿改）；colorHex 仅 Color 维度用；audioGuid 仅 Sound 维度用（GUID 或 Res/AnchorHorror 下相对路径，空则回退暖音）
 #
 # ================= 维度声明 =================
 @dim,0,Color,,,,,,颜色（视觉）→ enum FeatureColor
@@ -75,10 +75,10 @@
 @val,3,Texture,18,Scratched,划痕,,,新增
 #
 # ================= Sound（新维度，audioGuid 先空→回退暖音，真音效入库后回填）=================
-@val,4,Sound,1,ClothTouch,布料轻触声,,,音频待入库
-@val,4,Sound,2,WoodFriction,木质摩擦声,,,音频待入库
-@val,4,Sound,3,LightHum,灯光嗡鸣,,,音频待入库
-@val,4,Sound,4,GlassClink,玻璃轻响,,,音频待入库
-@val,4,Sound,5,Ticking,滴答声,,,音频待入库
-@val,4,Sound,6,MetalMechanical,金属机械声,,,音频待入库
-@val,4,Sound,7,PlasticClick,塑料轻响,,,音频待入库
+@val,4,Sound,1,ClothTouch,布料轻触声,,Audio/AnchorHorror/Items/布料轻触声 .mp3,音频已接入
+@val,4,Sound,2,WoodFriction,木质摩擦声,,Audio/AnchorHorror/Items/木质摩擦声 .mp3,音频已接入
+@val,4,Sound,3,LightHum,灯光嗡鸣,,Audio/AnchorHorror/Items/灯光嗡鸣 .mp3,音频已接入
+@val,4,Sound,4,GlassClink,玻璃轻响,,Audio/AnchorHorror/Items/玻璃轻响 .mp3,音频已接入
+@val,4,Sound,5,Ticking,滴答声,,Audio/AnchorHorror/Items/滴答声 .mp3,音频已接入
+@val,4,Sound,6,MetalMechanical,金属机械声,,Audio/AnchorHorror/Items/金属机械声 .mp3,音频已接入
+@val,4,Sound,7,PlasticClick,塑料轻响,,Audio/AnchorHorror/Items/塑料轻响 .mp3,音频已接入

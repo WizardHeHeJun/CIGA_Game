@@ -4,6 +4,8 @@
 // Created: 2026-07-05
 // ------------------------------------------------------------
 using System.Collections.Generic;
+using Ciga.Startup;
+using Ciga.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -45,6 +47,7 @@ namespace Ciga.AnchorHorror
         private int _lastHit = -1;
         private int _settingsSelectionIndex;
         private bool _settingsOpen;
+        private UiClickSfxBinder _clickSfxBinder;
 
         private void OnEnable()
         {
@@ -80,6 +83,7 @@ namespace Ciga.AnchorHorror
             }
 
             CacheSettingsSelectionButtons();
+            EnsureClickSfxBinder();
             SetVisible(false);
             SetSettingsVisible(false);
         }
@@ -414,6 +418,27 @@ namespace Ciga.AnchorHorror
 
             _settingsSelectionIndex = Mathf.Clamp(index, 0, _settingsSelectionButtons.Count - 1);
             EventSystem.current.SetSelectedGameObject(_settingsSelectionButtons[_settingsSelectionIndex].gameObject);
+        }
+
+        private void EnsureClickSfxBinder()
+        {
+            if (_clickSfxBinder == null)
+            {
+                _clickSfxBinder = GetComponent<UiClickSfxBinder>();
+                if (_clickSfxBinder == null)
+                {
+                    _clickSfxBinder = gameObject.AddComponent<UiClickSfxBinder>();
+                }
+            }
+
+            if (_clickSfxBinder == null)
+            {
+                return;
+            }
+
+            var loader = SceneLoader.Instance;
+            _clickSfxBinder.SetClickClip(loader != null ? loader.UiClickClip : null);
+            _clickSfxBinder.RefreshButtons();
         }
 
         private void SetVisible(bool visible)

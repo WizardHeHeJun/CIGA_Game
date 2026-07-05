@@ -5,6 +5,7 @@
 // ------------------------------------------------------------
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Ciga.AnchorHorror.EditorTools
@@ -69,6 +70,7 @@ namespace Ciga.AnchorHorror.EditorTools
 
         private void OnEnable()
         {
+            CleanupDanglingPreviewRoots();
             _session = new LevelPreviewSession();
             SceneView.duringSceneGui += OnSceneGUI;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
@@ -582,6 +584,7 @@ namespace Ciga.AnchorHorror.EditorTools
         {
             if (_session == null)
             {
+                CleanupDanglingPreviewRoots();
                 return;
             }
 
@@ -597,6 +600,34 @@ namespace Ciga.AnchorHorror.EditorTools
             }
 
             _session.Cleanup();
+            CleanupDanglingPreviewRoots();
+        }
+
+        private static void CleanupDanglingPreviewRoots()
+        {
+            var roots = new List<GameObject>();
+            for (int i = 0; i < EditorSceneManager.sceneCount; i++)
+            {
+                var scene = EditorSceneManager.GetSceneAt(i);
+                if (!scene.isLoaded)
+                {
+                    continue;
+                }
+
+                var sceneRoots = scene.GetRootGameObjects();
+                for (int r = 0; r < sceneRoots.Length; r++)
+                {
+                    if (sceneRoots[r] != null && sceneRoots[r].name == "__LevelEditorPreviewRoot")
+                    {
+                        roots.Add(sceneRoots[r]);
+                    }
+                }
+            }
+
+            for (int i = 0; i < roots.Count; i++)
+            {
+                Object.DestroyImmediate(roots[i]);
+            }
         }
 
         private void DestroyEditors()

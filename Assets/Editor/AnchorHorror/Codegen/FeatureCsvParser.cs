@@ -158,7 +158,7 @@ namespace Ciga.AnchorHorror.EditorTools
             string audioGuid = cols[7].Trim();
             if (audioGuid.Length > 0 && !ResolveAudioPath(audioGuid, out _))
             {
-                throw new FeatureCsvException($"第 {lineNo} 行 @val：audioGuid '{audioGuid}' 解析不到资源（可填 GUID 或 Audio/xxx.wav 相对路径；未入库请留空）。");
+                throw new FeatureCsvException($"第 {lineNo} 行 @val：audioGuid '{audioGuid}' 解析不到资源（可填 GUID 或 Res/... 相对路径；未入库请留空）。");
             }
 
             // 每维度 valueId / enumMember 唯一
@@ -195,7 +195,7 @@ namespace Ciga.AnchorHorror.EditorTools
             });
         }
 
-        /// <summary>audioGuid 支持 32 位 GUID 或 Assets/Res/AnchorHorror 下相对路径。返回是否能解析到资源路径。</summary>
+        /// <summary>audioGuid 支持 32 位 GUID 或 Assets/Res 下相对路径。返回是否能解析到资源路径。</summary>
         public static bool ResolveAudioPath(string audioGuid, out string assetPath)
         {
             assetPath = null;
@@ -206,7 +206,9 @@ namespace Ciga.AnchorHorror.EditorTools
 
             if (audioGuid.Contains("/"))
             {
-                string rel = "Assets/Res/AnchorHorror/" + audioGuid;
+                string rel = audioGuid.StartsWith("Assets/")
+                    ? audioGuid
+                    : "Assets/Res/" + audioGuid;
                 if (!string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(rel)))
                 {
                     assetPath = rel;

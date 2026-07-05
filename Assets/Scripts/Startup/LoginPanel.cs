@@ -27,6 +27,8 @@ namespace Ciga.Startup
         [SerializeField] private TMP_Text _enterButtonLabel;
         [SerializeField] private TMP_Text _subtitleLabel;
 
+        private UiClickSfxBinder _clickSfxBinder;
+
         private void Start()
         {
             Initialize();
@@ -55,6 +57,8 @@ namespace Ciga.Startup
                 PlaceholderWarnOnce("_config");
                 return;
             }
+
+            EnsureClickSfxBinder();
 
             if (_backgroundImage != null)
             {
@@ -123,6 +127,27 @@ namespace Ciga.Startup
             {
                 label.font = _config.UiFont;
             }
+        }
+
+        private void EnsureClickSfxBinder()
+        {
+            if (_clickSfxBinder == null)
+            {
+                _clickSfxBinder = GetComponent<UiClickSfxBinder>();
+                if (_clickSfxBinder == null)
+                {
+                    _clickSfxBinder = gameObject.AddComponent<UiClickSfxBinder>();
+                }
+            }
+
+            if (_clickSfxBinder == null)
+            {
+                return;
+            }
+
+            var loader = SceneLoader.Instance;
+            _clickSfxBinder.SetClickClip(loader != null ? loader.UiClickClip : null);
+            _clickSfxBinder.RefreshButtons();
         }
 
         private void OnEnterClicked()
