@@ -444,6 +444,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &37123490
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -558,7 +559,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.35, y: 1.35, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -716,7 +717,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.7407408, y: 0.7407408}
   m_EdgeRadius: 0
 --- !u!50 &90651765
 Rigidbody2D:
@@ -1831,6 +1832,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &417561026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2014,6 +2016,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &581597126
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2705,6 +2708,9 @@ MonoBehaviour:
   _settingsRestartButton: {fileID: 851805169}
   _settingsHomeButton: {fileID: 1872898155}
   _settingsQuitButton: {fileID: 2116430263}
+  _settingsKey: 27
+  _selectPreviousKey: 97
+  _selectNextKey: 100
 --- !u!114 &600305092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2781,6 +2787,7 @@ MonoBehaviour:
   - {fileID: 1804895378}
   - {fileID: 2071262291}
   - {fileID: 1102203149}
+  _anchoredLabels: []
   _toggleKey: 9
 --- !u!114 &600305096
 MonoBehaviour:
@@ -2866,7 +2873,7 @@ MonoBehaviour:
   _interaction: {fileID: 600305100}
   _player: {fileID: 90651762}
   _cameraFollow: {fileID: 1730972403}
-  _boundsPadding: 0.5
+  _boundsPadding: 0.8
   _transitionOverlay: {fileID: 1187750029}
   _whisperSource: {fileID: 600305086}
   _tutorial: {fileID: 600305092}
@@ -2972,6 +2979,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &601117487
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3362,6 +3370,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &851805169
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4004,6 +4013,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!222 &1064060365
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5418,6 +5428,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &1431627197
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6933,6 +6944,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &1872898155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7224,6 +7236,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!222 &1892098727
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -8335,7 +8348,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2108165264
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8545,6 +8558,7 @@ MonoBehaviour:
   _hoverScale: 1.07
   _pressScale: 0.93
   _speed: 14
+  _submitPulseSeconds: 0.08
 --- !u!114 &2116430263
 MonoBehaviour:
   m_ObjectHideFlags: 0

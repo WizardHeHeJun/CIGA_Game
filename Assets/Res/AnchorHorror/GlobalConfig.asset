@@ -28,4 +28,9 @@ MonoBehaviour:
   _requiredCountMax: 3
   _interactRadius: 1.5
   _moveSpeedPenalty: 0.2
+  _level1SelectCap: 5
+  _level2BackpackCap: 8
+  _level2TimeLimit: 180
   _fadeDuration: 0.8
+  _fadeHold: 0.08
+  _sceneWorldHeight: 13

@@ -5,6 +5,7 @@
 // ------------------------------------------------------------
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Ciga.AnchorHorror
@@ -35,7 +36,14 @@ namespace Ciga.AnchorHorror
         [SerializeField] private Button _settingsHomeButton;
         [SerializeField] private Button _settingsQuitButton;
 
+        [Header("设置弹层按键")]
+        [SerializeField] private KeyCode _settingsKey = KeyCode.Escape;
+        [SerializeField] private KeyCode _selectPreviousKey = KeyCode.A;
+        [SerializeField] private KeyCode _selectNextKey = KeyCode.D;
+
+        private readonly List<Button> _settingsSelectionButtons = new List<Button>(3);
         private int _lastHit = -1;
+        private int _settingsSelectionIndex;
         private bool _settingsOpen;
 
         private void OnEnable()
@@ -71,8 +79,39 @@ namespace Ciga.AnchorHorror
                                  "请运行菜单 Ciga/AnchorHorror/生成可运行装配 重建场景。");
             }
 
+            CacheSettingsSelectionButtons();
             SetVisible(false);
             SetSettingsVisible(false);
+        }
+
+        private void Update()
+        {
+            var gm = GameManager.Instance;
+            bool inHorrorLevel = gm != null && gm.CurrentPhase == GamePhase.HorrorLevel;
+            if (!inHorrorLevel)
+            {
+                return;
+            }
+
+            if (Input.GetKeyDown(_settingsKey))
+            {
+                ToggleSettings();
+                return;
+            }
+
+            if (!_settingsOpen)
+            {
+                return;
+            }
+
+            if (Input.GetKeyDown(_selectPreviousKey) || Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                MoveSettingsSelection(-1);
+            }
+            else if (Input.GetKeyDown(_selectNextKey) || Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                MoveSettingsSelection(1);
+            }
         }
 
         private void OnPhaseChanged(GamePhase oldPhase, GamePhase newPhase)
@@ -257,7 +296,7 @@ namespace Ciga.AnchorHorror
 
         private void OpenSettings()
         {
-            if (GameManager.Instance == null || GameManager.Instance.CurrentPhase != GamePhase.HorrorLevel)
+            if (_settingsRoot == null || GameManager.Instance == null || GameManager.Instance.CurrentPhase != GamePhase.HorrorLevel)
             {
                 return;
             }
@@ -265,6 +304,8 @@ namespace Ciga.AnchorHorror
             _settingsOpen = true;
             Time.timeScale = 0f;
             SetSettingsVisible(true);
+            CacheSettingsSelectionButtons();
+            SelectSettingsButton(0);
         }
 
         private void CloseSettings()
@@ -275,6 +316,11 @@ namespace Ciga.AnchorHorror
             }
 
             _settingsOpen = false;
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+
             SetSettingsVisible(false);
         }
 
@@ -306,6 +352,68 @@ namespace Ciga.AnchorHorror
             {
                 gm.QuitGame();
             }
+        }
+
+        private void CacheSettingsSelectionButtons()
+        {
+            _settingsSelectionButtons.Clear();
+            AddSelectionButton(_settingsHomeButton);
+            AddSelectionButton(_settingsRestartButton);
+            AddSelectionButton(_settingsQuitButton);
+            if (_settingsSelectionIndex >= _settingsSelectionButtons.Count)
+            {
+                _settingsSelectionIndex = 0;
+            }
+        }
+
+        private void AddSelectionButton(Button button)
+        {
+            if (button != null && button.gameObject.activeInHierarchy && button.interactable)
+            {
+                _settingsSelectionButtons.Add(button);
+            }
+        }
+
+        private void MoveSettingsSelection(int direction)
+        {
+            CacheSettingsSelectionButtons();
+            if (_settingsSelectionButtons.Count == 0)
+            {
+                return;
+            }
+
+            SyncSettingsSelectionFromEventSystem();
+            int count = _settingsSelectionButtons.Count;
+            SelectSettingsButton((_settingsSelectionIndex + direction + count) % count);
+        }
+
+        private void SyncSettingsSelectionFromEventSystem()
+        {
+            if (EventSystem.current == null)
+            {
+                return;
+            }
+
+            var selected = EventSystem.current.currentSelectedGameObject;
+            for (int i = 0; i < _settingsSelectionButtons.Count; i++)
+            {
+                if (_settingsSelectionButtons[i] != null && _settingsSelectionButtons[i].gameObject == selected)
+                {
+                    _settingsSelectionIndex = i;
+                    return;
+                }
+            }
+        }
+
+        private void SelectSettingsButton(int index)
+        {
+            if (_settingsSelectionButtons.Count == 0 || EventSystem.current == null)
+            {
+                return;
+            }
+
+            _settingsSelectionIndex = Mathf.Clamp(index, 0, _settingsSelectionButtons.Count - 1);
+            EventSystem.current.SetSelectedGameObject(_settingsSelectionButtons[_settingsSelectionIndex].gameObject);
         }
 
         private void SetVisible(bool visible)

@@ -3,7 +3,7 @@
 // Author : WizardHeHeJun
 // Created: 2026-07-05
 // ------------------------------------------------------------
-// 死局检测（迭代B · SC-9）：校验 LevelSequence 中关卡2 子场景（Level2Sub）物品特征并集，
+// 死局检测（迭代B · SC-9）：校验 LevelSequence 中关卡2走廊/房间（Level2Sub）物品特征并集，
 // 是否覆盖关卡1（Level1Select）可能抽出的全部锚点特征。
 // 背景：新两关卡流程关卡1 抽锚点时关卡2 未加载、无 registry，旧玩法「运行时 clamp 防死局」失效，
 //       死局防线转移到本编辑器静态校验（design ADR-4 / 陷阱2）。
@@ -101,7 +101,7 @@ namespace Ciga.AnchorHorror.EditorTools
             if (missing.Count == 0)
             {
                 report = sb
-                    .Append($"通过。关卡1 共 {level1.Count} 种特征，关卡2 子场景并集全覆盖。")
+                    .Append($"通过。关卡1 共 {level1.Count} 种特征，关卡2走廊/房间并集全覆盖。")
                     .ToString();
                 return true;
             }
@@ -111,7 +111,7 @@ namespace Ciga.AnchorHorror.EditorTools
             {
                 sb.Append(i == 0 ? " " : ", ").Append(DescribeFeature(missing[i]));
             }
-            sb.Append("。若关卡1 抽到这些锚点，关卡2 无物品可满足 → 玩家必超时失败。请在关卡2 子场景补对应特征的物品。");
+            sb.Append("。若关卡1 抽到这些锚点，关卡2 无物品可满足 → 玩家必超时失败。请在关卡2走廊/房间补对应特征的物品。");
             report = sb.ToString();
             return false;
         }

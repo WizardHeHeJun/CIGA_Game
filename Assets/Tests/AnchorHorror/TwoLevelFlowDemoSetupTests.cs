@@ -25,40 +25,42 @@ namespace Ciga.AnchorHorror.Tests
             // 执行生成器（幂等，已存在则覆盖重建）
             TwoLevelFlowDemoSetup.BuildAll();
 
-            // 4 个 LevelData
+            // 6 个 LevelData：关卡1 + 走廊 + 四房间
             Assert.IsNotNull(
                 AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoTwoLevelFlow_Level1.asset"),
                 "关卡1 LevelData 未生成");
             Assert.IsNotNull(
-                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub1.asset"),
-                "子场景1 LevelData 未生成");
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoCorridor.asset"),
+                "走廊 LevelData 未生成");
             Assert.IsNotNull(
-                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub2.asset"),
-                "子场景2 LevelData 未生成");
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoRoom1.asset"),
+                "房间1 LevelData 未生成");
             Assert.IsNotNull(
-                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub3.asset"),
-                "子场景3 LevelData 未生成");
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoRoom2.asset"),
+                "房间2 LevelData 未生成");
             Assert.IsNotNull(
-                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub4.asset"),
-                "子场景4 LevelData 未生成");
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoRoom3.asset"),
+                "房间3 LevelData 未生成");
             Assert.IsNotNull(
-                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoSub5.asset"),
-                "子场景5 LevelData 未生成");
+                AssetDatabase.LoadAssetAtPath<LevelData>(LevelsDir + "/DemoRoom4.asset"),
+                "房间4 LevelData 未生成");
 
             // LevelSequence
             var seq = AssetDatabase.LoadAssetAtPath<LevelSequence>(
                 LevelsDir + "/DemoTwoLevelFlow_Sequence.asset");
             Assert.IsNotNull(seq, "LevelSequence 未生成");
 
-            // 6 条 entry：entry[0]=Level1Select, entry[1..5]=Level2Sub
+            // 6 条 entry：entry[0]=Level1Select，entry[1]=走廊，entry[2..5]=四房间
             Assert.AreEqual(6, seq.Count, $"LevelSequence 应有 6 条 entry，实际 {seq.Count}");
             Assert.AreEqual(LevelKind.Level1Select, seq.GetKind(0), "entry[0] 应为 Level1Select");
             Assert.AreEqual(DoorKind.EnterLevel2,  seq.GetDoorKind(0), "entry[0] 门应为 EnterLevel2");
+            Assert.AreEqual(LevelKind.Level2Sub, seq.GetKind(1), "entry[1] 应为第二关走廊");
+            Assert.AreEqual(DoorKind.EnterRoom1, seq.GetDoorKind(1), "entry[1] 门类型应为走廊房间门占位");
 
-            for (int i = 1; i <= 5; i++)
+            for (int i = 2; i <= 5; i++)
             {
-                Assert.AreEqual(LevelKind.Level2Sub,         seq.GetKind(i),     $"entry[{i}] 应为 Level2Sub");
-                Assert.AreEqual(DoorKind.SwitchSubSceneNext, seq.GetDoorKind(i), $"entry[{i}] 门应为 SwitchSubSceneNext");
+                Assert.AreEqual(LevelKind.Level2Sub,      seq.GetKind(i),     $"entry[{i}] 应为 Level2Sub");
+                Assert.AreEqual(DoorKind.ReturnToCorridor, seq.GetDoorKind(i), $"entry[{i}] 门应为 ReturnToCorridor");
             }
 
             // 关卡1 有 8 个物品

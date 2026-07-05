@@ -33,27 +33,22 @@ namespace Ciga.AnchorHorror
             go.transform.SetParent(parent, false);
 
             // --- 2. 设 Transform（局部，SetParent 后再设避免世界坐标污染）---
-            go.transform.localPosition = placed.Position;
-            go.transform.localRotation = Quaternion.Euler(0f, 0f, placed.RotationZ);
-            // Vector2→Vector3 会把 z 截断为 0（污染子节点世界缩放/gizmo）；显式给 z=1。
-            go.transform.localScale = new Vector3(placed.Scale.x, placed.Scale.y, 1f);
-
-            // --- 3. 挂 Collider2D（按 ColliderKind 选 Box/Circle；FeatureTag 依赖此组件）---
-            // 交互靠 InteractionSystem 的 OverlapCircle 检测，不需要物理阻挡；设 isTrigger 避免玩家撞在物品上卡住/旋转（用户反馈）。
-            Collider2D itemCol;
-            switch (def.Collider)
+            if (placed.AlignWithBackground)
             {
-                case ColliderKind.Circle:
-                    itemCol = go.AddComponent<CircleCollider2D>();
-                    break;
-                default: // ColliderKind.Box
-                    itemCol = go.AddComponent<BoxCollider2D>();
-                    break;
+                // 美术物件与背景同画布，Sprite 本身已按同 PPU 导入；放原点即可和背景重合。
+                go.transform.localPosition = Vector3.zero;
+                go.transform.localRotation = Quaternion.identity;
+                go.transform.localScale = Vector3.one;
+            }
+            else
+            {
+                go.transform.localPosition = placed.Position;
+                go.transform.localRotation = Quaternion.Euler(0f, 0f, placed.RotationZ);
+                // Vector2→Vector3 会把 z 截断为 0（污染子节点世界缩放/gizmo）；显式给 z=1。
+                go.transform.localScale = new Vector3(placed.Scale.x, placed.Scale.y, 1f);
             }
 
-            itemCol.isTrigger = true;
-
-            // --- 4. 挂 SpriteRenderer，选取 Sprite（优先级：PlacedItem 覆盖 → def 默认 → fallback）---
+            // --- 3. 挂 SpriteRenderer，选取 Sprite（优先级：PlacedItem 覆盖 → def 默认 → fallback）---
             var sr = go.AddComponent<SpriteRenderer>();
             Sprite sprite = null;
             if (placed.OverrideSprite)
@@ -70,8 +65,30 @@ namespace Ciga.AnchorHorror
             }
             sr.sprite = sprite;
 
+            if (placed.VisualOnly)
+            {
+                return go;
+            }
+
+            // --- 4. 挂 Collider2D（按 ColliderKind 选 Box/Circle；FeatureTag 依赖此组件）---
+            // 交互靠 InteractionSystem 的 OverlapCircle 检测，不需要物理阻挡；设 isTrigger 避免玩家撞在物品上卡住/旋转（用户反馈）。
+            Collider2D itemCol;
+            switch (def.Collider)
+            {
+                case ColliderKind.Circle:
+                    itemCol = go.AddComponent<CircleCollider2D>();
+                    break;
+                default: // ColliderKind.Box
+                    itemCol = go.AddComponent<BoxCollider2D>();
+                    break;
+            }
+
+            itemCol.isTrigger = true;
+            ApplyColliderShape(itemCol, placed, sprite);
+
             // --- 5. 挂 FeatureTag（Awake 在 AddComponent 后立即运行，会 GetComponent<SpriteRenderer> 取基色）---
             var tag = go.AddComponent<FeatureTag>();
+            tag.ConfigureSprites(sprite, placed.ActiveSprite);
 
             // --- 6. Configure 覆盖特征（幂等；覆盖 Awake 用 Inspector 默认枚举建的缓存）---
             FeatureColor color;
@@ -100,6 +117,28 @@ namespace Ciga.AnchorHorror
             tag.Configure(color, shape, material, texture, sound);
 
             return go;
+        }
+
+        private static void ApplyColliderShape(Collider2D itemCol, PlacedItem placed, Sprite sprite)
+        {
+            var size = placed.ColliderSize;
+            if (size.x <= 0f || size.y <= 0f)
+            {
+                size = sprite != null ? (Vector2)sprite.bounds.size : Vector2.one;
+            }
+
+            if (itemCol is BoxCollider2D box)
+            {
+                box.offset = placed.ColliderOffset;
+                box.size = size;
+                return;
+            }
+
+            if (itemCol is CircleCollider2D circle)
+            {
+                circle.offset = placed.ColliderOffset;
+                circle.radius = Mathf.Max(size.x, size.y) * 0.5f;
+            }
         }
     }
 }

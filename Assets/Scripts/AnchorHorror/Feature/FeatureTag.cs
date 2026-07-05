@@ -23,6 +23,8 @@ namespace Ciga.AnchorHorror
         [Header("高亮（可选，缺省自动取本体 SpriteRenderer）")]
         [SerializeField] private SpriteRenderer _renderer;
         [SerializeField] private UnityEngine.Color _highlightColor = new UnityEngine.Color(1f, 1f, 0.6f, 1f);
+        [SerializeField] private Sprite _defaultSprite;
+        [SerializeField] private Sprite _activeSprite;
 
         private readonly List<FeatureUnit> _features = new List<FeatureUnit>(8);
         private UnityEngine.Color _baseColor = UnityEngine.Color.white;
@@ -53,6 +55,34 @@ namespace Ciga.AnchorHorror
             _sound = sound;
             RebuildFeatures();
         }
+
+        /// <summary>运行时配置默认/高亮图片。高亮图为空时继续使用颜色高亮降级。</summary>
+        public void ConfigureSprites(Sprite defaultSprite, Sprite activeSprite)
+        {
+            _defaultSprite = defaultSprite;
+            _activeSprite = activeSprite;
+
+            if (_renderer == null)
+            {
+                _renderer = GetComponent<SpriteRenderer>();
+            }
+
+            if (_renderer != null)
+            {
+                if (_defaultSprite == null)
+                {
+                    _defaultSprite = _renderer.sprite;
+                }
+
+                if (!_highlighted && _defaultSprite != null)
+                {
+                    _renderer.sprite = _defaultSprite;
+                }
+            }
+        }
+
+        /// <summary>背包/记忆面板展示用 Sprite：优先静默图，避免把整场景 Active overlay 放进背包。</summary>
+        public Sprite IconSprite => _defaultSprite != null ? _defaultSprite : (_renderer != null ? _renderer.sprite : null);
 
         /// <summary>
         /// 按 (维度,值) 列表通用写入特征：反射到生成的 _&lt;dim&gt; 字段，天然容纳 CSV 新增/移除维度。
@@ -92,6 +122,10 @@ namespace Ciga.AnchorHorror
             if (_renderer != null)
             {
                 _baseColor = _renderer.color;
+                if (_defaultSprite == null)
+                {
+                    _defaultSprite = _renderer.sprite;
+                }
             }
 
             RebuildFeatures();
@@ -179,7 +213,7 @@ namespace Ciga.AnchorHorror
             EventBus.RaiseItemInspected(this);
         }
 
-        /// <summary>切换高亮（占位实现：改 SpriteRenderer 颜色）。</summary>
+        /// <summary>切换高亮：优先切 Active/Default Sprite，缺高亮图时退回改 SpriteRenderer 颜色。</summary>
         public void SetHighlight(bool on)
         {
             if (_highlighted == on || _renderer == null)
@@ -188,6 +222,13 @@ namespace Ciga.AnchorHorror
             }
 
             _highlighted = on;
+            if (_activeSprite != null)
+            {
+                _renderer.sprite = on ? _activeSprite : _defaultSprite;
+                _renderer.color = _baseColor;
+                return;
+            }
+
             _renderer.color = on ? _highlightColor : _baseColor;
         }
 

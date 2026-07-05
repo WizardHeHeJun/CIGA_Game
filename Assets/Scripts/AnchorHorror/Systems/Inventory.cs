@@ -10,7 +10,7 @@ namespace Ciga.AnchorHorror
 {
     /// <summary>
     /// 拾取时从 FeatureTag 拷出的背包物品记录（值快照，独立于场景对象生命周期）。
-    /// 子场景切换 Destroy(_levelRoot) 后背包内容依然完整（ADR-2，陷阱 1）。
+    /// 走廊/房间切换 Destroy(_levelRoot) 后背包内容依然完整（ADR-2，陷阱 1）。
     /// </summary>
     public sealed class BackpackItem
     {
@@ -75,9 +75,7 @@ namespace Ciga.AnchorHorror
                 return false;
             }
 
-            // 取 Sprite：优先 SpriteRenderer；无则 null
-            var sr = item.GetComponent<SpriteRenderer>();
-            var sprite = sr != null ? sr.sprite : null;
+            var sprite = item.IconSprite;
 
             var backpackItem = new BackpackItem(item.GetFeatures(), sprite, item.name);
             _items.Add(backpackItem);

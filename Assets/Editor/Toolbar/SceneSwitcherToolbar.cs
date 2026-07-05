@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -22,6 +23,7 @@ namespace Ciga.EditorTools
     public static class SceneSwitcherToolbar
     {
         private const string ButtonName    = "Ciga_SceneSwitcherButton";
+        private const string FormalWireButtonName = "Ciga_FormalWireButton";
         private const string TargetZone    = "ToolbarZoneLeftAlign";
         private const string PromptSaveMenu    = "Tools/SceneSwitcher/切换前提示保存";
         private const string PromptSavePrefKey = "Ciga.SceneSwitcher.PromptSaveBeforeSwitch";
@@ -78,18 +80,49 @@ namespace Ciga.EditorTools
             var zone = root.Q(TargetZone);
             if (zone == null) return;
 
-            if (zone.Q(ButtonName) != null) { EditorApplication.update -= TryInject; return; }
+            bool hasSceneSwitcher = zone.Q(ButtonName) != null;
+            bool hasFormalWire = zone.Q(FormalWireButtonName) != null;
+            if (hasSceneSwitcher && hasFormalWire) { EditorApplication.update -= TryInject; return; }
 
-            var container = new IMGUIContainer(OnToolbarGUI) { name = ButtonName };
-            container.style.flexGrow  = 0f;
-            container.style.marginLeft = 2f;
-            container.style.alignSelf  = Align.Center;
-            zone.Add(container);
+            if (!hasFormalWire)
+            {
+                var formalWireContainer = new IMGUIContainer(OnFormalWireToolbarGUI) { name = FormalWireButtonName };
+                formalWireContainer.style.flexGrow = 0f;
+                formalWireContainer.style.marginLeft = 2f;
+                formalWireContainer.style.alignSelf = Align.Center;
+                zone.Add(formalWireContainer);
+            }
+
+            if (!hasSceneSwitcher)
+            {
+                var container = new IMGUIContainer(OnToolbarGUI) { name = ButtonName };
+                container.style.flexGrow  = 0f;
+                container.style.marginLeft = 2f;
+                container.style.alignSelf  = Align.Center;
+                zone.Add(container);
+            }
 
             EditorApplication.update -= TryInject;
         }
 
         // ── 绘制 ──────────────────────────────────────────────────────────
+
+        private static void OnFormalWireToolbarGUI()
+        {
+            if (GUILayout.Button("接线正式+编译", EditorStyles.toolbarButton, GUILayout.MinWidth(96f)))
+            {
+                bool ok = TryWireFormalSequence(out string message);
+                if (!ok)
+                {
+                    EditorUtility.DisplayDialog("接线失败", message, "好");
+                    return;
+                }
+
+                AssetDatabase.Refresh();
+                CompilationPipeline.RequestScriptCompilation();
+                Debug.Log("[SceneSwitcherToolbar] " + message + " 已请求编译验证。");
+            }
+        }
 
         private static void OnToolbarGUI()
         {
@@ -155,6 +188,23 @@ namespace Ciga.EditorTools
             if (PromptSaveBeforeSwitch && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 return;
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+        }
+
+        private static bool TryWireFormalSequence(out string message)
+        {
+            const string typeName = "Ciga.AnchorHorror.EditorTools.TwoLevelFlowDemoSetup, Ciga.AnchorHorror.EditorTools";
+            var type = Type.GetType(typeName);
+            var method = type?.GetMethod("TryWireFormalSequence", BindingFlags.Public | BindingFlags.Static);
+            if (method == null)
+            {
+                message = "找不到正式关卡接线方法，请确认 Ciga.AnchorHorror.EditorTools 程序集已编译。";
+                return false;
+            }
+
+            object[] args = { null };
+            bool ok = (bool)method.Invoke(null, args);
+            message = args[0] as string ?? string.Empty;
+            return ok;
         }
     }
 }

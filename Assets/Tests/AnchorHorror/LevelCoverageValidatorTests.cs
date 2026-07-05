@@ -58,7 +58,7 @@ namespace Ciga.AnchorHorror.Tests
             var sub = MakeLevelData("Sub", MakePlaced(FeatureColor.Blue));
             var seq = MakeSequence(
                 (l1, LevelKind.Level1Select, DoorKind.EnterLevel2),
-                (sub, LevelKind.Level2Sub, DoorKind.SwitchSubSceneNext));
+                (sub, LevelKind.Level2Sub, DoorKind.ReturnToCorridor));
 
             bool ok = LevelCoverageValidator.Validate(seq, out string report);
             Assert.IsFalse(ok, "关卡2 缺 Red，应报死局");
@@ -73,7 +73,7 @@ namespace Ciga.AnchorHorror.Tests
             var sub = MakeLevelData("Sub", MakePlaced(FeatureColor.Red), MakePlaced(FeatureShape.Round));
             var seq = MakeSequence(
                 (l1, LevelKind.Level1Select, DoorKind.EnterLevel2),
-                (sub, LevelKind.Level2Sub, DoorKind.SwitchSubSceneNext));
+                (sub, LevelKind.Level2Sub, DoorKind.ReturnToCorridor));
 
             bool ok = LevelCoverageValidator.Validate(seq, out string report);
             Assert.IsTrue(ok, $"关卡2 覆盖了关卡1 全部特征，应通过。报告：{report}");

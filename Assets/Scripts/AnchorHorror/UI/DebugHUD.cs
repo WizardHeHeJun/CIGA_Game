@@ -15,7 +15,7 @@ namespace Ciga.AnchorHorror
     public class DebugHUD : MonoBehaviour
     {
         [SerializeField] private SanitySystem _sanity;
-        [SerializeField] private bool _visible = true;
+        [SerializeField] private bool _visible;
 
         private readonly StringBuilder _sb = new StringBuilder(256);
         private GUIStyle _style;

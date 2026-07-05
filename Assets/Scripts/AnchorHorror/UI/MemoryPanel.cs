@@ -29,6 +29,9 @@ namespace Ciga.AnchorHorror
         [Tooltip("5 个锚点对应的已满足物品图标。背包覆盖该锚点时显示第一件覆盖物品。")]
         [SerializeField] private Image[] _coveredItemIcons;
 
+        [Tooltip("5 个锚点对应的“已锚定”字样。背包覆盖该锚点时逐个显示。")]
+        [SerializeField] private TMP_Text[] _anchoredLabels;
+
         [SerializeField] private KeyCode _toggleKey = KeyCode.Tab;
 
         private bool _open;
@@ -141,26 +144,31 @@ namespace Ciga.AnchorHorror
             for (int i = 0; i < _anchorLabels.Length; i++)
             {
                 var label = _anchorLabels[i];
-                if (label == null)
-                {
-                    continue;
-                }
-
                 if (targets != null && i < targets.Count)
                 {
                     var t = targets[i];
                     bool covered = backpack != null && backpack.Covers(t);
-                    label.text = db != null ? db.GetDisplayName(t.Feature) : t.Feature.ToString();
-                    // 新模型：靠背包覆盖判定（Inventory.Covers），不靠 AnchorTarget.IsActivated（SC-5，陷阱 10）
-                    label.color = covered ? Gold : Dim;
-                    label.enabled = true;
+                    if (label != null)
+                    {
+                        label.text = db != null ? db.GetDisplayName(t.Feature) : t.Feature.ToString();
+                        // 新模型：靠背包覆盖判定（Inventory.Covers），不靠 AnchorTarget.IsActivated（SC-5，陷阱 10）
+                        label.color = covered ? Gold : Dim;
+                        label.enabled = !covered;
+                    }
+
                     RefreshCoveredIcon(i, covered, t, backpack, db);
+                    RefreshAnchoredLabel(i, covered);
                 }
                 else
                 {
-                    label.text = string.Empty;
-                    label.enabled = false;
+                    if (label != null)
+                    {
+                        label.text = string.Empty;
+                        label.enabled = false;
+                    }
+
                     ClearCoveredIcon(i);
+                    RefreshAnchoredLabel(i, false);
                 }
             }
         }
@@ -191,6 +199,23 @@ namespace Ciga.AnchorHorror
             {
                 ClearIcon(icon);
             }
+        }
+
+        private void RefreshAnchoredLabel(int index, bool covered)
+        {
+            if (_anchoredLabels == null || index < 0 || index >= _anchoredLabels.Length)
+            {
+                return;
+            }
+
+            var label = _anchoredLabels[index];
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = covered ? "已锚定" : string.Empty;
+            label.enabled = covered;
         }
 
         private Image IconAt(int index)

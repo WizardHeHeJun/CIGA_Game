@@ -15,12 +15,15 @@ namespace Ciga.AnchorHorror
     /// 游戏总控：轻量单例 + 组合根 + 阶段状态机。
     /// 两关卡流程（ADR-1/2/3/4/5/6）：
     ///   关卡1（InitRoom）：从 8 物品选 5 → LockSelection 抽 5 锚点 → 关卡1门可交互
-    ///   关卡2（HorrorLevel）：EnterLevel2 进入 → 180s 倒计时 + San 衰减双失败线 → 拾取满足 5 锚点 → Victory
-    ///   子场景切换（SwitchSubScene）：换物品摆放、背包/锚点/倒计时/相位全保留
+    ///   关卡2（HorrorLevel）：EnterLevel2 进入走廊 Hub → 180s 倒计时 + San 衰减双失败线 → 拾取满足 5 锚点 → Victory
+    ///   走廊/房间切换（SwitchSubScene）：换物品摆放、背包/锚点/倒计时/相位全保留
     /// </summary>
     [DisallowMultipleComponent]
     public class GameManager : MonoBehaviour
     {
+        private const int Level2FirstEntryIndex = 1;
+        private const int Level2MaxRoomCount = 4;
+
         public static GameManager Instance { get; private set; }
 
         [Header("配置")]
@@ -40,7 +43,7 @@ namespace Ciga.AnchorHorror
         [SerializeField] private CameraFollow2D _cameraFollow;
 
         [Tooltip("玩家精灵半身留白：边界内缩这么多，防止玩家贴边时半个身子露出背景外。")]
-        [SerializeField] private float _boundsPadding = 0.5f;
+        [SerializeField] private float _boundsPadding = 0.8f;
 
         [Header("过渡")]
         [SerializeField] private SpriteRenderer _transitionOverlay;
@@ -56,6 +59,7 @@ namespace Ciga.AnchorHorror
 
         // 关卡序列推进（实例字段，重开局场景重载后天然归零——陷阱 9）
         private int _levelIndex;
+        private int _level2CorridorIndex = Level2FirstEntryIndex;
         private LevelData _levelData;
 
         // 背包（普通类实例，GameManager 持有，ADR-2）
@@ -407,7 +411,7 @@ namespace Ciga.AnchorHorror
         // ──────────────────────────────────────────────────────
 
         /// <summary>
-        /// 关卡1门触发：Fade → 清背包 → 启 180s 倒计时 → 销毁关卡1根 → 建子场景1
+        /// 关卡1门触发：Fade → 清背包 → 启 180s 倒计时 → 销毁关卡1根 → 建走廊 Hub
         /// → 放玩家 → DecayEnabled=true → SetPhase(HorrorLevel)（SC-3，ADR-5，陷阱 3/4）。
         /// 各自销毁 _levelRoot，不复用 BeginTransition（陷阱 4）。
         /// </summary>
@@ -439,32 +443,10 @@ namespace Ciga.AnchorHorror
             EventBus.RaiseBackpackChanged(_backpack);
             _remainingTime = _config.Level2TimeLimit;
 
-            // 销毁关卡1根（各自销毁，不复用 BeginTransition——陷阱 4）
-            if (_levelRoot != null)
-            {
-                Destroy(_levelRoot);
-                _levelRoot = null;
-            }
-
-            // 建关卡2：从**中间**的子场景进入（用户要求，便于左右两侧都能立即走）。
-            // 5 个子场景 entries[1..5] → 取 entries[3]（中间）。subCount/2 整除天然取中。
-            int subStart = 1;
-            int subCount = _sequence != null ? _sequence.Count - subStart : 0;
-            _levelIndex = subCount > 0 ? subStart + subCount / 2 : subStart;
-            _levelData = _sequence != null ? _sequence.GetLevel(_levelIndex) : null;
-
-            if (_levelData != null)
-            {
-                _levelRoot = new GameObject("__LevelRoot");
-                ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（关卡2起始=走廊）
-                LevelSpawner.Spawn(_levelData, _levelRoot.transform);
-                SpawnLevelDoor(); // 子场景门（左右门线性来回）
-                MovePlayerToSpawn(_levelData.PlayerSpawn);
-            }
-            else
-            {
-                Debug.LogWarning($"[AnchorHorror] EnterLevel2Routine：序列 entries[{_levelIndex}] 数据为 null，无法生成关卡2起始子场景。");
-            }
+            // 建关卡2：从走廊 Hub 进入。新资产中 entry[1] 为走廊；旧线性资产兜底识别 Aisle 背景所在 entry。
+            _level2CorridorIndex = ResolveLevel2CorridorIndex();
+            _levelIndex = _level2CorridorIndex;
+            RebuildCurrentLevelRoot("EnterLevel2Routine");
 
             _sanity.DecayEnabled = true;
             SetInputActive(true);
@@ -476,43 +458,68 @@ namespace Ciga.AnchorHorror
         }
 
         /// <summary>
-        /// 子场景门触发：Fade → 销毁旧根 → 建环状 next 子场景 → 放玩家
+        /// 第二关门触发：Fade → 销毁旧根 → 按目标 entry 建走廊/房间 → 放玩家
         /// → 保留背包/锚点/倒计时/相位（SC-4，ADR-5，陷阱 3/4）。
         /// 绝不调 ExtractTargets（陷阱 3）；不清包、不重置计时（陷阱 6）。
         /// 各自销毁 _levelRoot，不复用 BeginTransition（陷阱 4）。
         /// </summary>
-        public void SwitchSubScene(int direction)
+        public void SwitchSubScene(int targetIndex)
         {
             if (_transitioning)
             {
                 return;
             }
 
-            _transitioning = true;
-            StartCoroutine(SwitchSubSceneRoutine(direction));
-        }
-
-        private IEnumerator SwitchSubSceneRoutine(int direction)
-        {
-            // 先校验子场景存在再动手：避免销毁旧根后无处可去、玩家沉默挂机（W-4）。
-            int subStart = 1;
-            int last = _sequence != null ? _sequence.Count - 1 : 0;
-            if (_sequence == null || last < subStart)
+            if (!IsValidLevel2Index(targetIndex))
             {
                 Debug.LogError(
-                    $"[AnchorHorror] SwitchSubScene：序列无关卡2子场景（共 {(_sequence != null ? _sequence.Count : 0)} 条 entry），配置错误，取消切换。");
-                _transitioning = false;
-                yield break;
+                    $"[AnchorHorror] SwitchSubScene：目标 entries[{targetIndex}] 不是有效的第二关走廊/房间，取消切换。");
+                return;
             }
 
-            // 线性来回（#3）：clamp 到 [subStart, last]，到边界不动（左右门按边界只生成一侧，通常到不了此分支）。
-            int target = Mathf.Clamp(_levelIndex + direction, subStart, last);
-            if (target == _levelIndex)
+            if (targetIndex == _levelIndex)
             {
-                _transitioning = false;
-                yield break; // 已在边界
+                return;
             }
 
+            _transitioning = true;
+            StartCoroutine(SwitchSubSceneRoutine(targetIndex));
+        }
+
+        /// <summary>走廊门入口：按房间序号切到对应房间 entry。</summary>
+        public void EnterLevel2Room(int roomOffset)
+        {
+            int targetIndex = GetLevel2RoomIndex(roomOffset);
+            if (targetIndex < 0)
+            {
+                Debug.LogError($"[AnchorHorror] EnterLevel2Room：房间偏移 {roomOffset} 无有效 entry，取消切换。");
+                return;
+            }
+
+            SwitchSubScene(targetIndex);
+        }
+
+        /// <summary>房间返回门入口：切回当前第二关走廊 Hub。</summary>
+        public void ReturnToLevel2Corridor()
+        {
+            SwitchSubScene(_level2CorridorIndex);
+        }
+
+        /// <summary>旧线性门兼容入口：按当前 entry 相对偏移切换，不再由新流程生成。</summary>
+        public void SwitchSubSceneRelative(int direction)
+        {
+            if (_sequence == null || _sequence.Count <= Level2FirstEntryIndex)
+            {
+                Debug.LogError("[AnchorHorror] SwitchSubSceneRelative：序列无第二关走廊/房间，取消切换。");
+                return;
+            }
+
+            int targetIndex = Mathf.Clamp(_levelIndex + direction, Level2FirstEntryIndex, _sequence.Count - 1);
+            SwitchSubScene(targetIndex);
+        }
+
+        private IEnumerator SwitchSubSceneRoutine(int targetIndex)
+        {
             SetInputActive(false);
 
             if (_whisperSource != null)
@@ -521,28 +528,8 @@ namespace Ciga.AnchorHorror
             }
             yield return Fade(1f);
 
-            // 销毁旧根
-            if (_levelRoot != null)
-            {
-                Destroy(_levelRoot);
-                _levelRoot = null;
-            }
-
-            _levelIndex = target;
-            _levelData = _sequence.GetLevel(_levelIndex);
-
-            if (_levelData != null)
-            {
-                _levelRoot = new GameObject("__LevelRoot");
-                ApplyBackgroundAndBounds();  // 铺背景 + 设镜头/玩家边界（切到的子场景）
-                LevelSpawner.Spawn(_levelData, _levelRoot.transform);
-                SpawnLevelDoor();
-                MovePlayerToSpawn(_levelData.PlayerSpawn);
-            }
-            else
-            {
-                Debug.LogWarning($"[AnchorHorror] SwitchSubSceneRoutine：entries[{_levelIndex}] 数据为 null。");
-            }
+            _levelIndex = targetIndex;
+            RebuildCurrentLevelRoot("SwitchSubSceneRoutine");
 
             // 相位不变（保留 HorrorLevel），背包/锚点/倒计时全保留（SC-4，陷阱 3/6）
             SetInputActive(true);
@@ -601,8 +588,7 @@ namespace Ciga.AnchorHorror
 
         /// <summary>
         /// 在 _levelRoot 下代码建门。
-        /// 关卡1（entries[0]）建 EnterLevel2 门；关卡2 子场景建 SwitchSubScene 门。
-        /// 末关（序列最后一条 entry）不建门。
+        /// 关卡1（entries[0]）建 EnterLevel2 门；走廊（entry[1]）建四扇房间门；房间（entries[2..5]）建返回走廊门。
         /// </summary>
         private void SpawnLevelDoor()
         {
@@ -624,17 +610,36 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
-            // 关卡2 子场景：左右门线性来回（#3）。非首场景建左门（上一个），非末场景建右门（下一个）。
-            int subStart = 1;
-            int last = _sequence.Count - 1;
-            if (_levelIndex < last)
+            if (_levelIndex == _level2CorridorIndex)
             {
-                SpawnDoor(DoorKind.SwitchSubSceneNext, new Vector2(6f, -3.5f), sprite, "按 E 前往下一场景 →");
+                SpawnCorridorDoors(sprite);
+                return;
             }
 
-            if (_levelIndex > subStart)
+            if (IsRoomIndex(_levelIndex))
             {
-                SpawnDoor(DoorKind.SwitchSubScenePrev, new Vector2(-6f, -3.5f), sprite, "← 按 E 返回上一场景");
+                Vector2 pos = doorSetting != null ? doorSetting.Spawn : new Vector2(0f, -3.5f);
+                bool hasReturnPrompt = _sequence.GetDoorKind(_levelIndex) == DoorKind.ReturnToCorridor &&
+                                       doorSetting != null &&
+                                       !string.IsNullOrEmpty(doorSetting.Prompt);
+                string prompt = hasReturnPrompt ? doorSetting.Prompt : "按 E 返回走廊";
+                SpawnDoor(DoorKind.ReturnToCorridor, pos, sprite, prompt);
+            }
+        }
+
+        private void SpawnCorridorDoors(Sprite sprite)
+        {
+            TrySpawnCorridorDoor(0, DoorKind.EnterRoom1, new Vector2(-4.5f, 2.2f), sprite, "按 E 进入房间1");
+            TrySpawnCorridorDoor(1, DoorKind.EnterRoom2, new Vector2(4.5f, 2.2f), sprite, "按 E 进入房间2");
+            TrySpawnCorridorDoor(2, DoorKind.EnterRoom3, new Vector2(-4.5f, -3.5f), sprite, "按 E 进入房间3");
+            TrySpawnCorridorDoor(3, DoorKind.EnterRoom4, new Vector2(4.5f, -3.5f), sprite, "按 E 进入房间4");
+        }
+
+        private void TrySpawnCorridorDoor(int roomOffset, DoorKind kind, Vector2 pos, Sprite sprite, string prompt)
+        {
+            if (GetLevel2RoomIndex(roomOffset) >= 0)
+            {
+                SpawnDoor(kind, pos, sprite, prompt);
             }
         }
 
@@ -662,6 +667,87 @@ namespace Ciga.AnchorHorror
             var door = doorGo.AddComponent<LevelDoor>();
             door.Configure(kind, sprite, prompt);
             return door;
+        }
+
+        private bool IsValidLevel2Index(int index)
+        {
+            return _sequence != null &&
+                   index >= Level2FirstEntryIndex &&
+                   index < _sequence.Count &&
+                   _sequence.GetKind(index) == LevelKind.Level2Sub;
+        }
+
+        private bool IsRoomIndex(int index)
+        {
+            return IsValidLevel2Index(index) && index != _level2CorridorIndex;
+        }
+
+        private int GetLevel2RoomIndex(int roomOffset)
+        {
+            if (roomOffset < 0 || roomOffset >= Level2MaxRoomCount || _sequence == null)
+            {
+                return -1;
+            }
+
+            int found = 0;
+            for (int i = Level2FirstEntryIndex; i < _sequence.Count; i++)
+            {
+                if (!IsValidLevel2Index(i) || i == _level2CorridorIndex)
+                {
+                    continue;
+                }
+
+                if (found == roomOffset)
+                {
+                    return i;
+                }
+
+                found++;
+            }
+
+            return -1;
+        }
+
+        private int ResolveLevel2CorridorIndex()
+        {
+            int fallback = Level2FirstEntryIndex;
+            if (_sequence == null || _sequence.Count <= Level2FirstEntryIndex)
+            {
+                return fallback;
+            }
+
+            for (int i = Level2FirstEntryIndex; i < _sequence.Count; i++)
+            {
+                var bg = _sequence.GetBackground(i);
+                if (bg != null && bg.name == "Aisle")
+                {
+                    return i;
+                }
+            }
+
+            return fallback;
+        }
+
+        private void RebuildCurrentLevelRoot(string context)
+        {
+            if (_levelRoot != null)
+            {
+                Destroy(_levelRoot);
+                _levelRoot = null;
+            }
+
+            _levelData = _sequence != null ? _sequence.GetLevel(_levelIndex) : null;
+            if (_levelData == null)
+            {
+                Debug.LogWarning($"[AnchorHorror] {context}：序列 entries[{_levelIndex}] 数据为 null，无法生成场景。");
+                return;
+            }
+
+            _levelRoot = new GameObject("__LevelRoot");
+            ApplyBackgroundAndBounds();
+            LevelSpawner.Spawn(_levelData, _levelRoot.transform);
+            SpawnLevelDoor();
+            MovePlayerToSpawn(_levelData.PlayerSpawn);
         }
 
         /// <summary>
