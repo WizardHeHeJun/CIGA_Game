@@ -6,15 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Res/Scene/Login.unity
-    guid: 095fa18481385d44286774d68388d1f3
-  - enabled: 1
     path: Assets/Res/Scene/GameMain.unity
     guid: da8f80c574c84081be70942798d496dd
   - enabled: 1
     path: Assets/Res/AnchorHorror/Bootstrap.unity
     guid: 644eb4bc411d6c845a9c07dc8b8efe76
-  - enabled: 1
-    path: Assets/Res/AnchorHorror/HorrorLevel.unity
-    guid: 1c8d3b0176ceb3e4789994630bb65bd2
   m_configObjects: {}
