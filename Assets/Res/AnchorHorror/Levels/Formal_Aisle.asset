@@ -14,45 +14,45 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _levelName: "\u6B63\u5F0F\u5173\u53612\xB7\u8D70\u5ECA"
   _items:
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 0
-    _color: 0
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
-    _overrideSprite: 0
-    _sprite: {fileID: 0}
-    _activeSprite: {fileID: 0}
+    _color: 11
+    _shape: 2
+    _material: 1
+    _texture: 9
+    _sound: 2
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 4e4d78549b517d34ea0bbaebc077e2ee, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 72bb88ef58c76d34dadbf1d3c413ce58, type: 3}
     _alignWithBackground: 1
-    _colliderOffset: {x: 0, y: 0}
-    _colliderSize: {x: 1, y: 1}
+    _colliderOffset: {x: -6.816912, y: -3.4860337}
+    _colliderSize: {x: 2.7663789, y: 3.9812088}
     _visualOnly: 1
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
     _overrideFeatures: 0
-    _color: 0
-    _shape: 0
-    _material: 0
-    _texture: 0
-    _sound: 0
-    _overrideSprite: 0
-    _sprite: {fileID: 0}
-    _activeSprite: {fileID: 0}
+    _color: 5
+    _shape: 2
+    _material: 1
+    _texture: 1
+    _sound: 2
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: ee4d690334f3e6e43a3f7d71dd8b9311, type: 3}
+    _activeSprite: {fileID: 21300000, guid: af8fb20ea92cd7f4599b478795815a28, type: 3}
     _alignWithBackground: 1
-    _colliderOffset: {x: 0, y: 0}
-    _colliderSize: {x: 1, y: 1}
+    _colliderOffset: {x: 5.3280854, y: 0.079228036}
+    _colliderSize: {x: 2.6805487, y: 7.1767397}
     _visualOnly: 1
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -71,7 +71,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -90,7 +90,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -109,7 +109,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}

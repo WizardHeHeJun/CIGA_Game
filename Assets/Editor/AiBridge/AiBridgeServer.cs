@@ -375,7 +375,7 @@ namespace Ciga.AiBridge
 
         private static bool TryWireFormalSequence(out string message)
         {
-            const string typeName = "Ciga.AnchorHorror.EditorTools.TwoLevelFlowDemoSetup, Ciga.AnchorHorror.EditorTools";
+            const string typeName = "Ciga.AnchorHorror.EditorTools.FormalSequenceWiring, Ciga.AnchorHorror.EditorTools";
             var type = Type.GetType(typeName);
             var method = type?.GetMethod("TryWireFormalSequence", BindingFlags.Public | BindingFlags.Static);
             if (method == null)

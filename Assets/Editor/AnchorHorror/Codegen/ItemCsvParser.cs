@@ -67,11 +67,7 @@ namespace Ciga.AnchorHorror.EditorTools
                 throw new ItemCsvException("CSV 缺表头行（第一非注释行应为列名）。");
             }
 
-            if (data.Rows.Count == 0)
-            {
-                throw new ItemCsvException("CSV 无任何物品数据行。");
-            }
-
+            // 零数据行是合法状态：正式物品全部自包含不走 itemId 引用，目录允许为空（仅供未来按 id 复用的物品登记）。
             return data;
         }
 

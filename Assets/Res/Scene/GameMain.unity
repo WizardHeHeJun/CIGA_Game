@@ -421,9 +421,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a0a87572e5c679f45a91550f7a01f3b4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   _loadingConfig: {fileID: 11400000, guid: 1f231dc11a32b5040a3d95c283b353e0, type: 2}
+  _bgmClip: {fileID: 8300000, guid: 3cb5fc0e5e62439468efa09336592e8a, type: 3}
+  _uiClickClip: {fileID: 8300000, guid: 6f9b6094ce8546d4681b226e86c22a36, type: 3}
 --- !u!4 &522583992
 Transform:
   m_ObjectHideFlags: 0

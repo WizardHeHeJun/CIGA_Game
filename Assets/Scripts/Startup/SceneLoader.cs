@@ -59,7 +59,20 @@ namespace Ciga.Startup
 
             EnsureOverlay();
             EnsureBgmSource();
+            EnsureAudioListener();
             PlayBgm();
+        }
+
+        /// <summary>
+        /// 场景缺 AudioListener 时补挂到常驻根（GameMain/Bootstrap 场景相机均未带 Listener，
+        /// 否则 BGM/点击/物品音效全部无声）。仅初始化期查一次。
+        /// </summary>
+        private void EnsureAudioListener()
+        {
+            if (FindObjectOfType<AudioListener>() == null)
+            {
+                gameObject.AddComponent<AudioListener>();
+            }
         }
 
         private void OnDestroy()

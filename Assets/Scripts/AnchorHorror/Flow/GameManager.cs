@@ -161,6 +161,13 @@ namespace Ciga.AnchorHorror
                 _whisperSource.clip = GenerateWhisper();
             }
 
+            // 场景缺 AudioListener 时补挂（Bootstrap 直连联调时无 SceneLoader 兜底，否则全程无声）。
+            // 仅初始化期查一次，非热路径。
+            if (FindObjectOfType<AudioListener>() == null)
+            {
+                gameObject.AddComponent<AudioListener>();
+            }
+
             _initialized = true;
         }
 
@@ -314,7 +321,7 @@ namespace Ciga.AnchorHorror
                 return;
             }
 
-            Anchor.ExtractTargetsFromSelection(_backpack.Items);
+            Anchor.ExtractTargetsFromSelection(_backpack.Items, CollectLevel2ObtainableFeatures());
             SelectionLocked = true;
 
             // 选满后由 SelectInLevel1 直接调用 EnterLevel2，不再等待玩家走门。
@@ -728,6 +735,73 @@ namespace Ciga.AnchorHorror
             }
 
             return fallback;
+        }
+
+        /// <summary>
+        /// 汇总第二关全部走廊/房间可交互物品能提供的特征集合（死局防护）：
+        /// 抽目标锚点只从该集合内抽，避免抽中第二关无任何物品可满足的特征导致必输。
+        /// 仅在关卡1 锁定选择时调用一次，非热路径。
+        /// </summary>
+        private HashSet<FeatureUnit> CollectLevel2ObtainableFeatures()
+        {
+            var result = new HashSet<FeatureUnit>();
+            if (_sequence == null)
+            {
+                return result;
+            }
+
+            for (int i = Level2FirstEntryIndex; i < _sequence.Count; i++)
+            {
+                if (_sequence.GetKind(i) != LevelKind.Level2Sub)
+                {
+                    continue;
+                }
+
+                var level = _sequence.GetLevel(i);
+                if (level == null || level.Items == null)
+                {
+                    continue;
+                }
+
+                var items = level.Items;
+                for (int n = 0; n < items.Count; n++)
+                {
+                    var placed = items[n];
+                    if (placed == null || placed.VisualOnly)
+                    {
+                        continue;
+                    }
+
+                    if (placed.OverrideFeatures)
+                    {
+                        AddObtainable(result, placed.Color, placed.Shape, placed.Material, placed.Texture, placed.Sound);
+                    }
+                    else if (level.ItemDatabase != null && level.ItemDatabase.TryGetById(placed.ItemId, out var def))
+                    {
+                        AddObtainable(result, def.Color, def.Shape, def.Material, def.Texture, def.Sound);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private static void AddObtainable(HashSet<FeatureUnit> set,
+            FeatureColor color, FeatureShape shape, FeatureMaterial material, FeatureTexture texture, FeatureSound sound)
+        {
+            AddUnit(set, FeatureDimension.Color, (int)color);
+            AddUnit(set, FeatureDimension.Shape, (int)shape);
+            AddUnit(set, FeatureDimension.Material, (int)material);
+            AddUnit(set, FeatureDimension.Texture, (int)texture);
+            AddUnit(set, FeatureDimension.Sound, (int)sound);
+        }
+
+        private static void AddUnit(HashSet<FeatureUnit> set, FeatureDimension dimension, int value)
+        {
+            if (value != 0)
+            {
+                set.Add(new FeatureUnit(dimension, value));
+            }
         }
 
         private LevelSpawner.SpawnContext BuildSpawnContext()

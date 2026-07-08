@@ -254,6 +254,73 @@ namespace Ciga.AnchorHorror.Tests
             Assert.IsTrue(set.Contains(new FeatureUnit(FeatureDimension.Color, 1)));
         }
 
+        // ---------------------------------------------------------------- LevelSpawner：空 itemId 自包含生成 + 实例键唯一
+
+        [Test]
+        public void LevelSpawner_EmptyItemId_SpawnsSelfContained_WithDistinctRuntimeKeys()
+        {
+            var level = MakeOverlayLevel("测试关", 2);
+            var root = new GameObject("Root");
+            _spawned.Add(root);
+
+            var tags = LevelSpawner.Spawn(level, root.transform);
+
+            Assert.AreEqual(2, tags.Count, "空 itemId 但带覆盖特征的物品应正常生成");
+            Assert.IsFalse(string.IsNullOrEmpty(tags[0].RuntimeKey));
+            Assert.IsFalse(string.IsNullOrEmpty(tags[1].RuntimeKey));
+            Assert.AreNotEqual(tags[0].RuntimeKey, tags[1].RuntimeKey,
+                "同 itemId/位置/缩放的两件物品兜底键必须不同（否则跨房间重建会连坐消失）");
+        }
+
+        [Test]
+        public void LevelSpawner_ConsumedKey_OnlyHidesThatInstance()
+        {
+            var level = MakeOverlayLevel("测试关", 2);
+            var root1 = new GameObject("Root1");
+            _spawned.Add(root1);
+            var first = LevelSpawner.Spawn(level, root1.transform);
+            var consumed = new HashSet<string> { first[0].RuntimeKey };
+
+            var root2 = new GameObject("Root2");
+            _spawned.Add(root2);
+            var second = LevelSpawner.Spawn(level, root2.transform, new LevelSpawner.SpawnContext(consumed));
+
+            Assert.AreEqual(2, second.Count);
+            Assert.IsTrue(second[0].Consumed, "已消费实例重建后应保持消费态");
+            Assert.IsFalse(second[0].gameObject.activeSelf, "已消费实例重建后应隐藏");
+            Assert.IsFalse(second[1].Consumed, "未消费实例不应被连坐");
+            Assert.IsTrue(second[1].gameObject.activeSelf, "未消费实例应可见");
+        }
+
+        // ---------------------------------------------------------------- 抽锚点死局防护
+
+        [Test]
+        public void ExtractTargetsFromSelection_FiltersUnobtainableFeatures()
+        {
+            var cfg = MakeConfig(targetCount: 5);
+            var anchor = new AnchorSystem(cfg, null, null);
+
+            // 已选物品特征：Color=1 / Shape=2 / Material=3 / Texture=4，其中只有前两个在关卡2可获得
+            var selected = new List<BackpackItem>
+            {
+                MakeBackpackItem((FeatureColor)1, (FeatureShape)2, (FeatureMaterial)3, (FeatureTexture)4),
+            };
+            var obtainable = new HashSet<FeatureUnit>
+            {
+                new FeatureUnit(FeatureDimension.Color, 1),
+                new FeatureUnit(FeatureDimension.Shape, 2),
+            };
+
+            anchor.ExtractTargetsFromSelection(selected, obtainable);
+
+            Assert.AreEqual(2, anchor.Targets.Count, "拿不到的特征应被剔除，只抽可获得的");
+            for (int i = 0; i < anchor.Targets.Count; i++)
+            {
+                Assert.IsTrue(obtainable.Contains(anchor.Targets[i].Feature),
+                    $"目标锚点 {anchor.Targets[i].Feature} 不在关卡2可获得集合内（死局）");
+            }
+        }
+
         // ================================================================ helpers
 
         private GlobalConfig MakeConfig(int requiredMin = 1, int requiredMax = 3, int targetCount = 5)
@@ -302,6 +369,32 @@ namespace Ciga.AnchorHorror.Tests
         {
             var tag = MakeItem(c, sh, m, t);
             return new BackpackItem(tag.GetFeatures(), null, tag.name);
+        }
+
+        /// <summary>造正式关卡风格的 LevelData：全部物品空 itemId + 覆盖特征 + 原点对齐（字段完全相同，最严苛撞键场景）。</summary>
+        private LevelData MakeOverlayLevel(string name, int itemCount)
+        {
+            var db = ScriptableObject.CreateInstance<ItemDatabase>();
+            var level = ScriptableObject.CreateInstance<LevelData>();
+            SetField(level, "_levelName", name);
+            SetField(level, "_itemDatabase", db);
+
+            var items = new List<PlacedItem>();
+            for (int i = 0; i < itemCount; i++)
+            {
+                var placed = new PlacedItem();
+                SetField(placed, "_overrideFeatures", true);
+                SetField(placed, "_color", (FeatureColor)1);
+                SetField(placed, "_shape", (FeatureShape)2);
+                SetField(placed, "_material", (FeatureMaterial)3);
+                SetField(placed, "_texture", (FeatureTexture)4);
+                SetField(placed, "_sound", (FeatureSound)1);
+                SetField(placed, "_alignWithBackground", true);
+                items.Add(placed);
+            }
+
+            SetField(level, "_items", items);
+            return level;
         }
 
         private static SerializableFeatureUnit MakeSfu(FeatureDimension dim, int value)

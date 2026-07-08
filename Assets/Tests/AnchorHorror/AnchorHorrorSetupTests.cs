@@ -25,7 +25,6 @@ namespace Ciga.AnchorHorror.Tests
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<LevelConfig>("Assets/Res/AnchorHorror/LevelConfig.asset"), "LevelConfig 未生成");
 
             Assert.IsTrue(System.IO.File.Exists("Assets/Res/AnchorHorror/Bootstrap.unity"), "Bootstrap 场景未生成");
-            Assert.IsTrue(System.IO.File.Exists("Assets/Res/AnchorHorror/HorrorLevel.unity"), "HorrorLevel 场景未生成");
 
             var scenePaths = new System.Collections.Generic.HashSet<string>();
             foreach (var s in EditorBuildSettings.scenes)
@@ -34,7 +33,8 @@ namespace Ciga.AnchorHorror.Tests
             }
 
             Assert.IsTrue(scenePaths.Contains("Assets/Res/AnchorHorror/Bootstrap.unity"), "Bootstrap 未加入 Build Settings");
-            Assert.IsTrue(scenePaths.Contains("Assets/Res/AnchorHorror/HorrorLevel.unity"), "HorrorLevel 未加入 Build Settings");
+            Assert.IsFalse(scenePaths.Contains("Assets/Res/AnchorHorror/HorrorLevel.unity"),
+                "HorrorLevel 已退役，不应再出现在 Build Settings");
         }
     }
 }

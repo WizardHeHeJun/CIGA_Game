@@ -21,7 +21,7 @@ using UnityEngine.UI;
 namespace Ciga.AnchorHorror.EditorTools
 {
     /// <summary>
-    /// 一键生成锚点解谜的可运行装配：3 个 SO + Bootstrap/HorrorLevel 场景（已接线）+ 加入 Build Settings。
+    /// 一键生成锚点解谜的可运行装配：3 个 SO + Bootstrap 场景（已接线，默认接正式序列）+ 加入 Build Settings。
     /// 幂等：已存在则复用。菜单 Ciga/AnchorHorror/生成可运行装配。
     /// 界面走 uGUI Canvas（记忆面板 + 结算界面，均 TMP）；DebugHUD 仍用 IMGUI；黑屏/音频等可选引用留空（运行时判空）。
     /// 场景以"附加模式"离线构建，绝不替换/干扰用户当前打开的场景（避免自动化下弹保存框）。
@@ -30,7 +30,6 @@ namespace Ciga.AnchorHorror.EditorTools
     {
         private const string SoDir = "Assets/Res/AnchorHorror";
         private const string BootstrapScene = SoDir + "/Bootstrap.unity";
-        private const string HorrorScene = SoDir + "/HorrorLevel.unity";
         private const string SquareSpritePath = SoDir + "/WhiteSquare.png";
         private const string CjkTtfPath = SoDir + "/AnchorCJK.ttf";
         private const string CjkFontPath = SoDir + "/AnchorCJK SDF.asset";
@@ -40,6 +39,7 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string BgmPath = "Assets/Res/Audio/AnchorHorror/bgm.mp3";
         private const string UiClickPath = "Assets/Res/Audio/AnchorHorror/ui-click.mp3";
+        private const string FormalSequencePath = SoDir + "/Levels/Formal_Sequence.asset";
 
         // 关卡2 HUD 美术：从 acts/ 原始美术拷入 Assets 并导为 Sprite（全屏叠加层，按 1920x1080 定位）
         private const string InGameUiDir = "Assets/Res/UI/InGame";
@@ -118,7 +118,6 @@ namespace Ciga.AnchorHorror.EditorTools
                 EditorSceneManager.SaveScene(active, tempActive);
             }
 
-            BuildScene(HorrorScene, PopulateHorrorLevel);
             BuildScene(BootstrapScene, () => PopulateBootstrap(cfg, db, level));
             AddScenesToBuildSettings();
 
@@ -238,6 +237,14 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_interaction", interaction);
             WireObj(gm, "_player", pc);
             WireObj(gm, "_tutorial", tutorial);
+
+            // 重建裸场景后默认接线正式关卡序列（历史坑：之前不接 _sequence，重建即丢正式接线，
+            // 再被 Demo/测试工具抢走，游戏跑成白方块 Demo；Demo 生成器已删，正式接线即默认态）。
+            var formalSequence = AssetDatabase.LoadAssetAtPath<LevelSequence>(FormalSequencePath);
+            if (formalSequence != null)
+            {
+                WireObj(gm, "_sequence", formalSequence);
+            }
 
             var bgmClip = AssetDatabase.LoadAssetAtPath<AudioClip>(BgmPath);
             var uiClickClip = AssetDatabase.LoadAssetAtPath<AudioClip>(UiClickPath);
@@ -1076,20 +1083,13 @@ namespace Ciga.AnchorHorror.EditorTools
             entry.FindPropertyRelative("_respondsMenu").boolValue = menu;
         }
 
-        private static void PopulateHorrorLevel()
-        {
-            var spawn = new GameObject("PlayerSpawn");
-            spawn.transform.position = new Vector3(0, -3, 0);
-        }
-
         private static void AddScenesToBuildSettings()
         {
-            // 剔除文件已不存在的失效条目（如早被删除的 SampleScene 残留引用），再补上本玩法场景。
+            // 剔除文件已不存在的失效条目（如已退役的 HorrorLevel/SampleScene 残留引用），再补上本玩法场景。
             var list = EditorBuildSettings.scenes
                 .Where(sc => !string.IsNullOrEmpty(sc.path) && System.IO.File.Exists(sc.path))
                 .ToList();
             EnsureScene(list, BootstrapScene);
-            EnsureScene(list, HorrorScene);
             EditorBuildSettings.scenes = list.ToArray();
         }
 

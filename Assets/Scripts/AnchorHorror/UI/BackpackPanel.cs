@@ -13,7 +13,7 @@ using UnityEngine.UI;
 namespace Ciga.AnchorHorror
 {
     /// <summary>
-    /// 关卡2 右侧背包：Bag 羊皮纸 + 4 个物品槽图标（对齐美术 4 格），物品数超出可用上下箭头翻页。
+    /// 关卡2 右侧背包：NightBag 羊皮纸 + 4 个物品槽图标（对齐美术 4 格），物品数超出可用上下箭头翻页。
     /// 图标用物品 Sprite，并按其首个非 None 特征的关键词色着色（BackpackItem 无独立颜色，
     /// 借 FeatureDatabase 词典色提升可读性）。仅 HorrorLevel 相位显示。
     /// </summary>
@@ -21,7 +21,7 @@ namespace Ciga.AnchorHorror
     {
         [SerializeField] private GameObject _root;
 
-        [Tooltip("物品槽图标，对齐 Bag.PNG 的 4 个方框（从 _firstVisibleIndex 开始显示）。")]
+        [Tooltip("物品槽图标，对齐 NightBag.PNG 的 4 个方框（从 _firstVisibleIndex 开始显示）。")]
         [SerializeField] private Image[] _slots;
 
         [Tooltip("溢出角标：背包件数 > 槽位数时显示当前页信息。")]

@@ -7,12 +7,6 @@
 #   spritePath   : Assets/Res/AnchorHorror 下相对路径（如 WhiteSquare.png）或 32 位 GUID；留空 = 用 ItemDatabase 兜底图
 #   scaleX,scaleY: 默认缩放；留空 = 1
 #   collider     : Box / Circle；留空 = Box
+# 目录当前为空：正式关卡 40 个物品全部自包含（特征/美术由 FormalSceneArtSetup 声明并烘进 Formal LevelData，
+# 不走 itemId 引用）；旧 Demo 占位物品已随 Demo 体系删除。未来需要按 id 复用的物品在此登记即可。
 itemId,displayName,Color,Shape,Material,Texture,Sound,spritePath,scaleX,scaleY,collider,note
-chair_wood,木椅,DarkBrown,Square,Wood,Rough,WoodFriction,WhiteSquare.png,1,1.2,Box,占位·木质家具
-lamp_metal,金属台灯,Gray,Round,Metal,Glossy,LightHum,WhiteSquare.png,0.8,1,Circle,占位·发光金属
-book_paper,旧书,White,Flat,Paper,Matte,,WhiteSquare.png,0.9,0.6,Box,占位·无声
-cup_glass,玻璃杯,Transparent,Round,Glass,Smooth,GlassClink,WhiteSquare.png,0.6,0.8,Circle,占位·玻璃器皿
-clock_metal,座钟,Gold,Round,Metal,Scaled,Ticking,WhiteSquare.png,1,1,Circle,占位·钟表
-cloth_red,红布,Red,Irregular,Fabric,Soft,ClothTouch,WhiteSquare.png,1.1,0.9,Box,占位·软布料
-box_wood,木箱,Brown,Square,Wood,Worn,,WhiteSquare.png,1.3,1.3,Box,占位·无声
-bottle_plastic,塑料瓶,Green,Long,Plastic,Smooth,PlasticClick,WhiteSquare.png,0.5,1.1,Box,占位·塑料
