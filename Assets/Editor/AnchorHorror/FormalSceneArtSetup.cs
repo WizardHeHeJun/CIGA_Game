@@ -94,7 +94,8 @@ namespace Ciga.AnchorHorror.EditorTools
                 {
                     Obj("bed", "床", "Default/Bedrrom_Bed_Default.PNG", "Active/Bedrrom_Bed_Active.PNG",
                         Feature(FeatureColor.White, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Soft, FeatureSound.ClothTouch)),
-                    Obj("drobe", "衣柜", "Default/Bedrrom_Drobe_Default.PNG", null,
+                    // 美术源没画衣柜 Active 图：占位 = Default 提亮 25%（程序生成），美术补图后替换 acts 源 + 删进包旧图重导
+                    Obj("drobe", "衣柜", "Default/Bedrrom_Drobe_Default.PNG", "Active/Bedrrom_Drobe_Active.PNG",
                         Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Rough, FeatureSound.WoodFriction)),
                     Obj("desk", "梳妆台", "Default/Bedrrom_Desk_Default.PNG", "Active/Bedrrom_Desk_Active..PNG",
                         Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction)),
