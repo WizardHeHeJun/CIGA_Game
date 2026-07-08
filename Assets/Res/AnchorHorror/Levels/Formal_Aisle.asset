@@ -24,15 +24,15 @@ MonoBehaviour:
     _material: 0
     _texture: 0
     _sound: 0
-    _overrideSprite: 0
-    _sprite: {fileID: 0}
-    _activeSprite: {fileID: 0}
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: 4e4d78549b517d34ea0bbaebc077e2ee, type: 3}
+    _activeSprite: {fileID: 21300000, guid: 72bb88ef58c76d34dadbf1d3c413ce58, type: 3}
     _alignWithBackground: 1
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 1, y: 1}
     _visualOnly: 1
-    _runtimeKey: 
-    _hideWhenConsumedOf: 
+    _runtimeKey:
+    _hideWhenConsumedOf:
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0
@@ -43,15 +43,15 @@ MonoBehaviour:
     _material: 0
     _texture: 0
     _sound: 0
-    _overrideSprite: 0
-    _sprite: {fileID: 0}
-    _activeSprite: {fileID: 0}
+    _overrideSprite: 1
+    _sprite: {fileID: 21300000, guid: ee4d690334f3e6e43a3f7d71dd8b9311, type: 3}
+    _activeSprite: {fileID: 21300000, guid: af8fb20ea92cd7f4599b478795815a28, type: 3}
     _alignWithBackground: 1
     _colliderOffset: {x: 0, y: 0}
     _colliderSize: {x: 1, y: 1}
     _visualOnly: 1
-    _runtimeKey: 
-    _hideWhenConsumedOf: 
+    _runtimeKey:
+    _hideWhenConsumedOf:
   - _itemId: chair_wood
     _position: {x: 0, y: 0}
     _rotationZ: 0

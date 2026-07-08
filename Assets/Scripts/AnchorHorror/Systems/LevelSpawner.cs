@@ -89,7 +89,7 @@ namespace Ciga.AnchorHorror
                     continue;
                 }
 
-                string runtimeKey = ResolveRuntimeKey(level, placed);
+                string runtimeKey = ResolveRuntimeKey(level, placed, i);
                 string hideKey = ResolveHideKey(placed, runtimeKey);
                 bool consumed = context.IsConsumed(runtimeKey);
                 bool hidden = consumed || context.IsConsumed(hideKey);
@@ -110,23 +110,22 @@ namespace Ciga.AnchorHorror
             return result;
         }
 
-        private static string ResolveRuntimeKey(LevelData level, PlacedItem placed)
+        private static string ResolveRuntimeKey(LevelData level, PlacedItem placed, int index)
         {
             if (!string.IsNullOrEmpty(placed.RuntimeKey))
             {
                 return placed.RuntimeKey;
             }
 
+            // 兜底键必须带列表序号：整场景 overlay 物品的 itemId/位置/缩放可能完全相同
+            // （正式关卡资产均为 chair_wood + 原点对齐），仅靠这些字段会撞键，
+            // 导致"捡走 1 件、重进房间后同键物品全部被视为已消费而消失"。
             string levelName = level != null ? level.LevelName : string.Empty;
-            Vector2 pos = placed.Position;
             return string.Format(CultureInfo.InvariantCulture,
-                "{0}:{1}:{2:0.###}:{3:0.###}:{4:0.###}:{5:0.###}",
+                "{0}:{1}#{2}",
                 levelName,
                 placed.ItemId,
-                pos.x,
-                pos.y,
-                placed.RotationZ,
-                placed.Scale.x + placed.Scale.y * 0.0001f);
+                index);
         }
 
         private static string ResolveHideKey(PlacedItem placed, string runtimeKey)

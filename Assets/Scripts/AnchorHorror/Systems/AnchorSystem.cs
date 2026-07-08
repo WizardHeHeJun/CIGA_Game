@@ -123,21 +123,49 @@ namespace Ciga.AnchorHorror
         /// </summary>
         public void ExtractTargetsFromSelection(IReadOnlyList<BackpackItem> selected)
         {
+            ExtractTargetsFromSelection(selected, null);
+        }
+
+        /// <summary>
+        /// 同上，另接收"关卡2 可获得特征集合"做死局防护：
+        /// 已选物品的特征若在第二关任何场景都拿不到，则不进抽取池（抽中即必输，无物品可满足）。
+        /// obtainable 传 null 或空集合时不过滤（向后兼容 / 测试路径）。
+        /// </summary>
+        public void ExtractTargetsFromSelection(IReadOnlyList<BackpackItem> selected, HashSet<FeatureUnit> obtainable)
+        {
             _targets.Clear();
 
-            // 1. 从已选物品收集所有 distinct 非-None 特征
+            bool filter = obtainable != null && obtainable.Count > 0;
+
+            // 1. 从已选物品收集所有 distinct 非-None 特征（可选剔除关卡2拿不到的）
             var pool = new List<FeatureUnit>();
+            var dropped = filter ? new HashSet<FeatureUnit>() : null;
             for (int i = 0; i < selected.Count; i++)
             {
                 var features = selected[i].Features;
                 for (int f = 0; f < features.Count; f++)
                 {
                     var unit = features[f];
-                    if (!unit.IsNone && !pool.Contains(unit))
+                    if (unit.IsNone || pool.Contains(unit))
                     {
-                        pool.Add(unit);
+                        continue;
                     }
+
+                    if (filter && !obtainable.Contains(unit))
+                    {
+                        dropped.Add(unit);
+                        continue;
+                    }
+
+                    pool.Add(unit);
                 }
+            }
+
+            if (dropped != null && dropped.Count > 0)
+            {
+                Debug.LogWarning(
+                    $"[AnchorHorror] ExtractTargetsFromSelection：剔除 {dropped.Count} 个关卡2无物品可满足的特征" +
+                    $"（{string.Join(", ", dropped)}）。建议补齐第二关物品特征覆盖。");
             }
 
             // 2. 洗牌后取前 TargetCount 个
