@@ -21,19 +21,25 @@ namespace Ciga.AnchorHorror.Tests
             return File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ItemCatalogCodegen.CsvPath));
         }
 
+        // 合成 CSV：解析器行为回归用（真表已清空——正式物品全部自包含，不走 itemId 引用）
+        private const string SyntheticCsv =
+            "itemId,displayName,Color,Shape,Material,Texture,Sound,spritePath,scaleX,scaleY,collider,note\n" +
+            "chair_x,测试椅,DarkBrown,Square,Wood,Rough,WoodFriction,WhiteSquare.png,1,1.2,Box,合成\n" +
+            "lamp_x,测试灯,Gray,Round,Metal,Glossy,,WhiteSquare.png,0.8,1,Circle,合成·无声\n";
+
         [Test]
-        public void Parse_RealCsv_YieldsExpectedRowsAndDims()
+        public void Parse_RealCsv_IsEmptyCatalog_WithAllDims()
         {
             var data = ItemCsvParser.Parse(ReadRealCsv());
-            Assert.AreEqual(8, data.Rows.Count);
+            Assert.AreEqual(0, data.Rows.Count, "真表应为空目录（正式物品自包含，不走 itemId 引用）");
             CollectionAssert.AreEqual(new[] { "Color", "Shape", "Material", "Texture", "Sound" }, data.FeatureDimKeys);
         }
 
         [Test]
-        public void Parse_ChairWood_FeaturesAndTransformCorrect()
+        public void Parse_Synthetic_FeaturesAndTransformCorrect()
         {
-            var data = ItemCsvParser.Parse(ReadRealCsv());
-            var chair = data.Rows.Find(r => r.ItemId == "chair_wood");
+            var data = ItemCsvParser.Parse(SyntheticCsv);
+            var chair = data.Rows.Find(r => r.ItemId == "chair_x");
             Assert.IsNotNull(chair);
             Assert.AreEqual((int)FeatureColor.DarkBrown, chair.FeatureValues["Color"]);
             Assert.AreEqual((int)FeatureShape.Square, chair.FeatureValues["Shape"]);
@@ -46,12 +52,11 @@ namespace Ciga.AnchorHorror.Tests
         }
 
         [Test]
-        public void Parse_EmptySoundIsNone_And_CircleCollider()
+        public void Parse_Synthetic_EmptySoundIsNone_And_CircleCollider()
         {
-            var data = ItemCsvParser.Parse(ReadRealCsv());
-            var book = data.Rows.Find(r => r.ItemId == "book_paper");
-            Assert.AreEqual(0, book.FeatureValues["Sound"]); // 空 → None(0)
-            var lamp = data.Rows.Find(r => r.ItemId == "lamp_metal");
+            var data = ItemCsvParser.Parse(SyntheticCsv);
+            var lamp = data.Rows.Find(r => r.ItemId == "lamp_x");
+            Assert.AreEqual(0, lamp.FeatureValues["Sound"]); // 空 → None(0)
             Assert.IsTrue(lamp.ColliderCircle);
         }
 
@@ -85,22 +90,16 @@ namespace Ciga.AnchorHorror.Tests
             Assert.Throws<ItemCsvException>(() => ItemCsvParser.Parse("itemId,displayName\nx,\n"));
         }
 
-        /// <summary>端到端：运行导入器回填 ItemDatabase.asset 并校验（顺带产出该资产供关卡编辑器/示例关卡使用）。</summary>
+        /// <summary>端到端：运行导入器回填 ItemDatabase.asset——空目录 + 兜底图仍在（LevelSpawner 依赖 FallbackSprite）。</summary>
         [Test]
-        public void ImportAll_ProducesItemDatabase_WithAllItems()
+        public void ImportAll_ProducesEmptyItemDatabase_WithFallbackSprite()
         {
             ItemCatalogCodegen.ImportAll();
             AssetDatabase.SaveAssets();
 
             var db = AssetDatabase.LoadAssetAtPath<ItemDatabase>(ItemCatalogCodegen.DbPath);
             Assert.IsNotNull(db, "ItemDatabase.asset 应已生成");
-            Assert.AreEqual(8, db.Items.Count);
-
-            Assert.IsTrue(db.TryGetById("clock_metal", out var clock));
-            Assert.AreEqual((int)FeatureSound.Ticking, (int)clock.Sound);
-            Assert.AreEqual((int)FeatureMaterial.Metal, (int)clock.Material);
-            Assert.AreEqual((int)FeatureColor.Gold, (int)clock.Color);
-
+            Assert.AreEqual(0, db.Items.Count, "目录应为空（正式物品自包含）");
             Assert.IsFalse(db.TryGetById("nonexistent_id", out _), "查不到的 id 返回 false");
             Assert.IsNotNull(db.FallbackSprite, "兜底图应回填 WhiteSquare");
         }

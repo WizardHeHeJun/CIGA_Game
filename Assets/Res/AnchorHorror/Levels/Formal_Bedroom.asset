@@ -147,7 +147,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_single
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}

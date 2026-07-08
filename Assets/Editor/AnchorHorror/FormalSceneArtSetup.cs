@@ -108,8 +108,7 @@ namespace Ciga.AnchorHorror.EditorTools
                     Obj("carpet", "地毯", "Default/Bedrrom_Carpet_Default.PNG", "Active/Bedrrom_Carpet_Active..PNG",
                         Feature(FeatureColor.LightGray, FeatureShape.Long, FeatureMaterial.Fabric, FeatureTexture.Soft, FeatureSound.ClothTouch)),
                     Obj("chair", "椅子", "Default/Bedrrom_Chair_Default.PNG", "Active/Bedrrom_Chair_Active..PNG",
-                        Feature(FeatureColor.White, FeatureShape.Irregular, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction),
-                        itemId: "chair_single"),
+                        Feature(FeatureColor.White, FeatureShape.Irregular, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction)),
                 });
         }
 

@@ -11,7 +11,4 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Res/AnchorHorror/Bootstrap.unity
     guid: 644eb4bc411d6c845a9c07dc8b8efe76
-  - enabled: 1
-    path: Assets/Res/AnchorHorror/HorrorLevel.unity
-    guid: 1c8d3b0176ceb3e4789994630bb65bd2
   m_configObjects: {}

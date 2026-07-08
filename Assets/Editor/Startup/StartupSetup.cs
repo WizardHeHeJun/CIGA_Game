@@ -28,7 +28,6 @@ namespace Ciga.Startup.EditorTools
         private const string GameMainScenePath = "Assets/Res/Scene/GameMain.unity";
         private const string StartupUiFontPath = "Assets/Res/AnchorHorror/HanyiLotus SDF.asset";
         private const string BootstrapScenePath = "Assets/Res/AnchorHorror/Bootstrap.unity";
-        private const string HorrorScenePath = "Assets/Res/AnchorHorror/HorrorLevel.unity";
 
         [MenuItem("Ciga/Startup/生成启动流装配")]
         public static void BuildAll()
@@ -60,7 +59,7 @@ namespace Ciga.Startup.EditorTools
             // 5. 构建 GameMain.unity（覆盖旧版，退役旧 GameMain 组件）
             BuildScene(GameMainScenePath, () => PopulateGameMainScene(mainCfg, loadingCfg));
 
-            // 6. 更新 Build Settings（Login=0, GameMain=1, Bootstrap=2, HorrorLevel=3）
+            // 6. 更新 Build Settings（Login=0, GameMain=1, Bootstrap=2）
             AddScenesToBuildSettings();
 
             if (tempActive != null)
@@ -287,7 +286,7 @@ namespace Ciga.Startup.EditorTools
             return btn;
         }
 
-        // Build Settings：顺序 Login(0) GameMain(1) Bootstrap(2) HorrorLevel(3)；剔除失效项、去重。
+        // Build Settings：顺序 Login(0) GameMain(1) Bootstrap(2)；剔除失效项、去重。
         private static void AddScenesToBuildSettings()
         {
             // 其余已存在场景（剔除失效项 + 将重排的 Login/GameMain）
@@ -310,9 +309,8 @@ namespace Ciga.Startup.EditorTools
 
             ordered.AddRange(rest);
 
-            // 确保 Bootstrap / HorrorLevel 在列（AnchorHorrorSetup 可能已加，这里补保险）
+            // 确保 Bootstrap 在列（AnchorHorrorSetup 可能已加，这里补保险）
             EnsureScene(ordered, BootstrapScenePath);
-            EnsureScene(ordered, HorrorScenePath);
 
             EditorBuildSettings.scenes = ordered.ToArray();
         }
