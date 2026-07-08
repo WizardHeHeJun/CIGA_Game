@@ -241,7 +241,7 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_tutorial", tutorial);
 
             // 重建裸场景后默认接线正式关卡序列（历史坑：之前不接 _sequence，重建即丢正式接线，
-            // 再被 Demo/测试工具抢走，游戏跑成白方块 Demo）。要跑 Demo 用菜单「生成两关卡流程 Demo 数据」显式切。
+            // 再被 Demo/测试工具抢走，游戏跑成白方块 Demo；Demo 生成器已删，正式接线即默认态）。
             var formalSequence = AssetDatabase.LoadAssetAtPath<LevelSequence>(FormalSequencePath);
             if (formalSequence != null)
             {

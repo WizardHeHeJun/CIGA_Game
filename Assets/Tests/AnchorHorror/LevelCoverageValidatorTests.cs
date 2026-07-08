@@ -4,8 +4,9 @@
 // Created: 2026-07-05
 // ------------------------------------------------------------
 // 迭代B SC-B2：死局检测校验器 EditMode 测试。
-//   正例：加载可解的 demo LevelSequence → Validate 通过。
+//   正例：合成「关卡2 覆盖关卡1 全部特征」的序列 → Validate 通过。
 //   负例：合成「关卡1有 Red、关卡2只有 Blue」的序列 → Validate 报死局、报告含缺失特征。
+//   （原 demo LevelSequence 正例随 Demo 资产删除移除，合成正例等价覆盖。）
 // ------------------------------------------------------------
 using System.Collections.Generic;
 using System.Reflection;
@@ -35,18 +36,6 @@ namespace Ciga.AnchorHorror.Tests
             }
 
             _assets.Clear();
-        }
-
-        // ── 正例：可解 demo 应通过 ──────────────────────────────
-        [Test]
-        public void DemoSequence_PassesCoverage()
-        {
-            var seq = AssetDatabase.LoadAssetAtPath<LevelSequence>(
-                "Assets/Res/AnchorHorror/Levels/DemoTwoLevelFlow_Sequence.asset");
-            Assert.IsNotNull(seq, "找不到 demo LevelSequence 资产（迭代A demo 数据应已在盘）");
-
-            bool ok = LevelCoverageValidator.Validate(seq, out string report);
-            Assert.IsTrue(ok, $"demo 数据构造上可解，应通过。报告：{report}");
         }
 
         // ── 负例：关卡2 缺关卡1 的特征 → 报死局 ─────────────────
