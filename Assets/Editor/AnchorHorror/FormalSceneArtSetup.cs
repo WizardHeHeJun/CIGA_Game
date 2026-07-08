@@ -241,7 +241,7 @@ namespace Ciga.AnchorHorror.EditorTools
             string defaultRel,
             string activeRel,
             FeatureSpec feature,
-            string itemId = "chair_wood",
+            string itemId = null,
             bool visualOnly = false)
         {
             return new ArtObjectSpec(id, displayName, defaultRel, activeRel, feature, itemId, visualOnly);

@@ -1080,31 +1080,6 @@ namespace Ciga.AnchorHorror.EditorTools
         {
             var spawn = new GameObject("PlayerSpawn");
             spawn.transform.position = new Vector3(0, -3, 0);
-
-            // 恐怖关卡散布物品（含能匹配上文候选特征的物品，供联调通关）
-            SpawnItem("H_Red1", new Vector2(-3, 2), FeatureColor.Red, FeatureShape.None, FeatureMaterial.None, FeatureTexture.None);
-            SpawnItem("H_Red2", new Vector2(-1, 2), FeatureColor.Red, FeatureShape.Round, FeatureMaterial.None, FeatureTexture.None);
-            SpawnItem("H_Blue", new Vector2(1, 2), FeatureColor.Blue, FeatureShape.Square, FeatureMaterial.Metal, FeatureTexture.None);
-            SpawnItem("H_Wood", new Vector2(3, 2), FeatureColor.Brown, FeatureShape.None, FeatureMaterial.Wood, FeatureTexture.None);
-            SpawnItem("H_Glass", new Vector2(-3, 0), FeatureColor.White, FeatureShape.Long, FeatureMaterial.Glass, FeatureTexture.Glossy);
-            SpawnItem("H_Fabric", new Vector2(-1, 0), FeatureColor.Yellow, FeatureShape.Flat, FeatureMaterial.Fabric, FeatureTexture.Matte);
-            SpawnItem("H_Smooth", new Vector2(1, 0), FeatureColor.Green, FeatureShape.Round, FeatureMaterial.Ceramic, FeatureTexture.Smooth);
-            SpawnItem("H_Rough", new Vector2(3, 0), FeatureColor.Black, FeatureShape.Irregular, FeatureMaterial.Metal, FeatureTexture.Rough);
-        }
-
-        private static void SpawnItem(string name, Vector2 pos, FeatureColor c, FeatureShape s, FeatureMaterial m, FeatureTexture t)
-        {
-            var go = new GameObject(name);
-            go.transform.position = pos;
-            go.AddComponent<BoxCollider2D>();
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = _squareSprite;
-            sr.color = Color.white;
-            var tag = go.AddComponent<FeatureTag>();
-            WireEnum(tag, "_color", (int)c);
-            WireEnum(tag, "_shape", (int)s);
-            WireEnum(tag, "_material", (int)m);
-            WireEnum(tag, "_texture", (int)t);
         }
 
         private static void AddScenesToBuildSettings()
