@@ -117,7 +117,8 @@ namespace Ciga.AnchorHorror.EditorTools
                     $"  关卡1 LevelData（8 物品，8 种 distinct 特征）\n" +
                     $"  走廊 + 房间1..4 LevelData\n" +
                     $"  LevelSequence（entry[0]=关卡1，entry[1]=走廊，entry[2..5]=房间）\n" +
-                    $"  并已接线到 Bootstrap.unity。",
+                    $"  并已接线到 Bootstrap.unity（正式接线被切走）。\n\n" +
+                    $"恢复正式内容：菜单「接线正式关卡数据」。",
                     "好");
             }
             catch (Exception ex)
@@ -127,16 +128,16 @@ namespace Ciga.AnchorHorror.EditorTools
             }
         }
 
-        /// <summary>一键重建：先重建 Bootstrap 装配，再建两关卡数据并重接序列（按序，缺一不可）。</summary>
-        [MenuItem("Ciga/AnchorHorror/★ 一键重建全部（装配 + 两关卡Demo数据）")]
+        /// <summary>一键重建：重建 Bootstrap 装配（默认接正式序列）+ 重建 Demo 数据资产（不抢接线）。</summary>
+        [MenuItem("Ciga/AnchorHorror/★ 一键重建全部（装配+Demo数据，接线正式关卡）")]
         public static void RebuildEverything()
         {
-            AnchorHorrorSetup.BuildAll(); // 先重建 Bootstrap（相机跟随/UI/教程图/ResultConfig/操作提示等）
-            BuildAll();                   // 再建两关卡数据并重接 _sequence（上一步重建裸场景会清掉序列接线，必须再跑）
+            AnchorHorrorSetup.BuildAll();      // 重建 Bootstrap，内部已默认接线正式关卡序列
+            BuildAll(wireToBootstrap: false);  // 只重建 Demo 数据资产，不动 Bootstrap 接线
             AssetDatabase.Refresh();
             EditorUtility.DisplayDialog(
                 "一键重建完成",
-                "已重建 Bootstrap（相机跟随/教程图/结算配置/操作提示）+ 两关卡 Demo 数据并接线。\n从 GameMain 场景 Play 即可。",
+                "已重建 Bootstrap（接线正式关卡序列）+ 两关卡 Demo 数据资产。\n从 GameMain 场景 Play 即为正式内容。\n要跑 Demo 用菜单「生成两关卡流程 Demo 数据」显式切换。",
                 "好");
         }
 
@@ -172,8 +173,11 @@ namespace Ciga.AnchorHorror.EditorTools
             return true;
         }
 
-        /// <summary>幂等生成入口：建资产 + 接线到 Bootstrap。</summary>
-        public static void BuildAll()
+        /// <summary>
+        /// 幂等生成入口：建资产；wireToBootstrap=true 时才把 Demo 序列接到 Bootstrap。
+        /// 测试/一键重建走 false——Demo 接线只能经菜单显式发生，防止隐式抢走正式接线（历史坑）。
+        /// </summary>
+        public static void BuildAll(bool wireToBootstrap = true)
         {
             EnsureFolder(LevelsDir);
 
@@ -208,12 +212,15 @@ namespace Ciga.AnchorHorror.EditorTools
             };
             var seq = BuildLevelSequence(level1, corridor, new[] { room1, room2, room3, room4 }, square, backgrounds);
 
-            // 3. 接线到 Bootstrap
-            WireBootstrapScene(seq);
+            // 3. 接线到 Bootstrap（仅显式要求时；测试路径只建资产不动接线）
+            if (wireToBootstrap)
+            {
+                WireBootstrapScene(seq);
+            }
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "[TwoLevelFlowDemoSetup] 已生成两关卡流程 Demo 数据并接线到 Bootstrap.unity。\n" +
+                $"[TwoLevelFlowDemoSetup] 已生成两关卡流程 Demo 数据{(wireToBootstrap ? "并接线到 Bootstrap.unity" : "（未动 Bootstrap 接线）")}。\n" +
                 "8 种特征：Color.Red / Color.Blue / Color.Green / Shape.Round / Shape.Square / Material.Wood / Material.Metal / Texture.Smooth\n" +
                 "Corridor：无物品，仅四门 Hub\n" +
                 "Room1覆盖：Red Blue\n" +

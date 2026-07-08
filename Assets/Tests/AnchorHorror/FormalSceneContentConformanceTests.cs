@@ -7,6 +7,7 @@
 //          策划改表或重跑生成器后跑此测试即可发现配置漂移。
 // ------------------------------------------------------------
 using System.Collections.Generic;
+using System.IO;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -218,6 +219,21 @@ namespace Ciga.AnchorHorror.Tests
                 Assert.IsNotNull(db.GetAudioClip(unit),
                     $"声音特征「{entry.Value}」未配置 AudioClip（检视/命中时无声）");
             }
+        }
+
+        /// <summary>
+        /// 守卫：Bootstrap 的 GameManager._sequence 必须接正式序列。
+        /// 历史坑：Demo/测试生成器会把接线抢成 Demo 序列（正式背景上跑白方块物品）。
+        /// </summary>
+        [Test]
+        public void Bootstrap_GameManagerSequence_WiredToFormal()
+        {
+            string formalGuid = AssetDatabase.AssetPathToGUID(LevelsDir + "Formal_Sequence.asset");
+            Assert.IsFalse(string.IsNullOrEmpty(formalGuid), "Formal_Sequence.asset 不存在");
+
+            string sceneText = File.ReadAllText("Assets/Res/AnchorHorror/Bootstrap.unity");
+            StringAssert.Contains($"_sequence: {{fileID: 11400000, guid: {formalGuid}", sceneText,
+                "Bootstrap 的 GameManager._sequence 未接正式序列（被 Demo/测试序列抢走？菜单「接线正式关卡数据」可恢复）");
         }
 
         private static LevelData LoadLevel(string assetName)

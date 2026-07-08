@@ -40,6 +40,7 @@ namespace Ciga.AnchorHorror.EditorTools
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string BgmPath = "Assets/Res/Audio/AnchorHorror/bgm.mp3";
         private const string UiClickPath = "Assets/Res/Audio/AnchorHorror/ui-click.mp3";
+        private const string FormalSequencePath = SoDir + "/Levels/Formal_Sequence.asset";
 
         // 关卡2 HUD 美术：从 acts/ 原始美术拷入 Assets 并导为 Sprite（全屏叠加层，按 1920x1080 定位）
         private const string InGameUiDir = "Assets/Res/UI/InGame";
@@ -238,6 +239,14 @@ namespace Ciga.AnchorHorror.EditorTools
             WireObj(gm, "_interaction", interaction);
             WireObj(gm, "_player", pc);
             WireObj(gm, "_tutorial", tutorial);
+
+            // 重建裸场景后默认接线正式关卡序列（历史坑：之前不接 _sequence，重建即丢正式接线，
+            // 再被 Demo/测试工具抢走，游戏跑成白方块 Demo）。要跑 Demo 用菜单「生成两关卡流程 Demo 数据」显式切。
+            var formalSequence = AssetDatabase.LoadAssetAtPath<LevelSequence>(FormalSequencePath);
+            if (formalSequence != null)
+            {
+                WireObj(gm, "_sequence", formalSequence);
+            }
 
             var bgmClip = AssetDatabase.LoadAssetAtPath<AudioClip>(BgmPath);
             var uiClickClip = AssetDatabase.LoadAssetAtPath<AudioClip>(UiClickPath);

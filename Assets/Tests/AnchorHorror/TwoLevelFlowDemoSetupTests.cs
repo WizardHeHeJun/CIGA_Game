@@ -12,18 +12,19 @@ using UnityEditor;
 namespace Ciga.AnchorHorror.Tests
 {
     /// <summary>
-    /// 触发 TwoLevelFlowDemoSetup.BuildAll()，断言 6 个 LevelData + LevelSequence 落盘，
+    /// 触发 TwoLevelFlowDemoSetup.BuildAll(wireToBootstrap:false)，断言 6 个 LevelData + LevelSequence 落盘，
     /// 且 LevelSequence 共 6 条 entry（entries[0..5]）。
+    /// 测试路径绝不接线 Bootstrap——否则每跑一轮测试正式接线就被 Demo 抢走（历史坑）。
     /// </summary>
     public class TwoLevelFlowDemoSetupTests
     {
         private const string LevelsDir = "Assets/Res/AnchorHorror/Levels";
 
         [Test]
-        public void BuildDemoData_CreatesAllAssetsAndWiresSequence()
+        public void BuildDemoData_CreatesAllAssets()
         {
-            // 执行生成器（幂等，已存在则覆盖重建）
-            TwoLevelFlowDemoSetup.BuildAll();
+            // 执行生成器（幂等，已存在则覆盖重建）；不动 Bootstrap 接线
+            TwoLevelFlowDemoSetup.BuildAll(wireToBootstrap: false);
 
             // 6 个 LevelData：关卡1 + 走廊 + 四房间
             Assert.IsNotNull(
@@ -75,30 +76,8 @@ namespace Ciga.AnchorHorror.Tests
                     $"关卡1 物品[{i}] OverrideFeatures 未设为 true");
             }
 
-            // Bootstrap 已接线（_sequence 非 null）——通过 GameManager 组件验证
-            var gos = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(
-                "Assets/Res/AnchorHorror/Bootstrap.unity",
-                UnityEditor.SceneManagement.OpenSceneMode.Additive);
-            bool found = false;
-            foreach (var root in gos.GetRootGameObjects())
-            {
-                var gm = root.GetComponent<GameManager>();
-                if (gm == null)
-                {
-                    continue;
-                }
-
-                var so = new SerializedObject(gm);
-                var prop = so.FindProperty("_sequence");
-                if (prop != null && prop.objectReferenceValue != null)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            UnityEditor.SceneManagement.EditorSceneManager.CloseScene(gos, true);
-            Assert.IsTrue(found, "Bootstrap.unity 里 GameManager._sequence 未接线");
+            // Bootstrap 接线不在此验证：测试路径不接 Demo 序列；
+            // 正式接线由 FormalSceneContentConformanceTests.Bootstrap_GameManagerSequence_WiredToFormal 守卫。
         }
     }
 }
