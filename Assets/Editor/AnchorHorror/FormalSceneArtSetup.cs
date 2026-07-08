@@ -32,13 +32,6 @@ namespace Ciga.AnchorHorror.EditorTools
 
         private static readonly string[] ArtRootParts = { "acts", "ciga美术资产", "ciga美术资产" };
 
-        private static readonly FeatureSpec NoneFeature = new FeatureSpec(
-            FeatureColor.None,
-            FeatureShape.None,
-            FeatureMaterial.None,
-            FeatureTexture.None,
-            FeatureSound.None);
-
         [MenuItem("Ciga/AnchorHorror/生成正式关卡美术数据（并接线）")]
         public static void BuildAllMenu()
         {
@@ -156,7 +149,8 @@ namespace Ciga.AnchorHorror.EditorTools
                         Feature(FeatureColor.Black, FeatureShape.Square, FeatureMaterial.Glass, FeatureTexture.Smooth, FeatureSound.MetalMechanical)),
                     Obj("frame", "相框", "Default/LivingRoom_Frame_Default.PNG", "Active/LivingRoom_Frame_Active.PNG",
                         Feature(FeatureColor.Brown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.GlassClink)),
-                    Obj("table", "茶几", "Default/LivingRoom_Table_Default.PNG", null,
+                    // 美术源把茶几的 Active 图错命名成了 LivingRoom_Bed_Active.PNG（目视确认同一件家具），此处直接引用
+                    Obj("table", "茶几", "Default/LivingRoom_Table_Default.PNG", "Active/LivingRoom_Bed_Active.PNG",
                         Feature(FeatureColor.DarkBrown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Worn, FeatureSound.WoodFriction)),
                     Obj("lamp", "落地灯", "Default/LivingRoom_Lamp_Default.PNG", "Active/LivingRoom_TLamp_Active.PNG",
                         Feature(FeatureColor.Beige, FeatureShape.Cone, FeatureMaterial.Fabric, FeatureTexture.SoftLight, FeatureSound.LightHum)),
@@ -304,7 +298,9 @@ namespace Ciga.AnchorHorror.EditorTools
                 e.FindPropertyRelative("_position").vector2Value = Vector2.zero;
                 e.FindPropertyRelative("_rotationZ").floatValue = 0f;
                 e.FindPropertyRelative("_scale").vector2Value = Vector2.one;
-                var feature = obj.VisualOnly ? NoneFeature : obj.Feature;
+                // visualOnly 条目也保留策划表特征值做数据留档（运行时不读：ItemFactory 对 VisualOnly 提前 return，
+                // GameManager 汇总可获得特征也跳过），仅 _overrideFeatures=false 表示不参与玩法。
+                var feature = obj.Feature;
                 e.FindPropertyRelative("_overrideFeatures").boolValue = !obj.VisualOnly;
                 SetFeatureProperties(e, feature);
                 e.FindPropertyRelative("_overrideSprite").boolValue = defaultSprite != null;
@@ -501,6 +497,13 @@ namespace Ciga.AnchorHorror.EditorTools
             if (maxX < minX || maxY < minY)
             {
                 return (Vector2.zero, fallback != null ? (Vector2)fallback.bounds.size : Vector2.one);
+            }
+
+            // 物件图 alpha bbox 覆盖近整张画布 = 美术导出多半把白底拍平了（丢透明通道），
+            // 生成出的碰撞框会占满全场景、渲染也会盖住背景——提前告警拦住这类源图缺陷。
+            if (maxX - minX + 1 >= width * 0.95f && maxY - minY + 1 >= height * 0.95f)
+            {
+                Debug.LogWarning($"[FormalSceneArtSetup] 物件图 alpha 区域覆盖≥95% 画布，疑似源图未保留透明通道：{sourceAbs}");
             }
 
             float centerX = (minX + maxX + 1) * 0.5f;

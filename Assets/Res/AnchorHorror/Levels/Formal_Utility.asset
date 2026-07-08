@@ -104,8 +104,8 @@ MonoBehaviour:
     _sprite: {fileID: 21300000, guid: 5452847164634c949b67e227354c5106, type: 3}
     _activeSprite: {fileID: 21300000, guid: 80a1ab3d76da1d4409b1daa9ef3725ae, type: 3}
     _alignWithBackground: 1
-    _colliderOffset: {x: 0, y: 0}
-    _colliderSize: {x: 23.111113, y: 13.000001}
+    _colliderOffset: {x: -1.9199075, y: 3.8337965}
+    _colliderSize: {x: 3.9120371, y: 3.538889}
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 

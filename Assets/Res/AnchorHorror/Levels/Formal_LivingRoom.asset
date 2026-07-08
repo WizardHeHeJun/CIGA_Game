@@ -83,7 +83,7 @@ MonoBehaviour:
     _sound: 2
     _overrideSprite: 1
     _sprite: {fileID: 21300000, guid: c0dbb0c920dc02b4a9293045422cf630, type: 3}
-    _activeSprite: {fileID: 0}
+    _activeSprite: {fileID: 21300000, guid: 2515d8aafb849da47babd2ce98bafff3, type: 3}
     _alignWithBackground: 1
     _colliderOffset: {x: -1.492128, y: -1.2181311}
     _colliderSize: {x: 5.3610973, y: 5.25546}
