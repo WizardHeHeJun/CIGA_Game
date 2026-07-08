@@ -83,9 +83,12 @@ namespace Ciga.AnchorHorror
                     continue;
                 }
 
-                if (!db.TryGetById(placed.ItemId, out var def))
+                // itemId 允许为空（正式关卡生成器约定）：物品自带覆盖 Sprite/特征，不依赖 ItemDatabase 定义。
+                // 仅当 itemId 非空却查不到定义、且实例又没有任何自包含信息时才跳过（真数据错误）。
+                db.TryGetById(placed.ItemId, out var def);
+                if (def == null && !placed.OverrideSprite && !placed.OverrideFeatures && !placed.VisualOnly)
                 {
-                    Debug.LogWarning($"[LevelSpawner] ItemId '{placed.ItemId}' 在 ItemDatabase 中不存在，跳过。");
+                    Debug.LogWarning($"[LevelSpawner] ItemId '{placed.ItemId}' 在 ItemDatabase 中不存在且无覆盖信息，跳过。");
                     continue;
                 }
 

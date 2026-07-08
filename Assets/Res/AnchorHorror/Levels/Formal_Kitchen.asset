@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _levelName: "\u6B63\u5F0F\u5173\u53612\xB7\u53A8\u623F"
   _items:
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -33,7 +33,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -52,7 +52,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -71,7 +71,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -90,7 +90,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -109,7 +109,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -128,7 +128,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -147,7 +147,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}

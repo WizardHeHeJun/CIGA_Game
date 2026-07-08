@@ -161,6 +161,13 @@ namespace Ciga.AnchorHorror
                 _whisperSource.clip = GenerateWhisper();
             }
 
+            // 场景缺 AudioListener 时补挂（Bootstrap 直连联调时无 SceneLoader 兜底，否则全程无声）。
+            // 仅初始化期查一次，非热路径。
+            if (FindObjectOfType<AudioListener>() == null)
+            {
+                gameObject.AddComponent<AudioListener>();
+            }
+
             _initialized = true;
         }
 

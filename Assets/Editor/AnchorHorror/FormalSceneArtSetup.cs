@@ -126,10 +126,10 @@ namespace Ciga.AnchorHorror.EditorTools
                 "Aisle_BG.PNG", new Vector2(0f, -3.5f),
                 new[]
                 {
-                    Obj("door_a", "门A", null, null,
+                    Obj("door_a", "门A", "Default/Aisle_DoorA_Default.PNG", "Active/Aisle_DoorA_Active.PNG",
                         Feature(FeatureColor.DarkBrown, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Peeling, FeatureSound.WoodFriction),
                         visualOnly: true),
-                    Obj("door_b", "门B", null, null,
+                    Obj("door_b", "门B", "Default/Aisle_DoorB_Default.PNG", "Active/Aisle_DoorB_Active.PNG",
                         Feature(FeatureColor.White, FeatureShape.Square, FeatureMaterial.Wood, FeatureTexture.Smooth, FeatureSound.WoodFriction),
                         visualOnly: true),
                     Obj("carpet", "地毯", "Default/Aisle_Carpet_Default.PNG", "Active/Aisle_Carpet_Active.PNG",

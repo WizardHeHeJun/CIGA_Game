@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _levelName: "\u6B63\u5F0F\u5173\u53611\xB7\u5367\u5BA4"
   _items:
-  - _itemId: bed
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -31,9 +31,9 @@ MonoBehaviour:
     _colliderOffset: {x: 6.298629, y: 0.42254955}
     _colliderSize: {x: 4.212291, y: 8.114271}
     _visualOnly: 0
-    _runtimeKey:
-    _hideWhenConsumedOf:
-  - _itemId: drobe
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -50,9 +50,9 @@ MonoBehaviour:
     _colliderOffset: {x: -5.806755, y: -4.0043173}
     _colliderSize: {x: 7.335196, y: 3.3275776}
     _visualOnly: 0
-    _runtimeKey:
-    _hideWhenConsumedOf:
-  - _itemId: chair_wood
+    _runtimeKey: 
+    _hideWhenConsumedOf: 
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -71,7 +71,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -90,7 +90,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -109,7 +109,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}
@@ -128,7 +128,7 @@ MonoBehaviour:
     _visualOnly: 0
     _runtimeKey: 
     _hideWhenConsumedOf: 
-  - _itemId: chair_wood
+  - _itemId: 
     _position: {x: 0, y: 0}
     _rotationZ: 0
     _scale: {x: 1, y: 1}

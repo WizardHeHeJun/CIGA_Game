@@ -27,7 +27,7 @@ namespace Ciga.AnchorHorror
         /// <summary>
         /// 根据物品定义与实例描述装配 GameObject。
         /// </summary>
-        /// <param name="def">物品定义（非空）。</param>
+        /// <param name="def">物品定义；可为 null（正式关卡生成器约定：实例自带覆盖 Sprite/特征，不依赖定义）。</param>
         /// <param name="placed">关卡中的物品实例描述（非空）。</param>
         /// <param name="fallback">全局兜底 Sprite；def 与 placed 均无 Sprite 时使用。</param>
         /// <param name="parent">挂载父节点（关卡根 Transform）。</param>
@@ -36,8 +36,11 @@ namespace Ciga.AnchorHorror
         public static GameObject Create(ItemDefinition def, PlacedItem placed, Sprite fallback, Transform parent,
             SpawnRuntimeState runtimeState)
         {
-            // --- 1. 建 GameObject，名称取显示名，无则用 ID ---
-            string goName = !string.IsNullOrEmpty(def.DisplayName) ? def.DisplayName : def.Id;
+            // --- 1. 建 GameObject，名称取显示名，无则用 ID（def 可空时退到实例 ID / 占位名）---
+            string goName = def != null && !string.IsNullOrEmpty(def.DisplayName) ? def.DisplayName
+                : def != null && !string.IsNullOrEmpty(def.Id) ? def.Id
+                : !string.IsNullOrEmpty(placed.ItemId) ? placed.ItemId
+                : "Item";
             var go = new GameObject(goName);
             go.transform.SetParent(parent, false);
 
@@ -64,7 +67,7 @@ namespace Ciga.AnchorHorror
             {
                 sprite = placed.Sprite;
             }
-            if (sprite == null)
+            if (sprite == null && def != null)
             {
                 sprite = def.Sprite;
             }
@@ -87,7 +90,7 @@ namespace Ciga.AnchorHorror
             // --- 4. 挂 Collider2D（按 ColliderKind 选 Box/Circle；FeatureTag 依赖此组件）---
             // 交互靠 InteractionSystem 的 OverlapCircle 检测，不需要物理阻挡；设 isTrigger 避免玩家撞在物品上卡住/旋转（用户反馈）。
             Collider2D itemCol;
-            switch (def.Collider)
+            switch (def != null ? def.Collider : ColliderKind.Box)
             {
                 case ColliderKind.Circle:
                     itemCol = go.AddComponent<CircleCollider2D>();
@@ -121,13 +124,22 @@ namespace Ciga.AnchorHorror
                 texture = placed.Texture;
                 sound = placed.Sound;
             }
-            else
+            else if (def != null)
             {
                 color = def.Color;
                 shape = def.Shape;
                 material = def.Material;
                 texture = def.Texture;
                 sound = def.Sound;
+            }
+            else
+            {
+                // 无定义且未覆盖（自包含 visualOnly 之外的极端数据）：全 None，不参与匹配。
+                color = FeatureColor.None;
+                shape = FeatureShape.None;
+                material = FeatureMaterial.None;
+                texture = FeatureTexture.None;
+                sound = FeatureSound.None;
             }
 
             tag.Configure(color, shape, material, texture, sound);
